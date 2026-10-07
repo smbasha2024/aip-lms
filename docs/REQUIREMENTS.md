@@ -224,9 +224,9 @@ Administrators can:
 - Manage holidays.
 - View all leave applications.
 - Approve/reject applications when required.
-- Cancel applications when authorized.
+- Cancel their own pending applications; cancellation on behalf is deferred.
 - View reports.
-- View audit information.
+- Audit records are created for critical actions; the audit viewer is deferred beyond v1.
 
 # 5. Functional Requirements
 
@@ -300,11 +300,9 @@ The frontend must display an appropriate message for unauthorized access.
 Each employee should have at least:
 
 - Employee ID
-- First Name
-- Last Name
-- Full Name
+- Full Name (single name field in v1; split names are future work)
 - Email
-- Phone
+- Phone (optional)
 - Department
 - Designation/Role
 - Joining Date
@@ -320,6 +318,8 @@ Employment status:
 ```text
 ACTIVE
 INACTIVE
+RESIGNED
+TERMINATED
 ```
 
 ## 5.2.2 Employee Creation
@@ -332,11 +332,12 @@ Required fields:
 - Name
 - Email
 - Department
-- Designation
 - Joining Date
-- Manager
+- Manager (required for EMPLOYEE; optional for top-level MANAGER/ADMINISTRATOR)
 - Role
-- Employment Status
+- Initial Password (12..128 characters; create only)
+
+Optional fields: Designation, Phone, Employment Status (default ACTIVE).
 
 The system must validate:
 
@@ -391,11 +392,11 @@ Each leave type should support:
 - Leave Type ID
 - Leave Type Name
 - Description
-- Annual Allocation
+- Annual Allocation (managed per employee/type/year in leave balances)
 - Is Paid Leave
-- Requires Approval
+- Requires Approval (always true in v1)
 - Allow Employee Application
-- Allow Half Day
+- Allow Half Day (always false in v1)
 - Active/Inactive
 - Created Date
 - Updated Date
@@ -424,10 +425,10 @@ Pending
 Available
 ```
 
-Recommended calculation:
+Authoritative calculation:
 
 ```text
-Available = Allocated - Used - Pending
+Available = Allocated + Carried Forward - Used - Pending
 ```
 
 ## 5.3.3 View Leave Balance
@@ -454,9 +455,8 @@ The leave application form must contain:
 - Leave Type
 - From Date
 - To Date
-- Half Day option if supported
 - Reason
-- Optional remarks
+- Optional remarks are deferred; use one required Reason field in v1
 
 The system must validate:
 
@@ -504,7 +504,7 @@ The calculation must consider:
 
 - Weekends
 - Company holidays
-- Half days if supported
+- Whole days only in v1; half-day support is deferred
 
 The calculation rules must be centralized in the backend.
 
@@ -578,7 +578,7 @@ For approved leave, cancellation should not be allowed unless an explicit cancel
 
 ## 5.3.9 Approve Leave
 
-Managers can approve pending applications belonging to their direct reports.
+Managers can approve pending applications assigned to them at submission, excluding their own applications. Current account role/status is revalidated; administrator override is permitted for stranded requests.
 
 Before approval, the backend must revalidate:
 
@@ -586,8 +586,8 @@ Before approval, the backend must revalidate:
 - Application is still PENDING.
 - Employee is active.
 - Manager is authorized.
-- Leave dates are still valid.
-- Leave balance is sufficient.
+- Stored dates/days remain unchanged; passing the start date alone does not invalidate a submitted request.
+- The reserved pending balance exists and the total balance invariant remains valid. Do not require the request to fit available balance a second time.
 
 On approval:
 
@@ -601,7 +601,7 @@ The corresponding leave balance must be updated according to the business rules.
 
 Managers can reject pending leave applications.
 
-A rejection reason should be required.
+A trimmed, non-empty rejection reason of at most 1000 characters is required.
 
 On rejection:
 
@@ -639,8 +639,8 @@ Holiday fields:
 - Holiday Name
 - Holiday Date
 - Description
-- Holiday Type
-- Location/Region if applicable
+- Holiday Type (Mandatory/Optional)
+- Location/Region deferred beyond v1 (one global calendar)
 - Active/Inactive
 - Created Date
 - Updated Date
@@ -653,7 +653,7 @@ Validation:
 
 - Holiday name required.
 - Holiday date required.
-- Duplicate holiday dates should be prevented for the same applicable region.
+- Duplicate holiday dates are prevented globally in v1, including inactive records. Regional calendars are deferred.
 - Date must be valid.
 
 ## 5.4.3 Holiday Update
@@ -702,7 +702,7 @@ When an employee submits leave:
 Status = PENDING
 ```
 
-Pending leave should be included in pending balance where the organization follows a reserved-balance model.
+The reserved-balance model is mandatory in v1: submission increases pending in the same transaction.
 
 Example:
 
@@ -742,13 +742,13 @@ When pending leave is cancelled:
 
 ## 6.6 Manager Authorization
 
-A manager can approve/reject leave only for employees who report directly to that manager.
+A manager can approve/reject requests whose manager snapshot was assigned to that manager at submission. Reassignment does not transfer pending requests automatically. Full employee profile/history access remains limited to current direct reports.
 
-Administrators can approve/reject any application if required.
+Administrators can approve/reject any pending application except their own. Override actions are audited.
 
 ## 6.7 Self Approval
 
-A manager must never approve their own leave application.
+No manager or administrator may approve or reject their own leave application.
 
 The employee's leave application must be routed to their reporting manager.
 
@@ -772,7 +772,7 @@ The system must validate balance at:
 1. Leave submission.
 2. Leave approval.
 
-This prevents race conditions where multiple pending requests consume the same balance.
+Submission reserves balance under an employee lock and a balance lock. Approval validates that reservation and moves it to used exactly once. Concurrency controls, not a repeated unlocked balance read, prevent over-reservation.
 
 ## 6.10 Concurrent Approval
 
@@ -1040,7 +1040,7 @@ Fields:
 - Leave Type
 - From Date
 - To Date
-- Half Day if supported
+- No Half Day field in v1
 - Number of Days
 - Reason
 
@@ -1166,10 +1166,10 @@ Fields:
 
 - Leave Type Name
 - Description
-- Annual Allocation
+- Allocation is managed separately per employee/type/year
 - Paid/Unpaid
-- Approval Required
-- Half Day Allowed
+- Approval Required (read-only true in v1)
+- Half Day Allowed (read-only false in v1)
 - Active
 
 Actions:
@@ -1359,9 +1359,7 @@ Division by zero must be handled safely.
 
 ## 10.5 Export
 
-Reports should be designed so CSV/Excel export can be added.
-
-Initial implementation may provide CSV export if practical.
+CSV, Excel and PDF exports are deferred beyond v1. Do not display export controls without an approved export contract.
 
 # 11. Error Handling
 
@@ -1455,7 +1453,7 @@ Roles:
 ```text
 EMPLOYEE
 MANAGER
-ADMIN
+ADMINISTRATOR
 ```
 
 Authorization must be enforced in the backend.
@@ -1498,8 +1496,8 @@ Example:
 
 ```env
 DATABASE_URL=
-SECRET_KEY=
-JWT_SECRET=
+POSTGRES_PASSWORD=
+# Opaque sessions need no JWT signing secret in v1.
 ```
 
 Never place secrets in:
@@ -2061,342 +2059,70 @@ Support:
 - Email reports
 - Custom report builder
 
-# Implementation Guidance for Codex
-
-The requirements above define the expected product behavior.
-
-Codex should follow these principles when implementing the application.
-
-## A. Do Not Hardcode Business Data
-
-Do not hardcode:
-
-- Employees
-- Employee IDs
-- Leave balances
-- Leave types
-- Managers
-- Holidays
-
-These must be stored in PostgreSQL.
-
-Seed data may be provided for development/testing.
-
-## B. Backend Is the Source of Truth
-
-All business rules must ultimately be enforced by FastAPI.
-
-Do not rely only on frontend validation.
-
-The backend must validate:
-
-- Authentication
-- Authorization
-- Leave dates
-- Leave balance
-- Overlap
-- Manager relationship
-- Status transitions
-- Holiday calculation
-
-## C. Keep Business Logic Out of Route Handlers
-
-Prefer:
-
-```text
-Router
-   |
-   v
-Service
-   |
-   v
-Repository
-   |
-   v
-Database
-```
-
-## D. Use Database Constraints
-
-Important uniqueness and relationship rules should be enforced at the database level where practical.
-
-## E. Use Transactions
-
-Leave approval and balance updates must use a database transaction.
-
-## F. API Design
-
-Suggested endpoints:
-
-```text
-POST   /api/auth/login
-POST   /api/auth/logout
-GET    /api/auth/me
-
-GET    /api/employees/me
-GET    /api/employees
-POST   /api/employees
-GET    /api/employees/{id}
-PUT    /api/employees/{id}
-PATCH  /api/employees/{id}/status
-
-GET    /api/leave-types
-POST   /api/leave-types
-PUT    /api/leave-types/{id}
-
-GET    /api/leave-balances/me
-GET    /api/leave-balances/{employee_id}
-
-GET    /api/leave-applications
-POST   /api/leave-applications
-GET    /api/leave-applications/{id}
-POST   /api/leave-applications/{id}/cancel
-POST   /api/leave-applications/{id}/approve
-POST   /api/leave-applications/{id}/reject
-
-GET    /api/holidays
-POST   /api/holidays
-PUT    /api/holidays/{id}
-PATCH  /api/holidays/{id}/status
-
-GET    /api/reports/leave-balances
-GET    /api/reports/leave-applications
-GET    /api/reports/leave-utilization
-```
-
-Codex may modify endpoint naming if there is a strong architectural reason, but API naming must remain consistent.
-
-## G. API Response Consistency
-
-Use consistent response structures.
-
-Successful response:
-
-```json
-{
-  "success": true,
-  "data": {},
-  "message": "Operation completed successfully"
-}
-```
-
-Error response:
-
-```json
-{
-  "success": false,
-  "error": {
-    "code": "INSUFFICIENT_LEAVE_BALANCE",
-    "message": "Insufficient leave balance."
-  }
-}
-```
-
-## H. Database Entities
-
-At minimum, the database should support entities equivalent to:
-
-```text
-users
-employees
-roles
-departments
-leave_types
-leave_balances
-leave_applications
-holidays
-notifications
-audit_logs
-```
-
-The exact schema may be improved by Codex as implementation progresses.
-
-## I. Testing
-
-Codex must create automated tests.
-
-### Backend
-
-Test:
-
-- Authentication
-- Authorization
-- Employee CRUD
-- Leave balance
-- Leave calculation
-- Holiday calculation
-- Leave application
-- Overlap validation
-- Approval
-- Rejection
-- Cancellation
-- Role permissions
-- Transaction behavior
-
-### Frontend
-
-Test:
-
-- Login
-- Protected routes
-- Dashboard
-- Leave application
-- Leave history
-- Manager approval
-- Admin screens
-- Validation messages
-
-### Integration
-
-At least one end-to-end workflow should be tested:
-
-```text
-Employee Login
-    |
-    v
-Apply Leave
-    |
-    v
-Manager Login
-    |
-    v
-Approve Leave
-    |
-    v
-Employee checks updated balance
-```
-
-## J. Development Seed Data
-
-Provide development seed data.
-
-Example users:
-
-```text
-EMP001
-Employee User
-
-MGR001
-Manager User
-
-ADM001
-Administrator User
-```
-
-Use clearly documented development passwords.
-
-Development credentials must never be used in production.
-
-## K. Environment Files
-
-Create:
-
-```text
-.env.example
-```
-
-Do not commit the actual `.env`.
-
-Example:
-
-```env
-DATABASE_URL=postgresql://postgres:password@localhost:5432/employee_leave_db
-SECRET_KEY=change-me
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-NEXT_PUBLIC_API_URL=http://localhost:8000
-```
-
-## L. Git Requirements
-
-Do not commit:
-
-```text
-.env
-.env.*
-!.env.example
-
-.venv/
-venv/
-__pycache__/
-*.pyc
-
-node_modules/
-.next/
-out/
-
-dist/
-build/
-
-*.log
-
-.DS_Store
-
-coverage/
-.pytest_cache/
-
-.vscode/
-.idea/
-```
-
-Do not commit database dumps, generated build artifacts, credentials, tokens, or secrets.
-
-## M. Documentation
-
-Codex must create/update:
-
-```text
-README.md
-REQUIREMENTS.md
-.env.example
-```
-
-README must explain:
-
-1. Prerequisites.
-2. PostgreSQL setup.
-3. Backend setup.
-4. Frontend setup.
-5. Environment variables.
-6. Database migration.
-7. Seed data.
-8. Running backend.
-9. Running frontend.
-10. Running tests.
-11. API documentation.
-12. Default development users.
-
-## N. Definition of Done
-
-The application is considered complete for the initial release when:
-
-- Backend starts successfully.
-- Frontend starts successfully.
-- PostgreSQL database connects successfully.
-- Database migrations work.
-- Seed data works.
-- Login works.
-- Role-based authorization works.
-- Employee dashboard works.
-- Manager dashboard works.
-- Administrator dashboard works.
-- Employee management works.
-- Leave types work.
-- Leave balances work.
-- Leave application works.
-- Leave calculation works.
-- Holiday management works.
-- Holiday-aware leave calculation works.
-- Manager approval works.
-- Manager rejection works.
-- Employee cancellation works.
-- Notifications work at least in-app.
-- Reports work.
-- Validation works.
-- Error handling works.
-- Security checks work.
-- Automated tests pass.
-- README contains complete setup instructions.
-- No secrets are committed.
-- No major functionality depends on hardcoded data.
+# 17. Resolved v1 Policies
+
+These decisions resolve the Phase 0 audit; the owning technical documents carry the
+corresponding complete contracts. They are target behavior, not implemented features.
+
+1. Canonical roles are EMPLOYEE, MANAGER, ADMINISTRATOR. Employee states include
+   ACTIVE, INACTIVE, RESIGNED, TERMINATED. Only ACTIVE employees and ACTIVE accounts
+   may authenticate/use protected functionality. LOCKED accounts are denied.
+2. Login accepts normalized email or uppercase employee code. Employee creation also
+   creates a linked login account with role and securely hashed initial password in one
+   transaction. No orphan accounts; no forgot/reset password workflow in v1.
+3. Logout revokes the presented opaque bearer session on the server. Role/account
+   changes and employee deactivation revoke all sessions for that account.
+4. Administrator overrides are allowed for approve/reject, never for self-action.
+   Applying/cancelling on behalf of others is deferred. Backend prevents self
+   deactivation/demotion/locking and removal of the final active administrator.
+5. The manager at submission remains the assigned approver. If that manager is no
+   longer eligible, an administrator processes the pending request. Current direct
+   reports define ordinary profile/balance/history access; assigned pending requests
+   allow only the contextual balance access specified in API_SPEC.md.
+6. Business timezone starts as Asia/Kolkata, controlled by ORG_TIMEZONE. Leave year
+   is the calendar year; working weekdays are Monday-Friday. Reject cross-year
+   submissions and zero-working-day submissions. Preview may return zero days.
+7. Global ACTIVE mandatory holidays exclude weekdays; optional holidays are display
+   only in v1. Historical stored application days are never recalculated after edits.
+8. All v1 leave types require balance allocation, including LOP. Paid/unpaid is a
+   classification. Half-day requests, automatic approval, accrual and per-employee
+   eligibility policies beyond allocated balance are deferred. Leave types expose
+   allow_employee_application; requires_approval=true and allow_half_day=false.
+9. Approval validates the existing reservation rather than deducting it twice. Passing
+   the start date after submission does not prevent processing. An inactive employee's
+   request can be rejected by an authorized approver to release its reservation.
+10. Single full name and optional phone are supported; split first/last names are
+    deferred. Allocations live on employee/type/year balances, not leave type defaults.
+11. Approval comment and cancellation reason are optional; rejection reason is required.
+    All are stored and returned by application detail. Reason/comment limit is 1000.
+12. Notifications are mandatory transaction inserts: submit and cancel notify owner
+    and assigned manager; approve/reject notify owner. Audit and notification insertion
+    failures roll back the required business operation. No external delivery in v1.
+13. Application date filters mean inclusive leave-period overlap. APIs use /api/v1,
+    resource responses directly and the standard error body from API_SPEC.md.
+14. Departments have read lookup only in v1; approved seed/operations processes manage
+    them. Audit creation is required; audit viewer, Settings, exports and department
+    CRUD are later-release features. Navigation exposes only implemented functionality.
+15. Phase 1 is foundation only; Phase 2 is database foundation; Phase 3 is authentication.
+    The phrase "later release" is distinct from numbered implementation phases.
+
+# 18. Implementation and Verification
+
+Follow AGENTS.md subject-specific document ownership. Use the complete endpoint
+schemas in docs/API_SPEC.md, persistence in docs/DATABASE.md, canonical routes in
+docs/UI_SPEC.md, phase sequence in docs/IMPLEMENTATION_PLAN.md and gates in
+docs/TEST_PLAN.md. Historical examples or archived specifications grant no permission
+to invent fields, change contracts or expand the requested phase.
+
+Frontend -> hook -> service/API client -> FastAPI router -> service -> repository ->
+SQLAlchemy -> PostgreSQL. Backend remains authoritative. Use environment variables,
+Alembic migrations, request-scoped sessions, transactions and documented lock ordering.
+Do not hardcode production employee/manager/type/holiday data. Development seeds must
+refuse production and must not overwrite existing changed records or credentials.
+
+Every slice includes its relevant tests. Release requires working employee, manager,
+administrator and notification workflows, reports, security/ownership controls,
+transaction/concurrency verification, migration verification, primary E2E, responsive
+and accessibility checks, complete setup documentation, and no committed secrets.
 
 # End of Requirements

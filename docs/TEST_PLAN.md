@@ -147,7 +147,7 @@ Recommended:
 
 ```text
 pytest
-pytest-asyncio if async implementation requires it
+Synchronous pytest fixtures (no pytest-asyncio required for the chosen synchronous database layer)
 FastAPI TestClient or httpx-based test client
 SQLAlchemy test fixtures
 PostgreSQL test database
@@ -266,6 +266,7 @@ Use factories/fixtures for:
 department
 employee
 app_user
+auth_session
 leave_type
 leave_balance
 leave_appln
@@ -316,7 +317,7 @@ EMP002 — direct report of MGR001
 EMP003 — belongs to another manager
 MGR002 — unrelated manager
 INACTIVE001 — inactive user
-LOCKED001 — locked user if locking is supported
+LOCKED001 — locked user
 ```
 
 Passwords used for development/testing must never be production passwords.
@@ -646,7 +647,7 @@ Expect:
 access token/session
 user identity
 role
-expiration information if contract includes it
+required expires_in information
 ```
 
 ---
@@ -689,7 +690,7 @@ or documented status.
 
 ## AUTH-005 Locked User
 
-If locking exists:
+Account locking status exists in v1:
 
 ```text
 403 USER_LOCKED
@@ -744,14 +745,14 @@ Another employee's identity must never be returned due to manipulated input.
 
 ## AUTH-010 Logout
 
-Follow final API/session contract.
+Verify POST /auth/logout revokes the presented auth_session; another session remains active. Browser clearing alone is insufficient.
 
 Verify after logout:
 
 - browser session cleared;
 - cached user data removed;
 - user returned to login;
-- old credentials cannot continue protected use according to chosen authentication design.
+- old credentials cannot authenticate new protected requests after server revocation commits.
 
 ---
 
@@ -768,7 +769,7 @@ Verify:
 - password input uses password control;
 - password is cleared/handled safely after failed login.
 
-Do not assert a specific hashing algorithm unless `API_SPEC.md`/security design fixes one.
+Assert Argon2id encoded hashes and verify-password behavior specified in API_SPEC.md; never assert a fixed random salt.
 
 ---
 
@@ -821,10 +822,10 @@ Verify access according to final contract.
 Especially test final decision for:
 
 ```text
-admin approval override
+admin approval override excluding self
 ```
 
-Do not invent expected behavior until API contract is resolved.
+Use the resolved API_SPEC.md §2 authorization matrix; do not infer broader permissions.
 
 ---
 
@@ -847,7 +848,7 @@ cancel application
 Expect:
 
 ```text
-403 or 404 according to contract
+403 FORBIDDEN for an existing out-of-scope resource; 404 for an absent authorized resource
 ```
 
 Never expose private data just because an identifier is valid.
@@ -957,8 +958,8 @@ Test:
 - inactive leave type excluded from employee application choices;
 - inactive leave type rejected by backend if manually submitted;
 - paid/unpaid flag persisted;
-- approval-required flag persisted;
-- half-day setting persisted.
+- approval-required true persisted; false rejected with UNSUPPORTED_LEAVE_POLICY;
+- half-day false persisted; true rejected with UNSUPPORTED_LEAVE_POLICY.
 
 Do not test half-day application workflow until API supports it.
 
@@ -984,7 +985,7 @@ Cases:
 allocated 15, used 3, pending 2 -> available 10
 allocated 20, carried 2, used 8, pending 2 -> available 12
 zero balances
-fractional values if supported
+fractional allocation/carry-forward values; whole-day application requests only
 ```
 
 Verify backend return value is authoritative.
@@ -1059,7 +1060,7 @@ through standard allocation endpoint.
 Test:
 
 - positive adjustment;
-- negative adjustment if allowed;
+- negative adjustment that preserves nonnegative entitlement/available; invalid result rejected;
 - required reason;
 - resulting balance;
 - audit event.
@@ -1084,7 +1085,7 @@ Verify:
 - correct current-year default;
 - correct filtering;
 - chronological order if promised;
-- inactive holidays hidden for normal users if contract specifies.
+- inactive holidays denied/hidden for non-admin users.
 
 ---
 
@@ -1097,7 +1098,7 @@ Test:
 - edit;
 - optional flag;
 - deactivate;
-- reactivate if supported;
+- reactivate via PUT;
 - non-admin denied.
 
 Verify historical leave applications do not get retroactively recalculated by frontend or unrelated update logic.
@@ -1140,7 +1141,7 @@ Expect:
 leave_days = 0
 ```
 
-if contract allows calculation response.
+for advisory calculation; submission rejects ZERO_WORKING_DAYS.
 
 ## CALC-006 Invalid Range
 
@@ -1148,11 +1149,7 @@ if contract allows calculation response.
 
 ## CALC-007 Past Date
 
-Calculation may calculate or reject depending on API contract.
-
-Submission must enforce no past-date application.
-
-Do not encode ambiguous behavior until contract is explicit.
+Calculation and submission both reject past start dates using ORG_TIMEZONE business today, per API_SPEC.md §8.
 
 ## CALC-008 Cross-Month
 
@@ -1160,9 +1157,7 @@ Correct.
 
 ## CALC-009 Cross-Year
 
-Test if leave requests may span years.
-
-If cross-year application policy is not defined, classify as contract gap before implementation.
+Calculation and submission reject cross-year requests with CROSS_YEAR_LEAVE_NOT_ALLOWED. Test Dec 31 / Jan 1 boundaries and verify no reservation is created.
 
 ---
 
@@ -1257,7 +1252,7 @@ INSUFFICIENT_LEAVE_BALANCE
 
 Exception:
 
-If leave type explicitly permits no-balance application such as LOP, test documented behavior separately.
+All v1 types including LOP require allocated balance; is_paid=false does not bypass validation. Test LOP with missing and insufficient allocation.
 
 ---
 
@@ -1299,7 +1294,7 @@ Test:
 
 - employee has manager;
 - employee has no manager;
-- manager is inactive if policy addresses it;
+- manager employee/account is inactive or role ineligible;
 - manager changes after application.
 
 Verify submitted application retains documented manager snapshot behavior.
@@ -2060,7 +2055,7 @@ HOLIDAY_CREATED
 HOLIDAY_UPDATED
 ```
 
-Audit viewer UI is optional Phase 2, but audit data creation is not optional where requirements require auditability.
+Audit viewer UI is deferred beyond v1, but audit data creation is not optional where requirements require auditability.
 
 ---
 
@@ -2312,7 +2307,7 @@ Test:
 - authorized actions;
 - self application view only;
 - Approve dialog;
-- optional comment only if contract supports;
+- optional approval_comment persisted and shown;
 - Reject requires reason;
 - per-row loading state;
 - successful refetch;
@@ -2345,7 +2340,7 @@ Test:
 - duplicate field errors;
 - edit;
 - deactivate confirm;
-- self-deactivation hidden;
+- self-deactivation hidden and server-denied; final-administrator protection;
 - responsive list.
 
 ---
@@ -2365,7 +2360,7 @@ Test:
 - validation;
 - API errors.
 
-Do not enable Edit/Adjust if contract still lacks balance identifier.
+Assert every balance read/create returns required balance_id; Edit/Adjust use that ID only.
 
 ---
 
@@ -3324,7 +3319,7 @@ employee appears in list
 duplicate employee code rejected
 ```
 
-Extend to login only if account-creation behavior is explicitly defined.
+Also verify the created employee can log in with the provided initial password and role. Inject account creation failure and verify the employee insert rolls back.
 
 ---
 
@@ -3710,7 +3705,7 @@ payroll
 external calendar sync
 advanced analytics
 bulk operations
-audit viewer if API absent
+audit viewer (deferred beyond v1)
 ```
 
 Do test that current implementation does not accidentally expose incomplete unsupported controls where relevant.
@@ -3852,5 +3847,102 @@ Reliability
 ```
 
 ---
+
+
+# 166. Resolved Audit Regression Cases
+
+These cases make the 7 October 2026 contract decisions observable. They supersede
+older conditional wording wherever those policies are now fixed in API_SPEC.md.
+
+## Foundation (Phase 1; B1/B3/F24)
+
+- git check-ignore must not ignore backend/app/models; generated ML artifacts remain
+  ignored only at the root models directory. Environment examples remain trackable.
+- Missing DATABASE_URL, malformed origins, invalid APP_ENV/timezone/expiry produce
+  safe configuration errors; never print secret values. Root/frontend env loading
+  is explicit, test DB is separate, no real .env file is overwritten.
+- /health is process liveness; /health/ready returns 503 with safe DATABASE_UNAVAILABLE
+  on failed SELECT 1. Startup never creates schema or applies migrations implicitly.
+- Alembic loads the single metadata registry. pytest, Vitest/MSW and Playwright smoke
+  runners execute; frontend typecheck/lint/build and CI commands are actually run.
+- No business API/UI/models/migrations accidentally introduced in Phase 1.
+
+## Database and authentication (Phase 2/3; B4/B5/F4/F7/F23)
+
+- All ten tables and explicit named checks/FKs/indexes exist, including auth_session.
+- Login by email and employee code normalizes consistently; no identifier collisions;
+  correct password is checked before revealing inactive/locked state. Login rate limit
+  returns 429 with Retry-After; multiworker production limit is deployment-backed.
+- Tokens are opaque random values stored only as hashes; expired/revoked sessions fail;
+  logout commits revocation, repeated known-token logout returns 204, another session
+  remains active. Logs/audit never contain credentials or hashes.
+- Role/account/employee changes revoke all sessions; inactive employee with ACTIVE
+  app_user is denied. No orphan account; email/username update atomic and unique.
+- Argon2id seed hashing, seed production refusal, idempotent rerun preserving modified
+  credentials/roles/balances. SQL migration upgrade/downgrade uses disposable databases;
+  future upgrade test inserts representative prior data before applying changes.
+
+## Privacy and authorization (F5/F6/F8/F18)
+
+- Administrator approve/reject override works except self; applying/cancelling on behalf
+  is denied. Self account status/role change and final-admin removal are denied in backend.
+- Reassign employee: old assigned manager retains request detail/action scope while still
+  eligible; current manager gains current-profile/history access but cannot process an
+  old snapshot request. Ineligible snapshot manager cannot act; administrator can.
+- Former-report contextual pending balance read returns only application type/year;
+  mismatched year/application/employee, terminal context or unrelated manager is denied.
+- All query filters intersect authorized scope. Team calendar/report excludes self and
+  former reports; visible application scope can include assigned snapshots. Employee
+  report is own only; administrator organization scope is explicit. AccountRef is exposed
+  only to administrators; application visibility never grants full employee-profile access.
+
+## Calendar, accounting and metadata (F9-F17/F20)
+
+- Required balance_id on all reads/writes; organization balances use server pagination.
+- Identity includes organization_timezone/business_today; UI uses business date rather
+  than browser-local midnight. Same-year dates, organization midnight vs UTC midnight,
+  leap day, maximum year range,
+  weekend+holiday deduplication, optional holiday non-exclusion, zero preview/submit policy.
+- LOP requires allocation; inactive/ineligible leave types rejected; half-day/automatic
+  approval unsupported. Allocation edits below used+pending rejected without partial update.
+- Approval succeeds with low available when its own reservation is valid; start date
+  passing after submission does not invalidate it; stored days survive holiday updates.
+  Approval of inactive employee fails; authorized rejection releases reservation.
+- Approval_comment/cancellation_reason round-trip; required rejection reason has exact
+  400 policy; other invalid fields use standard 422; no raw Pydantic body echo of passwords.
+- Holiday date uniqueness includes differently named/inactive duplicates; year derived
+  and CHECK-protected. Full name/phone and employee/account creation/update schemas match.
+- Inclusive overlap filters/year semantics, sort whitelist, UUID tie pagination, search,
+  status=ACTIVE/INACTIVE/ALL role restrictions and full PUT replacement semantics.
+- Submit/cancel create distinct owner+manager notifications; approve/reject notify owner.
+  Inject failures at application/balance/audit/notification steps; entire transaction rolls back.
+
+## Real PostgreSQL races (F21/F22/F24)
+
+- Two overlapping submissions on different leave types must not both succeed. Include
+  different balances, calendar-edge overlap, non-overlapping concurrent submissions and
+  overlap after REJECTED/CANCELLED (allowed). Employee serialization must be observed.
+- Independent sessions with committed fixtures and a synchronization barrier verify
+  duplicate approval, approve/reject, approve/cancel, two adjustments, allocation edit
+  vs submit, deactivation vs submit/approve, role change vs action and logout vs mutation.
+- Use global lock ordering and bounded restart; no arbitrary sleeps/shared one-session
+  transaction fixtures. Assert terminal status, counter totals and audit/event counts.
+- On lost submit response reload history before retry; on ambiguous adjustment response
+  do not blind replay. Conflicts/rollback change no counters; no automatic mutation retries.
+
+## UI, contracts and release scope (F1-F3/F19)
+
+- Canonical routes and role navigation match UI_SPEC.md; no archived fallback types.
+- No Settings, department CRUD, half-day, automatic approval, audit viewer or export
+  controls in v1. Fixed leave-type policy values are read-only. Optional phone displays.
+- Logout failure clears local caches but shows server sign-out not confirmed. Scoped
+  queries/caches do not leak previous user data. Dashboard counts use complete backend
+  aggregates, not a single page/recent list. Staged null summaries are not displayed as zero.
+- Runtime OpenAPI, Pydantic response models, frontend snake_case types and API_SPEC.md
+  agree on every field/nullability/status. Stable list paging and API error shape tested.
+
+CI must run Foundation gates in Phase 1 and grow with each slice. Full domain E2E,
+authorization, migration, rollback/concurrency, accessibility and browser gates remain
+mandatory at their documented phases. A specification correction is not a passing test.
 
 # End of TEST_PLAN.md

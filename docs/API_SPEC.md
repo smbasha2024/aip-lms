@@ -1,2908 +1,488 @@
 # API_SPEC.md
 
-# 1. Purpose
+# Employee Leave Management System — REST Contract (v1)
+
+This is the canonical REST contract. Updated 7 October 2026 after the Phase 0 audit.
+`REQUIREMENTS.md` owns behavior; `DATABASE.md` owns persistence; `ARCHITECTURE.md`
+owns layering; `UI_SPEC.md` owns presentation. Resolve disagreements in the owning
+specification before implementation. Examples are illustrative; the schemas below
+are complete contracts. No application endpoints have been implemented yet.
+
+## 1. Common conventions
+
+- Base path `/api/v1`. Frontend `NEXT_PUBLIC_API_URL` is the backend origin only;
+  append `/api/v1` exactly once. HTTPS is required in production.
+- JSON uses snake_case. UUID identifiers are distinct from employee/leave codes.
+- Dates are `YYYY-MM-DD`; event timestamps are UTC ISO 8601 strings ending in `Z`.
+  Business dates use `ORG_TIMEZONE`, initially `Asia/Kolkata`.
+- Roles: `EMPLOYEE`, `MANAGER`, `ADMINISTRATOR`. Employee status:
+  `ACTIVE`, `INACTIVE`, `RESIGNED`, `TERMINATED`. Account status:
+  `ACTIVE`, `INACTIVE`, `LOCKED`. Master status: `ACTIVE`, `INACTIVE`.
+- Success returns the resource directly. Never wrap it in `success` or `data`.
+- Every error, including schema validation, uses
+  `{"error":{"code":"CODE","message":"Safe message","details":null}}`.
+  Field errors use `details: [{"field":"field_name","message":"Safe message"}]`.
+  Do not echo passwords, tokens, SQL, internal exceptions or raw request bodies.
+- Unknown body/query fields are rejected with `422 VALIDATION_ERROR`.
+- Required means non-null and present. `?` below means optional on input, with its
+  default stated. Nullable response fields are always present with `null` when absent.
+- All strings are trimmed, except passwords which are preserved exactly. Blank
+  required strings fail validation. Email is trimmed and stored lowercase.
+- Decimal inputs are JSON numbers with at most two decimal places, no rounding of
+  invalid input. Counters are 0..99999999.99; adjustments are signed within that
+  magnitude. v1 calculated leave days are whole days. Responses use JSON numbers;
+  backend calculations use Decimal, never binary float arithmetic.
+- Passwords: 12..128 characters. Name limits match DATABASE.md; reason and comments
+  max 1000; description max 2000; phone max 30; search max 200.
+- PUT replaces all fields in its documented update schema: required fields must be
+  present; omitted optional nullable fields become null. Immutable fields are rejected.
+
+## 2. Authentication and access
+
+All endpoints except login and infrastructure health require a bearer token.
+Tokens are opaque, generated from at least 32 random bytes, stored only as SHA-256
+hashes in `auth_session`. No JWT, refresh token or cookie authentication in v1. Bearer credentials are supplied
+explicitly in Authorization, never attached automatically as cookies; cookie CSRF
+mechanisms are therefore not this v1 authentication design. Same-origin script theft
+is addressed through plain-text rendering, CSP and sessionStorage restrictions.
+Password hashing uses Argon2id through argon2-cffi; parameter selection and package
+pins are verified in Phase 1/2. Never persist the initial password or return a hash.
+
+Every protected request resolves the session, account and linked employee in the
+database. A missing, invalid, expired or revoked token returns `401 UNAUTHENTICATED`,
+except POST /auth/logout: its endpoint-specific token recognition rules in §5 accept
+a recognizable expired/revoked token for idempotent revocation and return 204. Logout
+must use those rules rather than the standard protected-request validity guard.
+Inactive/locked accounts return `403 USER_INACTIVE` / `USER_LOCKED`; inactive employees
+return `403 EMPLOYEE_INACTIVE`. Roles are read from the database, not client input.
+All accounts must have an employee. Authentication never trusts a supplied employee ID.
+Login acquires the employee/account locks and revalidates status before inserting its
+session, atomically with last_login_at. Login verifies the password before revealing inactive/locked status; unknown users
+and wrong passwords receive the same `401 INVALID_CREDENTIALS` response.
+
+Authorization scopes:
+
+| Resource/action | EMPLOYEE | MANAGER | ADMINISTRATOR |
+|---|---|---|---|
+| Employee detail/by-code, balances, history | self | self + current direct reports | organization |
+| Employee list | self only | self + current direct reports | organization |
+| Application list/detail | own | own + current direct reports + applications assigned to this manager at submission | organization |
+| Apply / calculate / cancel | self | self | self |
+| Approve / reject | denied | assigned manager snapshot, excluding self | any pending application, excluding self |
+| Departments | active lookup | active lookup | active/inactive/all lookup |
+| Leave types / holidays | active read | active read | active/inactive/all read + writes |
+| Direct reports | denied | current reports | current reports of self (use employee list for organization) |
+| Pending approval queue | denied | assigned snapshot queue, excluding self | organization queue, excluding self |
+| Notifications | own | own | own |
+| Leave summary | own | self + current direct reports | organization |
+| All `/admin/*` operations | denied | denied | allowed subject to self/last-admin safeguards |
+
+Query filters intersect scope and never expand it. An explicitly requested out-of-scope
+employee/application is `403 FORBIDDEN`; a nonexistent authorized resource is `404`.
+Managers may read assigned historical application details after reassignment, but
+that does not grant access to the former report's full profile or all balances/history.
+For pending assigned requests only, contextual balance access is specified in §6.
+An assigned manager must still have an ACTIVE account/employee and MANAGER role to
+act. An administrator handles stranded requests; no automatic reassignment occurs.
+Administrators cannot approve/reject themselves, apply for others, cancel others,
+deactivate/demote/lock themselves, or remove the final active administrator.
+
+## 3. Shared response schemas
+
+| Schema | Complete fields |
+|---|---|
+| DepartmentRef | department_id: UUID, code: string, name: string |
+| EmployeeRef | employee_id: UUID, employee_code: string, name: string |
+| AccountRef | user_id: UUID, role: Role, status: AccountStatus |
+| Identity | user_id, employee_id, employee_code, name, email: strings (IDs UUID); role: Role; department: DepartmentRef; organization_timezone: IANA string, business_today: date |
+| Employee | employee_id: UUID, employee_code: string, name: string, email: string, phone: string or null, designation: string or null, joining_date: date, status: EmployeeStatus, department: DepartmentRef, manager: EmployeeRef or null, account: AccountRef or null |
+| LeaveType | leave_type_id: UUID, code: string, name: string, description: string or null, is_paid: bool, allow_employee_application: bool, allow_half_day: false, requires_approval: true, status: MasterStatus |
+| BalanceItem | balance_id: UUID, leave_type_id: UUID, leave_type: code string, leave_type_name: string, allocated/carried_forward/used/pending/available: number |
+| Balance | balance_id: UUID, employee_id: UUID, leave_type_id: UUID, leave_year: integer, allocated/carried_forward/used/pending/available: number |
+| Application | application_id: UUID, employee: EmployeeRef, leave_type: {leave_type_id,code,name}, from_date/to_date: date, number_of_days: number, reason: string, status: LeaveStatus, manager: EmployeeRef, approved_by/rejected_by/cancelled_by: EmployeeRef or null, approved_at/rejected_at/cancelled_at: timestamp or null, approval_comment/rejection_reason/cancellation_reason: string or null, created_at: timestamp, updated_at: timestamp or null |
+| ApplicationRow | application_id: UUID, employee_id: UUID, employee_code/employee_name: string, department: DepartmentRef, manager: EmployeeRef, leave_type_id: UUID, leave_type/leave_type_name: string, from_date/to_date: date, number_of_days: number, reason: string, status: LeaveStatus, created_at: timestamp |
+| Holiday | holiday_id: UUID, holiday_date: date, name: string, description: string or null, year: integer, is_optional: bool, status: MasterStatus |
+| Notification | notification_id: UUID, notification_type: NotificationType, title/message: string, reference_type: string or null, reference_id: UUID or null, is_read: bool, created_at: timestamp, read_at: timestamp or null |
 
-This document defines the REST API contracts for the Employee Leave Management System.
+`LeaveStatus = PENDING | APPROVED | REJECTED | CANCELLED`.
+`NotificationType = LEAVE_SUBMITTED | LEAVE_APPROVED | LEAVE_REJECTED | LEAVE_CANCELLED | SYSTEM`.
+Employee list/detail returns `account` only to administrators; for other callers omit
+that field entirely. All other schema fields are present. Do not expose password/session fields.
 
-It describes:
+## 4. List and filter rules
 
-- API conventions
-- Authentication expectations
-- Request and response structures
-- Employee APIs
-- Leave balance APIs
-- Leave application APIs
-- Approval APIs
-- Holiday APIs
-- Administrative APIs
-- Notification APIs
-- Error responses
-- Pagination
-- Filtering
-- Validation rules
-- HTTP status codes
+Paginated response: `{items: T[], page: integer, page_size: integer, total: integer}`.
+Defaults page=1, page_size=20; bounds page>=1, page_size=1..100. An empty/out-of-range
+page returns an empty items array and the filtered total. Pagination order has a UUID
+tiebreaker in the same direction. Query years are 1900..9999; month is 1..12.
+Invalid ranges/enums/sort columns are `422 VALIDATION_ERROR`.
 
-This document must remain consistent with:
+Employee lists sort by name asc then employee_id asc; search is case-insensitive
+substring of name/email/employee_code. Application lists default created_at desc;
+whitelist `created_at`, `from_date`, `to_date`, `number_of_days`, `status`;
+`sort_order=asc|desc`. `from_date` and `to_date` always mean inclusive leave-period
+overlap: row.to_date >= filter.from_date and row.from_date <= filter.to_date.
+Either bound may be omitted. `year` selects applications overlapping that calendar
+leave year; all supplied filters are ANDed. No submission-date filtering in v1.
 
-```text
-REQUIREMENTS.md
-AGENTS.md
-ARCHITECTURE.md
-DATABASE.md
-UI_SPEC.md
-```
+## 5. Authentication endpoints
 
-The frontend must communicate with the backend only through the APIs defined here.
+### POST /auth/login
 
----
+Public. Required `{username: string (max 255), password: string}`. Username is email
+if it contains `@`; otherwise it is an employee code. Trim/lowercase email and
+uppercase code; resolve the linked account. Arbitrary independent usernames are
+not supported. Login password length 1..128 to permit safe invalid-credential errors.
 
-# 2. Base API URL
+200: `{access_token: string, token_type: "bearer", expires_in: integer, user: Identity}`.
+Expiry comes from ACCESS_TOKEN_EXPIRE_MINUTES (1..1440; default 60). Each login creates
+a separate session. Errors: 401 INVALID_CREDENTIALS; 403 USER_INACTIVE, USER_LOCKED,
+EMPLOYEE_INACTIVE; 429 LOGIN_RATE_LIMITED with Retry-After in seconds.
+Production login limit: 10 attempts per IP per minute, maintained at the deployment
+proxy for all workers. Local single-process testing uses a controllable limiter.
 
-All APIs are versioned.
+### GET /auth/me
+
+200 Identity. Revalidates session/account/employee and current role.
+
+### POST /auth/logout
+
+Bearer token; no body. Revoke the presented session in a committed transaction;
+204 with no body. An already revoked/expired but recognizable token also returns
+204; absent/unrecognized tokens return 401. Other sessions remain active.
+After commit the old token cannot authenticate new requests. Requests authorized
+before revocation may finish; protected mutations revalidate after acquiring locks.
+On logout failure the UI clears local data and reports that server sign-out was not
+confirmed; it must not claim the token has been revoked.
+
+## 6. Employee, department and balance reads
+
+### GET /employees and GET /managers/me/direct-reports
+
+200 Page<Employee>. Query: page, page_size, department_id?, manager_id?, status?
+(EmployeeStatus or ALL), search?. Default status=ALL. Direct-reports endpoint excludes
+self and uses employee.manager_id=current employee, with the same filters except
+manager_id. Employee list additionally accepts role? (MANAGER|ADMINISTRATOR|EMPLOYEE)
+for administrator manager selection; non-admin role filters return 403.
+
+### GET /employees/{employee_id} and GET /employees/by-code/{employee_code}
+
+200 Employee, identical schemas and permissions. Code normalization as login.
+404 EMPLOYEE_NOT_FOUND; 403 FORBIDDEN.
+
+### GET /departments
+
+200 `{items: DepartmentRef[]}` sorted code asc. Query status=ACTIVE|INACTIVE|ALL,
+default ACTIVE; non-admin may request ACTIVE only. No department writes in v1;
+departments are administered through reviewed development/operations seed processes.
+
+### GET /employees/{employee_id}/leave-balance
+
+Query year? (default business current year), application_id? (context below).
+200 `{employee_id: UUID, employee_code: string, year: integer, balances: BalanceItem[]}`.
+No allocation for year gives balances=[]. Includes historical/inactive leave types
+where balances exist. Available=allocated+carried_forward-used-pending.
+For a manager without current-report access, application_id must identify a PENDING
+application assigned to that manager, for the same employee. Return only its leave
+type and year balance; reject another year or mismatch with 403. This exception does
+not grant employee profile/history access. Missing rows are not silently created.
+
+### GET /employees/{employee_id}/leave-applications
+
+200 Page<ApplicationRow> with employee_id and employee_code also at the top level.
+Query status?, year?, leave_type_id?, from_date?, to_date?, page, page_size,
+sort_by, sort_order. Same list semantics as §4 and current-report privacy scope.
+
+## 7. Leave type reads/writes
+
+### GET /leave-types
+
+200 `{items: LeaveType[]}` sorted code asc. status=ACTIVE|INACTIVE|ALL, default ACTIVE.
+Non-admin callers may request ACTIVE only and see only allow_employee_application=true.
+Administrators see all application eligibility settings. UI must join by UUID, not
+assume all employees have every leave type.
+
+### POST /admin/leave-types
+
+Required code (uppercase `[A-Z0-9][A-Z0-9_]{0,29}`), name (1..100).
+Optional description=null, is_paid=true, allow_employee_application=true,
+allow_half_day=false, requires_approval=true. 201 LeaveType (status ACTIVE).
+
+### PUT /admin/leave-types/{leave_type_id}
+
+Required name, is_paid, allow_employee_application, allow_half_day, requires_approval,
+status; description?=null. Code immutable. 200 LeaveType.
+Any allow_half_day=true or requires_approval=false is 400 UNSUPPORTED_LEAVE_POLICY
+in v1. All v1 leave types, including LOP, require an allocated balance; is_paid affects
+classification only. Inactive or ineligible types cannot be used for new applications.
+Errors: 409 LEAVE_TYPE_CODE_EXISTS; 404 LEAVE_TYPE_NOT_FOUND.
+
+## 8. Calculation and application submission
+
+### POST /leave/calculate-days
+
+Required `{employee_id: UUID, leave_type_id: UUID, from_date: date, to_date: date}`.
+Self only, including administrators. Required v1 endpoint, not optional.
+Dates must be ordered, same calendar year and start today or later in ORG_TIMEZONE.
+Inclusive weekdays Monday-Friday count; ACTIVE mandatory holidays exclude weekdays;
+optional holidays do not exclude days. Weekend holidays are not counted twice.
+200 `{from_date,to_date, calendar_days: int, weekend_days: int, holiday_days: int,
+leave_days: number}`. Zero leave_days is allowed for preview.
+A full calendar-year range is the maximum (366 dates). Errors as submission below,
+except no balance, manager or overlap validation is required for this advisory call.
+ZERO_WORKING_DAYS is also excluded: a valid range containing no working days returns
+200 with leave_days=0; only application submission rejects that result.
+
+### POST /leave/applications
+
+Required UUID request only: `{employee_id, leave_type_id, from_date, to_date, reason}`.
+Code-based alternative requests are not supported. Self only. Reason 1..1000 after trim.
+Reject zero working days; require active/eligible type, ACTIVE employee, eligible active
+MANAGER/ADMINISTRATOR reporting manager, allocated balance and sufficient available.
+Acquire employee lock before overlap query and balance lock. Prevent overlap across
+ALL leave types for PENDING/APPROVED applications, including weekend dates in the range.
+Snapshot manager_id and leave_year=from_date.year. Atomic application insertion,
+pending reservation, audit and notifications. 201 Application.
+Errors: 400 LEAVE_DATE_IN_PAST, INVALID_DATE_RANGE, CROSS_YEAR_LEAVE_NOT_ALLOWED,
+ZERO_WORKING_DAYS, INSUFFICIENT_LEAVE_BALANCE, EMPLOYEE_INACTIVE, LEAVE_TYPE_INACTIVE,
+LEAVE_TYPE_NOT_ELIGIBLE, MANAGER_UNAVAILABLE, LEAVE_BALANCE_NOT_ALLOCATED;
+404 EMPLOYEE_NOT_FOUND, LEAVE_TYPE_NOT_FOUND, MANAGER_NOT_FOUND;
+409 OVERLAPPING_LEAVE_APPLICATION; 422 VALIDATION_ERROR; 403 FORBIDDEN.
+Overlap details includes application_id only if caller may read it.
+
+## 9. Application reads and actions
+
+### GET /leave/applications
+
+200 Page<ApplicationRow>. Query scope? (own|team|visible|organization), employee_id?, employee_code?, manager_id?, department_id?,
+leave_type_id?, status? (LeaveStatus or ALL), year?, from_date?, to_date?, search?,
+page, page_size, sort_by, sort_order. employee_id and employee_code are mutually exclusive.
+Default scope=own for EMPLOYEE, visible for MANAGER, organization for ADMINISTRATOR.
+Own means self; team means current direct reports excluding self; visible is the full
+application visibility union in §2; organization is administrator-only. EMPLOYEE may
+request own only; MANAGER own/team/visible; ADMINISTRATOR any of these (team remains
+the administrator’s current reports). Invalid scope-role combinations are 403.
+Search matches employee name/code, not private reason. manager_id filters the snapshot;
+department_id filters current department. Visibility scope is enforced before filters.
+
+### GET /leave/applications/{application_id}
+
+200 Application. Authorization per §2. 404 LEAVE_APPLICATION_NOT_FOUND or 403 FORBIDDEN.
+Manager profile/balance panels must obey current-report/contextual permissions and must
+not treat application visibility as unrestricted employee-profile access.
+
+### GET /leave/approvals/pending
+
+200 Page<ApplicationRow>. Query employee_id?, department_id?, leave_type_id?, from_date?,
+to_date?, page, page_size; sorted created_at asc then application_id asc. Only actionable
+PENDING requests, excluding self. Managers use snapshot assignment; admins see organization.
+
+### POST /leave/applications/{application_id}/approve
+
+Body omitted or `{comment?: string or null}` (default null, 1..1000 when provided).
+Require PENDING, authorized snapshot manager or administrator, not self, ACTIVE employee,
+existing balance, reservation >= number_of_days, and invariant available>=0.
+Do not compare days to available without restoring this request's own reservation.
+Do not reject a previously submitted request merely because its start date is now past;
+do not recalculate stored days after calendar changes. Move pending to used exactly once.
+200 Application; persist approval_comment, approved_by and approved_at.
 
-Base path:
+### POST /leave/applications/{application_id}/reject
 
-```text
-/api/v1
-```
+Required `{reason: string}` (trimmed 1..1000). Same authorization and self ban.
+Allow release for an employee who has since become inactive. PENDING only.
+Decrease pending; leave used unchanged. 200 Application.
 
-Example:
+### POST /leave/applications/{application_id}/cancel
 
-```text
-GET /api/v1/employees/{employee_id}
-```
+Body omitted or `{reason?: string or null}` (default null, 1..1000 if provided).
+Owner only; PENDING only. Decrease pending; persist cancellation_reason and actor/time.
+200 Application. Administrator override for cancellation is not supported in v1.
 
-Production deployments should expose the API over HTTPS.
+All actions atomically include audit and notification insertion. Errors:
+404 LEAVE_APPLICATION_NOT_FOUND; 403 NOT_AUTHORIZED_MANAGER, SELF_APPROVAL_NOT_ALLOWED,
+NOT_APPLICATION_OWNER; 409 INVALID_LEAVE_STATUS; 400 EMPLOYEE_INACTIVE (approve only),
+REJECTION_REASON_REQUIRED (missing/blank rejection reason), BALANCE_INVARIANT_VIOLATION;
+500 TRANSACTION_FAILED (safe generic error; no partial state). Other invalid body shapes
+are 422. Repeating a terminal action returns 409 without modifying balance.
 
-Example:
+## 10. Employee and account administration
 
-```text
-https://api.example.com/api/v1
-```
+### POST /admin/employees
 
----
+Required employee_code (uppercase `[A-Z0-9][A-Z0-9_-]{0,49}`), name (1..200), email,
+department_id (ACTIVE), joining_date, role, initial_password (12..128).
+Optional manager_id=null, phone=null, designation=null, status=ACTIVE|INACTIVE (default ACTIVE).
+MANAGER/ADMINISTRATOR employees may omit manager; EMPLOYEE must have one. All roles need
+a manager before applying leave. Manager must be ACTIVE with an ACTIVE MANAGER or
+ADMINISTRATOR account. Reject self manager and reporting cycles.
+Create employee and app_user atomically; username=normalized email, account.status
+matches ACTIVE/INACTIVE employee status. Password hashing failure rolls back everything.
+201 Employee including AccountRef. Initial password never appears in response/audit/logs.
 
-# 3. Communication Format
+### PUT /admin/employees/{employee_id}
 
-The API uses:
+Required name, email, department_id, manager_id (nullable only for top-level roles),
+joining_date, status; phone?=null, designation?=null. employee_code and role immutable here.
+200 Employee. Changing email also changes linked username atomically. Deactivation
+revokes all sessions; historical applications/balances stay intact. A reporting manager
+cannot transition to a non-ACTIVE employee state while current reports remain assigned. Self deactivation
+and final active administrator removal are rejected. No physical employee deletion.
 
-```text
-REST
-HTTPS
-JSON
-```
+### PUT /admin/employees/{employee_id}/account
 
-Request header:
+Required `{role: Role, status: AccountStatus}`. 200 AccountRef. Does not change password.
+No password-reset UI/API in v1. Role/status changes revoke all account sessions.
+Reject self role/status edits and changes removing the last active administrator
+(account ACTIVE, employee ACTIVE, role ADMINISTRATOR). A new EMPLOYEE role requires
+a non-null eligible manager before the role change commits.
+Demoting/deactivating a manager is rejected while current reports remain assigned;
+reassign those employees first. Already assigned pending applications retain snapshot
+and may subsequently need administrator action. No arbitrary account creation endpoint.
+Errors: 409 EMPLOYEE_CODE_EXISTS, EMPLOYEE_EMAIL_EXISTS, ACCOUNT_USERNAME_EXISTS,
+REPORTING_CYCLE, LAST_ADMINISTRATOR, MANAGER_HAS_DIRECT_REPORTS;
+403 SELF_ACCOUNT_CHANGE_NOT_ALLOWED; 400 INVALID_MANAGER, DEPARTMENT_INACTIVE;
+404 EMPLOYEE_NOT_FOUND, DEPARTMENT_NOT_FOUND, MANAGER_NOT_FOUND.
 
-```http
-Content-Type: application/json
-```
+## 11. Balance administration
 
-Response header:
+### GET /admin/leave-balances
 
-```http
-Content-Type: application/json
-```
+200 Page<BalanceAdminRow>. BalanceAdminRow = Balance + employee: EmployeeRef,
+department: DepartmentRef, leave_type: {leave_type_id,code,name}.
+Query year? (default business year), employee_id?, department_id?, leave_type_id?,
+page, page_size. Sort employee code asc, leave type code asc, balance_id asc.
 
----
+### POST /admin/leave-balances
 
-# 4. Authentication
-
-Except for authentication endpoints, APIs require an authenticated user.
-
-Recommended authorization header:
-
-```http
-Authorization: Bearer <access_token>
-```
-
-Example:
-
-```http
-Authorization: Bearer eyJhbGciOi...
-```
-
-The backend must determine the authenticated user from the token.
-
-The frontend must never send or trust user roles as authoritative security information.
-
----
-
-# 5. Roles
-
-Supported application roles:
-
-```text
-EMPLOYEE
-MANAGER
-ADMINISTRATOR
-```
-
-Role-based authorization must be enforced by the backend.
-
----
-
-# 6. Standard Date Format
-
-All dates use ISO format:
-
-```text
-YYYY-MM-DD
-```
-
-Example:
-
-```text
-2026-10-10
-```
-
----
-
-# 7. Standard Timestamp Format
-
-All timestamps returned by the API should use ISO 8601 format.
-
-Example:
-
-```text
-2026-10-07T14:30:00+05:30
-```
-
-UTC may also be used consistently:
-
-```text
-2026-10-07T09:00:00Z
-```
-
-The implementation must use one consistent strategy.
-
----
-
-# 8. Standard UUID Format
-
-Database entity identifiers use UUID values.
-
-Example:
-
-```text
-f41d9b35-f668-4ca4-b86e-c609a731bb21
-```
-
-Employee-facing codes such as:
-
-```text
-E001
-```
-
-may also be used as business identifiers.
-
-The API should clearly distinguish:
-
-```text
-employee_id
-```
-
-from:
-
-```text
-employee_code
-```
-
-Recommended design:
-
-```text
-employee_id   = database UUID
-employee_code = human-readable employee code such as E001
-```
-
----
-
-# 9. Standard Success Response
-
-Resource-specific responses should normally return the resource directly.
-
-Example:
-
-```json
-{
-  "employee_id": "f41d9b35-f668-4ca4-b86e-c609a731bb21",
-  "employee_code": "E001",
-  "name": "S M Basha"
-}
-```
-
-For list APIs, return a structured list response.
-
-Example:
-
-```json
-{
-  "items": [],
-  "page": 1,
-  "page_size": 20,
-  "total": 0
-}
-```
-
----
-
-# 10. Standard Error Response
-
-All API errors should return a consistent structure.
-
-Recommended format:
-
-```json
-{
-  "error": {
-    "code": "EMPLOYEE_NOT_FOUND",
-    "message": "Employee not found.",
-    "details": null
-  }
-}
-```
-
-Validation errors may include field details.
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Request validation failed.",
-    "details": [
-      {
-        "field": "from_date",
-        "message": "from_date cannot be after to_date"
-      }
-    ]
-  }
-}
-```
-
----
-
-# 11. Common HTTP Status Codes
-
-```text
-200 OK
-Request completed successfully.
-
-201 Created
-Resource created successfully.
-
-204 No Content
-Request completed successfully without response body.
-
-400 Bad Request
-Invalid business request.
-
-401 Unauthorized
-Authentication is missing or invalid.
-
-403 Forbidden
-Authenticated user does not have permission.
-
-404 Not Found
-Requested resource does not exist.
-
-409 Conflict
-Request conflicts with existing data or resource state.
-
-422 Unprocessable Entity
-Request schema validation failed.
-
-500 Internal Server Error
-Unexpected backend failure.
-```
-
----
-
-# 12. API Groups
-
-The system exposes APIs under the following logical groups:
-
-```text
-/api/v1/auth
-
-/api/v1/employees
-
-/api/v1/leave-types
-
-/api/v1/leave-balances
-
-/api/v1/leave/applications
-
-/api/v1/holidays
-
-/api/v1/notifications
-
-/api/v1/admin
-```
-
----
-
-# 13. Authentication APIs
-
-## POST /api/v1/auth/login
-
-Authenticates a user.
-
-### Request
-
-```json
-{
-  "username": "basha@example.com",
-  "password": "password"
-}
-```
-
-### Response — 200 OK
-
-```json
-{
-  "access_token": "jwt-token",
-  "token_type": "bearer",
-  "expires_in": 3600,
-  "user": {
-    "user_id": "f41d9b35-f668-4ca4-b86e-c609a731bb21",
-    "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-    "employee_code": "E001",
-    "name": "S M Basha",
-    "role": "EMPLOYEE"
-  }
-}
-```
-
-### Errors
-
-```text
-401 INVALID_CREDENTIALS
-403 USER_INACTIVE
-403 USER_LOCKED
-```
-
----
-
-# 14. Current User API
-
-## GET /api/v1/auth/me
-
-Returns the current authenticated user's identity.
-
-### Response — 200 OK
-
-```json
-{
-  "user_id": "f41d9b35-f668-4ca4-b86e-c609a731bb21",
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "name": "S M Basha",
-  "email": "basha@example.com",
-  "role": "EMPLOYEE",
-  "department": {
-    "department_id": "8bf67249-993f-47a1-a287-b00bf876fe13",
-    "code": "ENG",
-    "name": "Engineering"
-  }
-}
-```
-
----
-
-# 15. Employee APIs
-
-## GET /api/v1/employees/{employee_id}
-
-Returns employee information.
-
-`employee_id` refers to the UUID identifier.
-
-### Example
-
-```http
-GET /api/v1/employees/88f21fd2-aea0-4b42-8b26-f7dc41d709ad
-```
-
-### Response — 200 OK
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "name": "S M Basha",
-  "email": "basha@example.com",
-  "designation": "Engineering Head",
-  "joining_date": "2025-08-12",
-  "status": "ACTIVE",
-  "department": {
-    "department_id": "8bf67249-993f-47a1-a287-b00bf876fe13",
-    "code": "ENG",
-    "name": "Engineering"
-  },
-  "manager": {
-    "employee_id": "f27a026b-0610-4aa0-8654-22927142921b",
-    "employee_code": "E000",
-    "name": "CEO"
-  }
-}
-```
-
-### Errors
-
-```text
-404 EMPLOYEE_NOT_FOUND
-403 FORBIDDEN
-```
-
----
-
-# 16. Get Employee by Employee Code
-
-## GET /api/v1/employees/by-code/{employee_code}
-
-Returns employee information using the business employee code.
-
-### Example
-
-```http
-GET /api/v1/employees/by-code/E001
-```
-
-### Response — 200 OK
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "name": "S M Basha",
-  "email": "basha@example.com",
-  "department": {
-    "code": "ENG",
-    "name": "Engineering"
-  },
-  "manager_id": "f27a026b-0610-4aa0-8654-22927142921b",
-  "status": "ACTIVE"
-}
-```
-
----
-
-# 17. List Employees
-
-## GET /api/v1/employees
-
-Returns employees accessible to the authenticated user.
-
-Administrators may retrieve all employees.
-
-Managers may retrieve direct reports where applicable.
-
-### Query Parameters
-
-```text
-page
-page_size
-department_id
-manager_id
-status
-search
-```
-
-Example:
-
-```http
-GET /api/v1/employees?page=1&page_size=20&status=ACTIVE
-```
-
-### Response — 200 OK
-
-```json
-{
-  "items": [
-    {
-      "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-      "employee_code": "E001",
-      "name": "S M Basha",
-      "email": "basha@example.com",
-      "designation": "Engineering Head",
-      "status": "ACTIVE"
-    }
-  ],
-  "page": 1,
-  "page_size": 20,
-  "total": 1
-}
-```
-
----
-
-# 18. Employee Leave Balance API
-
-## GET /api/v1/employees/{employee_id}/leave-balance
-
-Returns leave balances for an employee.
-
-### Query Parameters
-
-Optional:
-
-```text
-year
-```
-
-Example:
-
-```http
-GET /api/v1/employees/88f21fd2-aea0-4b42-8b26-f7dc41d709ad/leave-balance?year=2026
-```
-
-If `year` is omitted, use the current leave year.
-
-### Response — 200 OK
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "year": 2026,
-  "balances": [
-    {
-      "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-      "leave_type": "EARNED",
-      "leave_type_name": "Earned Leave",
-      "allocated": 20.0,
-      "carried_forward": 2.0,
-      "used": 8.0,
-      "pending": 2.0,
-      "available": 12.0
-    },
-    {
-      "leave_type_id": "6fd18cd9-3070-405c-864a-fce6ef498a8d",
-      "leave_type": "SICK",
-      "leave_type_name": "Sick Leave",
-      "allocated": 10.0,
-      "carried_forward": 0.0,
-      "used": 2.0,
-      "pending": 0.0,
-      "available": 8.0
-    }
-  ]
-}
-```
-
-The backend calculates:
-
-```text
-available =
-allocated
-+ carried_forward
-- used
-- pending
-```
-
-### Errors
-
-```text
-404 EMPLOYEE_NOT_FOUND
-403 FORBIDDEN
-```
-
----
-
-# 19. Leave Type APIs
-
-## GET /api/v1/leave-types
-
-Returns active leave types available to the current employee.
-
-### Query Parameters
-
-```text
-status
-```
-
-Default:
-
-```text
-status=ACTIVE
-```
-
-### Response — 200 OK
-
-```json
-{
-  "items": [
-    {
-      "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-      "code": "EARNED",
-      "name": "Earned Leave",
-      "description": "Earned leave allocation",
-      "is_paid": true,
-      "allow_half_day": false,
-      "requires_approval": true,
-      "status": "ACTIVE"
-    }
-  ]
-}
-```
-
----
-
-# 20. Leave Application APIs
-
-## POST /api/v1/leave/applications
-
-Creates a leave application.
-
-### Authorization
-
-```text
-EMPLOYEE
-MANAGER
-ADMINISTRATOR
-```
-
-An employee normally submits leave for themselves.
-
-Administrators submitting leave on behalf of another employee must follow explicit business permissions.
-
-### Request
-
-Recommended request using UUID:
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12",
-  "reason": "Personal work"
-}
-```
-
-Alternative employee-facing form may use codes:
-
-```json
-{
-  "employee_code": "E001",
-  "leave_type": "EARNED",
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12",
-  "reason": "Personal work"
-}
-```
-
-The backend API should internally normalize codes to UUIDs.
-
-Do not require both code and UUID versions in the same request.
-
-### Validation
-
-The service must validate:
-
-```text
-Employee exists.
-
-Employee is ACTIVE.
-
-Leave type exists.
-
-Leave type is ACTIVE.
-
-from_date is not in the past.
-
-from_date <= to_date.
-
-Leave days are calculated by backend.
-
-Holidays and weekends are handled according to policy.
-
-Employee has sufficient available balance unless leave type permits otherwise.
-
-No overlapping PENDING or APPROVED leave exists.
-
-Approving manager exists if approval is required.
-```
-
-### Response — 201 Created
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "leave_type": {
-    "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-    "code": "EARNED",
-    "name": "Earned Leave"
-  },
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12",
-  "number_of_days": 2.0,
-  "reason": "Personal work",
-  "status": "PENDING",
-  "manager": {
-    "employee_id": "f27a026b-0610-4aa0-8654-22927142921b",
-    "employee_code": "M001",
-    "name": "Reporting Manager"
-  },
-  "created_at": "2026-10-07T14:30:00+05:30"
-}
-```
-
-### Errors
-
-```text
-400 LEAVE_DATE_IN_PAST
-400 INVALID_DATE_RANGE
-400 INSUFFICIENT_LEAVE_BALANCE
-400 EMPLOYEE_INACTIVE
-400 LEAVE_TYPE_INACTIVE
-404 EMPLOYEE_NOT_FOUND
-404 LEAVE_TYPE_NOT_FOUND
-404 MANAGER_NOT_FOUND
-409 OVERLAPPING_LEAVE_APPLICATION
-422 VALIDATION_ERROR
-```
-
----
-
-# 21. Get Leave Application
-
-## GET /api/v1/leave/applications/{application_id}
-
-Returns one leave application.
-
-### Response — 200 OK
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "employee": {
-    "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-    "employee_code": "E001",
-    "name": "S M Basha"
-  },
-  "leave_type": {
-    "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-    "code": "EARNED",
-    "name": "Earned Leave"
-  },
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12",
-  "number_of_days": 2.0,
-  "reason": "Personal work",
-  "status": "PENDING",
-  "manager": {
-    "employee_id": "f27a026b-0610-4aa0-8654-22927142921b",
-    "employee_code": "M001",
-    "name": "Reporting Manager"
-  },
-  "approved_by": null,
-  "approved_at": null,
-  "rejected_by": null,
-  "rejected_at": null,
-  "rejection_reason": null,
-  "cancelled_by": null,
-  "cancelled_at": null,
-  "created_at": "2026-10-07T14:30:00+05:30",
-  "updated_at": null
-}
-```
-
-### Errors
-
-```text
-404 LEAVE_APPLICATION_NOT_FOUND
-403 FORBIDDEN
-```
-
----
-
-# 22. List Leave Applications
-
-## GET /api/v1/leave/applications
-
-Returns leave applications visible to the authenticated user.
-
-### Query Parameters
-
-```text
-employee_id
-employee_code
-manager_id
-leave_type_id
-status
-from_date
-to_date
-year
-page
-page_size
-sort_by
-sort_order
-```
-
-Example:
-
-```http
-GET /api/v1/leave/applications?employee_code=E001&status=PENDING&page=1&page_size=20
-```
-
-### Response — 200 OK
-
-```json
-{
-  "items": [
-    {
-      "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-      "employee_code": "E001",
-      "employee_name": "S M Basha",
-      "leave_type": "EARNED",
-      "leave_type_name": "Earned Leave",
-      "from_date": "2026-10-10",
-      "to_date": "2026-10-12",
-      "number_of_days": 2.0,
-      "status": "PENDING",
-      "created_at": "2026-10-07T14:30:00+05:30"
-    }
-  ],
-  "page": 1,
-  "page_size": 20,
-  "total": 1
-}
-```
-
----
-
-# 23. Get Employee Leave History
-
-## GET /api/v1/employees/{employee_id}/leave-applications
-
-Returns leave applications belonging to an employee.
-
-### Query Parameters
-
-```text
-status
-year
-leave_type_id
-page
-page_size
-```
-
-### Response — 200 OK
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "items": [
-    {
-      "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-      "leave_type": "EARNED",
-      "leave_type_name": "Earned Leave",
-      "from_date": "2026-10-10",
-      "to_date": "2026-10-12",
-      "number_of_days": 2.0,
-      "reason": "Personal work",
-      "status": "PENDING",
-      "created_at": "2026-10-07T14:30:00+05:30"
-    }
-  ],
-  "page": 1,
-  "page_size": 20,
-  "total": 1
-}
-```
-
----
-
-# 24. Cancel Leave Application
-
-## POST /api/v1/leave/applications/{application_id}/cancel
-
-Cancels an eligible leave application.
-
-Initial system rule:
-
-```text
-Only PENDING applications can be cancelled.
-```
-
-### Authorization
-
-Normally only the employee who owns the application may cancel it.
-
-### Request
-
-Request body may be omitted.
-
-Optional:
-
-```json
-{
-  "reason": "Plans changed"
-}
-```
-
-### Response — 200 OK
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "status": "CANCELLED",
-  "cancelled_at": "2026-10-08T10:15:00+05:30"
-}
-```
-
-### Business Effect
-
-Within one transaction:
-
-```text
-Application status -> CANCELLED
-
-Pending balance decreases by number_of_days
-
-Used balance remains unchanged
-
-Audit entry is created
-```
-
-### Errors
-
-```text
-404 LEAVE_APPLICATION_NOT_FOUND
-
-403 NOT_APPLICATION_OWNER
-
-409 INVALID_LEAVE_STATUS
-
-400 LEAVE_CANNOT_BE_CANCELLED
-```
-
----
-
-# 25. Manager Pending Approvals
-
-## GET /api/v1/leave/approvals/pending
-
-Returns pending leave requests assigned to the authenticated manager.
-
-### Authorization
-
-```text
-MANAGER
-ADMINISTRATOR
-```
-
-### Query Parameters
-
-```text
-employee_id
-department_id
-leave_type_id
-from_date
-to_date
-page
-page_size
-```
-
-### Response — 200 OK
-
-```json
-{
-  "items": [
-    {
-      "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-      "employee": {
-        "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-        "employee_code": "E001",
-        "name": "S M Basha"
-      },
-      "leave_type": {
-        "code": "EARNED",
-        "name": "Earned Leave"
-      },
-      "from_date": "2026-10-10",
-      "to_date": "2026-10-12",
-      "number_of_days": 2.0,
-      "reason": "Personal work",
-      "status": "PENDING",
-      "created_at": "2026-10-07T14:30:00+05:30"
-    }
-  ],
-  "page": 1,
-  "page_size": 20,
-  "total": 1
-}
-```
-
----
-
-# 26. Approve Leave Application
-
-## POST /api/v1/leave/applications/{application_id}/approve
-
-Approves a pending leave application.
-
-### Authorization
-
-```text
-MANAGER
-ADMINISTRATOR
-```
-
-The manager must be the authorized manager for the leave application unless administrative override permissions are explicitly defined.
-
-### Request
-
-Optional manager comment:
-
-```json
-{
-  "comment": "Approved"
-}
-```
-
-### Validation
-
-The service must verify:
-
-```text
-Application exists.
-
-Application status is PENDING.
-
-Authenticated manager is authorized.
-
-Manager is not approving their own leave.
-
-Leave balance row exists.
-
-Pending balance is sufficient.
-
-Application has not already been processed.
-```
-
-### Response — 200 OK
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "status": "APPROVED",
-  "approved_by": {
-    "employee_id": "f27a026b-0610-4aa0-8654-22927142921b",
-    "employee_code": "M001",
-    "name": "Reporting Manager"
-  },
-  "approved_at": "2026-10-08T11:00:00+05:30"
-}
-```
-
-### Business Effect
-
-Within one transaction:
-
-```text
-status:
-PENDING -> APPROVED
-
-leave_balance.pending
-decreases by number_of_days
-
-leave_balance.used
-increases by number_of_days
-
-audit entry created
-
-employee notification created
-```
-
-### Errors
-
-```text
-404 LEAVE_APPLICATION_NOT_FOUND
-
-403 NOT_AUTHORIZED_MANAGER
-
-403 SELF_APPROVAL_NOT_ALLOWED
-
-409 INVALID_LEAVE_STATUS
-
-409 LEAVE_ALREADY_PROCESSED
-
-500 TRANSACTION_FAILED
-```
-
----
-
-# 27. Reject Leave Application
-
-## POST /api/v1/leave/applications/{application_id}/reject
-
-Rejects a pending leave application.
-
-### Authorization
-
-```text
-MANAGER
-ADMINISTRATOR
-```
-
-### Request
-
-```json
-{
-  "reason": "Project delivery requires presence during these dates."
-}
-```
-
-`reason` is required.
-
-### Response — 200 OK
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "status": "REJECTED",
-  "rejected_by": {
-    "employee_id": "f27a026b-0610-4aa0-8654-22927142921b",
-    "employee_code": "M001",
-    "name": "Reporting Manager"
-  },
-  "rejection_reason": "Project delivery requires presence during these dates.",
-  "rejected_at": "2026-10-08T11:30:00+05:30"
-}
-```
-
-### Business Effect
-
-Within one transaction:
-
-```text
-status:
-PENDING -> REJECTED
-
-leave_balance.pending
-decreases by number_of_days
-
-leave_balance.used
-does not change
-
-audit entry created
-
-employee notification created
-```
-
-### Errors
-
-```text
-400 REJECTION_REASON_REQUIRED
-
-404 LEAVE_APPLICATION_NOT_FOUND
-
-403 NOT_AUTHORIZED_MANAGER
-
-403 SELF_APPROVAL_NOT_ALLOWED
-
-409 INVALID_LEAVE_STATUS
-```
-
----
-
-# 28. Leave Day Calculation API
-
-## POST /api/v1/leave/calculate-days
-
-Calculates effective leave days before the employee submits an application.
-
-This API is optional but useful for the frontend.
-
-### Request
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12"
-}
-```
-
-### Response — 200 OK
-
-```json
-{
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12",
-  "calendar_days": 3,
-  "weekend_days": 2,
-  "holiday_days": 0,
-  "leave_days": 1.0
-}
-```
-
-The result is advisory until the actual application is submitted.
-
-The backend must recalculate leave days during submission.
-
----
-
-# 29. Holiday APIs
-
-## GET /api/v1/holidays
-
-Returns holiday calendar entries.
-
-### Query Parameters
-
-Supported combinations:
-
-```text
-No parameters
-Current year's holidays
-
-year=2026
-Entire specified year
-
-month=10
-Specified month in current year
-
-month=10&year=2026
-Specified month and year
-```
-
-### Example
-
-```http
-GET /api/v1/holidays?year=2026&month=10
-```
-
-### Response — 200 OK
-
-```json
-{
-  "year": 2026,
-  "month": 10,
-  "items": [
-    {
-      "holiday_id": "a41ab66f-bebe-48e9-825e-c9c78a59c93f",
-      "holiday_date": "2026-10-02",
-      "name": "Gandhi Jayanti",
-      "description": null,
-      "is_optional": false,
-      "status": "ACTIVE"
-    }
-  ]
-}
-```
-
----
-
-# 30. Get Holiday
-
-## GET /api/v1/holidays/{holiday_id}
-
-Returns one holiday.
-
-### Response — 200 OK
-
-```json
-{
-  "holiday_id": "a41ab66f-bebe-48e9-825e-c9c78a59c93f",
-  "holiday_date": "2026-10-02",
-  "name": "Gandhi Jayanti",
-  "description": null,
-  "year": 2026,
-  "is_optional": false,
-  "status": "ACTIVE"
-}
-```
-
----
-
-# 31. Admin Create Holiday
-
-## POST /api/v1/admin/holidays
-
-Creates a holiday.
-
-### Authorization
-
-```text
-ADMINISTRATOR
-```
-
-### Request
-
-```json
-{
-  "holiday_date": "2026-12-25",
-  "name": "Christmas",
-  "description": "Christmas holiday",
-  "is_optional": false
-}
-```
-
-### Response — 201 Created
-
-```json
-{
-  "holiday_id": "1386ca4d-2a99-4f03-a38b-e45dcbf62a19",
-  "holiday_date": "2026-12-25",
-  "name": "Christmas",
-  "description": "Christmas holiday",
-  "year": 2026,
-  "is_optional": false,
-  "status": "ACTIVE"
-}
-```
-
----
-
-# 32. Admin Update Holiday
-
-## PUT /api/v1/admin/holidays/{holiday_id}
-
-Updates an existing holiday.
-
-### Authorization
-
-```text
-ADMINISTRATOR
-```
-
-### Request
-
-```json
-{
-  "holiday_date": "2026-12-25",
-  "name": "Christmas Day",
-  "description": "Christmas holiday",
-  "is_optional": false,
-  "status": "ACTIVE"
-}
-```
-
-### Response — 200 OK
-
-Returns the updated holiday.
-
----
-
-# 33. Admin Delete/Deactivate Holiday
-
-## DELETE /api/v1/admin/holidays/{holiday_id}
-
-Recommended behavior:
-
-Do not physically remove holidays already referenced historically.
-
-Instead mark them inactive.
-
-### Response — 200 OK
-
-```json
-{
-  "holiday_id": "1386ca4d-2a99-4f03-a38b-e45dcbf62a19",
-  "status": "INACTIVE"
-}
-```
-
----
-
-# 34. Admin Employee APIs
-
-## POST /api/v1/admin/employees
-
-Creates an employee.
-
-### Request
-
-```json
-{
-  "employee_code": "E003",
-  "name": "Ananya Rao",
-  "email": "ananya@example.com",
-  "department_id": "8bf67249-993f-47a1-a287-b00bf876fe13",
-  "manager_id": "f27a026b-0610-4aa0-8654-22927142921b",
-  "designation": "Software Engineer",
-  "joining_date": "2026-10-01"
-}
-```
-
-### Response — 201 Created
-
-```json
-{
-  "employee_id": "d319a114-20d5-4a5c-bc26-7cce38d82933",
-  "employee_code": "E003",
-  "name": "Ananya Rao",
-  "email": "ananya@example.com",
-  "status": "ACTIVE"
-}
-```
-
-### Errors
-
-```text
-409 EMPLOYEE_CODE_EXISTS
-409 EMPLOYEE_EMAIL_EXISTS
-404 DEPARTMENT_NOT_FOUND
-404 MANAGER_NOT_FOUND
-```
-
----
-
-# 35. Admin Update Employee
-
-## PUT /api/v1/admin/employees/{employee_id}
-
-Updates employee master data.
-
-### Request
-
-```json
-{
-  "name": "Ananya Rao",
-  "email": "ananya@example.com",
-  "department_id": "8bf67249-993f-47a1-a287-b00bf876fe13",
-  "manager_id": "f27a026b-0610-4aa0-8654-22927142921b",
-  "designation": "Senior Software Engineer",
-  "status": "ACTIVE"
-}
-```
-
-### Response — 200 OK
-
-Returns updated employee information.
-
----
-
-# 36. Admin Leave Type APIs
-
-## POST /api/v1/admin/leave-types
-
-Creates a leave type.
-
-### Request
-
-```json
-{
-  "code": "EARNED",
-  "name": "Earned Leave",
-  "description": "Earned leave allocation",
-  "is_paid": true,
-  "allow_half_day": false,
-  "requires_approval": true
-}
-```
-
-### Response — 201 Created
-
-```json
-{
-  "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-  "code": "EARNED",
-  "name": "Earned Leave",
-  "status": "ACTIVE"
-}
-```
-
----
-
-# 37. Admin Update Leave Type
-
-## PUT /api/v1/admin/leave-types/{leave_type_id}
-
-Updates leave type settings.
-
-### Request
-
-```json
-{
-  "name": "Earned Leave",
-  "description": "Updated earned leave policy",
-  "is_paid": true,
-  "allow_half_day": false,
-  "requires_approval": true,
-  "status": "ACTIVE"
-}
-```
-
----
-
-# 38. Admin Leave Allocation API
-
-## POST /api/v1/admin/leave-balances
-
-Creates or allocates a leave balance record.
-
-### Request
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-  "leave_year": 2026,
-  "allocated": 20.0,
-  "carried_forward": 2.0
-}
-```
-
-### Response — 201 Created
-
-```json
-{
-  "id": "692ccdb6-aa75-45e9-b76d-47bc20e665db",
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "leave_type_id": "065e6783-d9d7-4b93-b44f-a6212166203d",
-  "leave_year": 2026,
-  "allocated": 20.0,
-  "carried_forward": 2.0,
-  "used": 0.0,
-  "pending": 0.0,
-  "available": 22.0
-}
-```
-
-### Errors
-
-```text
-409 LEAVE_BALANCE_ALREADY_EXISTS
-404 EMPLOYEE_NOT_FOUND
-404 LEAVE_TYPE_NOT_FOUND
-```
-
----
-
-# 39. Admin Update Leave Allocation
-
-## PUT /api/v1/admin/leave-balances/{balance_id}
-
-Updates allocation values.
-
-### Request
-
-```json
-{
-  "allocated": 22.0,
-  "carried_forward": 2.0
-}
-```
-
-The API should not normally allow administrators to directly overwrite:
-
-```text
-used
-pending
-```
-
-because those are maintained by leave workflow transactions.
-
-If manual adjustments are required, a dedicated adjustment API should be used.
-
----
-
-# 40. Leave Balance Adjustment API
-
-## POST /api/v1/admin/leave-balances/{balance_id}/adjust
-
-Creates a controlled leave balance adjustment.
-
-### Request
-
-```json
-{
-  "adjustment": 2.0,
-  "reason": "Annual HR correction"
-}
-```
-
-### Response — 200 OK
-
-```json
-{
-  "balance_id": "692ccdb6-aa75-45e9-b76d-47bc20e665db",
-  "adjustment": 2.0,
-  "reason": "Annual HR correction",
-  "new_allocated": 22.0,
-  "available": 16.0
-}
-```
-
-An audit entry must be created.
-
----
-
-# 41. Manager Direct Reports API
-
-## GET /api/v1/managers/me/direct-reports
-
-Returns employees reporting directly to the authenticated manager.
-
-### Authorization
-
-```text
-MANAGER
-ADMINISTRATOR
-```
-
-### Response — 200 OK
-
-```json
-{
-  "items": [
-    {
-      "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-      "employee_code": "E001",
-      "name": "S M Basha",
-      "designation": "Engineering Head",
-      "department": "Engineering",
-      "status": "ACTIVE"
-    }
-  ]
-}
-```
-
----
-
-# 42. Notification APIs
-
-## GET /api/v1/notifications
-
-Returns notifications for the authenticated employee.
-
-### Query Parameters
-
-```text
-is_read
-page
-page_size
-```
-
-### Response — 200 OK
-
-```json
-{
-  "items": [
-    {
-      "notification_id": "654c09da-ee27-4183-a8c0-bf4251ad35bf",
-      "notification_type": "LEAVE_APPROVED",
-      "title": "Leave Approved",
-      "message": "Your leave application has been approved.",
-      "reference_type": "leave_appln",
-      "reference_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-      "is_read": false,
-      "created_at": "2026-10-08T11:00:00+05:30"
-    }
-  ],
-  "page": 1,
-  "page_size": 20,
-  "total": 1
-}
-```
-
----
-
-# 43. Mark Notification as Read
-
-## POST /api/v1/notifications/{notification_id}/read
-
-Marks a notification as read.
-
-### Response — 200 OK
-
-```json
-{
-  "notification_id": "654c09da-ee27-4183-a8c0-bf4251ad35bf",
-  "is_read": true,
-  "read_at": "2026-10-08T12:00:00+05:30"
-}
-```
-
----
-
-# 44. Dashboard API
-
-## GET /api/v1/dashboard
-
-Returns dashboard information for the authenticated user.
-
-The response should vary based on user role.
-
-### Employee Example
-
-```json
-{
-  "employee": {
-    "employee_code": "E001",
-    "name": "S M Basha"
-  },
-  "leave_balances": [
-    {
-      "leave_type": "EARNED",
-      "available": 12.0
-    },
-    {
-      "leave_type": "SICK",
-      "available": 8.0
-    }
-  ],
-  "recent_applications": [
-    {
-      "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-      "leave_type": "EARNED",
-      "from_date": "2026-10-10",
-      "to_date": "2026-10-12",
-      "status": "PENDING"
-    }
-  ],
-  "upcoming_holidays": [
-    {
-      "holiday_date": "2026-10-20",
-      "name": "Holiday"
-    }
-  ],
-  "unread_notification_count": 2
-}
-```
-
-### Manager Example
-
-May additionally return:
-
-```json
-{
-  "pending_approval_count": 4
-}
-```
-
----
-
-# 45. Report APIs
-
-## GET /api/v1/reports/leave-summary
-
-Returns leave usage summary.
-
-### Authorization
-
-```text
-MANAGER
-ADMINISTRATOR
-```
-
-### Query Parameters
-
-```text
-year
-employee_id
-department_id
-leave_type_id
-```
-
-### Response — 200 OK
-
-```json
-{
-  "year": 2026,
-  "items": [
-    {
-      "employee_code": "E001",
-      "employee_name": "S M Basha",
-      "leave_type": "EARNED",
-      "allocated": 20.0,
-      "carried_forward": 2.0,
-      "used": 8.0,
-      "pending": 2.0,
-      "available": 12.0
-    }
-  ]
-}
-```
-
----
-
-# 46. Leave Status Values
-
-Valid status values:
-
-```text
-PENDING
-
-APPROVED
-
-REJECTED
-
-CANCELLED
-```
-
-Allowed transitions:
-
-```text
-PENDING -> APPROVED
-
-PENDING -> REJECTED
-
-PENDING -> CANCELLED
-```
-
-Invalid transitions include:
-
-```text
-APPROVED -> PENDING
-
-REJECTED -> APPROVED
-
-CANCELLED -> APPROVED
-```
-
-The API must reject invalid transitions.
-
----
-
-# 47. Leave Balance Behavior
-
-## Submit Leave
-
-When a valid leave request is submitted:
-
-```text
-pending += number_of_days
-```
-
-Example:
-
-Before:
-
-```text
-allocated = 20
-used      = 5
-pending   = 0
-available = 15
-```
-
-Employee applies for:
-
-```text
-3 days
-```
-
-After:
-
-```text
-allocated = 20
-used      = 5
-pending   = 3
-available = 12
-```
-
----
-
-# 48. Approval Balance Behavior
-
-When the leave is approved:
-
-```text
-pending -= number_of_days
-
-used += number_of_days
-```
-
-Example:
-
-Before:
-
-```text
-used = 5
-pending = 3
-```
-
-After:
-
-```text
-used = 8
-pending = 0
-```
-
----
-
-# 49. Rejection Balance Behavior
-
-When rejected:
-
-```text
-pending -= number_of_days
-```
-
-`used` remains unchanged.
-
-Example:
-
-```text
-Before:
-used = 5
-pending = 3
-
-After:
-used = 5
-pending = 0
-```
-
----
-
-# 50. Cancellation Balance Behavior
-
-When pending leave is cancelled:
-
-```text
-pending -= number_of_days
-```
-
-`used` remains unchanged.
-
----
-
-# 51. Overlapping Leave Validation
-
-The API must reject a request if an employee already has an overlapping:
-
-```text
-PENDING
-```
-
-or:
-
-```text
-APPROVED
-```
-
-application.
-
-Overlap exists when:
-
-```text
-new_from_date <= existing_to_date
-
-AND
-
-new_to_date >= existing_from_date
-```
-
-Example error:
-
-```json
-{
-  "error": {
-    "code": "OVERLAPPING_LEAVE_APPLICATION",
-    "message": "An overlapping leave application already exists.",
-    "details": {
-      "application_id": "existing-uuid"
-    }
-  }
-}
-```
-
-HTTP:
-
-```text
-409 Conflict
-```
-
----
-
-# 52. Insufficient Balance Error
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "INSUFFICIENT_LEAVE_BALANCE",
-    "message": "Insufficient leave balance.",
-    "details": {
-      "requested": 5.0,
-      "available": 3.0
-    }
-  }
-}
-```
-
-HTTP:
-
-```text
-400 Bad Request
-```
-
----
-
-# 53. Invalid Leave Date Error
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "LEAVE_DATE_IN_PAST",
-    "message": "Leave cannot be applied for a past date.",
-    "details": {
-      "from_date": "2026-10-01"
-    }
-  }
-}
-```
-
----
-
-# 54. Invalid Date Range Error
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "INVALID_DATE_RANGE",
-    "message": "from_date cannot be after to_date.",
-    "details": {
-      "from_date": "2026-10-12",
-      "to_date": "2026-10-10"
-    }
-  }
-}
-```
-
----
-
-# 55. Unauthorized Manager Error
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "NOT_AUTHORIZED_MANAGER",
-    "message": "You are not authorized to approve or reject this leave application.",
-    "details": null
-  }
-}
-```
-
-HTTP:
-
-```text
-403 Forbidden
-```
-
----
-
-# 56. Self Approval Error
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "SELF_APPROVAL_NOT_ALLOWED",
-    "message": "A manager cannot approve or reject their own leave application.",
-    "details": null
-  }
-}
-```
-
----
-
-# 57. Invalid Leave Status Error
-
-Example:
-
-```json
-{
-  "error": {
-    "code": "INVALID_LEAVE_STATUS",
-    "message": "Only pending leave applications can be approved.",
-    "details": {
-      "current_status": "APPROVED"
-    }
-  }
-}
-```
-
-HTTP:
-
-```text
-409 Conflict
-```
-
----
-
-# 58. Pagination Standard
-
-List endpoints should use:
-
-```text
-page
-page_size
-```
-
-Defaults:
-
-```text
-page = 1
-
-page_size = 20
-```
-
-Recommended maximum:
-
-```text
-page_size = 100
-```
-
-Response:
-
-```json
-{
-  "items": [],
-  "page": 1,
-  "page_size": 20,
-  "total": 0
-}
-```
-
-Optional:
-
-```json
-{
-  "total_pages": 0
-}
-```
-
-may also be returned.
-
----
-
-# 59. Sorting Standard
-
-Where supported:
-
-```text
-sort_by
-sort_order
-```
-
-Example:
-
-```http
-GET /api/v1/leave/applications?sort_by=created_at&sort_order=desc
-```
-
-Allowed order:
-
-```text
-asc
-desc
-```
-
-The backend must whitelist sortable columns.
-
-Do not directly place user-provided column names into SQL.
-
----
-
-# 60. Filtering Standard
-
-Common filters include:
-
-```text
-employee_id
-employee_code
-manager_id
-department_id
-leave_type_id
-status
-from_date
-to_date
-year
-month
-```
-
-Invalid filter values must return:
-
-```text
-422 Unprocessable Entity
-```
-
-or:
-
-```text
-400 Bad Request
-```
-
-depending on whether the issue is schema validation or business validation.
-
----
-
-# 61. Request Validation
-
-Pydantic schemas must validate:
-
-```text
-Required fields
-
-UUID format
-
-Date format
-
-Enum values
-
-Email format
-
-Numeric ranges
-
-Maximum string lengths
-
-Required rejection reason
-
-Page values
-
-Page-size limits
-```
-
-Example:
-
-```text
-page >= 1
-
-1 <= page_size <= 100
-```
-
----
-
-# 62. Authorization Matrix
-
-| API | Employee | Manager | Administrator |
-|---|---:|---:|---:|
-| View own profile | Yes | Yes | Yes |
-| View own balance | Yes | Yes | Yes |
-| Apply leave | Yes | Yes | Yes |
-| View own leave history | Yes | Yes | Yes |
-| Cancel own pending leave | Yes | Yes | Yes |
-| View direct reports | No | Yes | Yes |
-| View assigned approvals | No | Yes | Yes |
-| Approve direct-report leave | No | Yes | Yes |
-| Reject direct-report leave | No | Yes | Yes |
-| Manage employees | No | No | Yes |
-| Manage leave types | No | No | Yes |
-| Manage leave allocation | No | No | Yes |
-| Manage holidays | No | No | Yes |
-| View organization reports | No | Limited | Yes |
-
----
-
-# 63. API Security Rules
-
-All protected APIs must:
-
-```text
-Validate authentication token.
-
-Determine current user from backend.
-
-Validate user status.
-
-Validate role.
-
-Validate resource ownership.
-
-Validate manager relationship.
-
-Reject unauthorized access.
-
-Validate all external input.
-
-Never trust employee_id provided by frontend without authorization checks.
-```
-
-Example:
-
-An employee must not be able to change:
-
-```json
-{
-  "employee_id": "another-employee-id"
-}
-```
-
-and apply leave for another employee unless explicitly authorized.
-
----
-
-# 64. Transaction Requirements
-
-The following APIs must execute their database changes transactionally:
-
-```text
-POST /leave/applications
-
-POST /leave/applications/{id}/approve
-
-POST /leave/applications/{id}/reject
-
-POST /leave/applications/{id}/cancel
-
-POST /admin/leave-balances/{id}/adjust
-```
-
-Example approval transaction:
-
-```text
-BEGIN
-
-Lock leave application
-
-Lock leave balance
-
-Validate state
-
-Update leave application
-
-Decrease pending balance
-
-Increase used balance
-
-Create audit entry
-
-Create notification
-
-COMMIT
-```
-
-On failure:
-
-```text
-ROLLBACK
-```
-
----
-
-# 65. Concurrency Requirements
-
-Leave balance operations must protect against concurrent requests.
-
-Example problem:
-
-```text
-Available balance = 5
-
-Request A = 4 days
-
-Request B = 4 days
-```
-
-Both requests must not succeed simultaneously.
-
-Relevant balance rows should be locked during transaction processing.
-
-Conceptually:
-
-```sql
-SELECT *
-FROM leave_balance
-WHERE employee_id = :employee_id
-AND leave_type_id = :leave_type_id
-AND leave_year = :leave_year
-FOR UPDATE;
-```
-
----
-
-# 66. Audit Requirements
-
-The backend must create audit records for important API operations.
-
-Examples:
-
-```text
-LEAVE_APPLIED
-
-LEAVE_APPROVED
-
-LEAVE_REJECTED
-
-LEAVE_CANCELLED
-
-EMPLOYEE_CREATED
-
-EMPLOYEE_UPDATED
-
-LEAVE_BALANCE_UPDATED
-
-HOLIDAY_CREATED
-
-HOLIDAY_UPDATED
-```
-
-Audit operations should normally participate in the same business transaction.
-
----
-
-# 67. Notification Requirements
-
-Notifications should be generated for events such as:
-
-```text
-Leave submitted
-    -> notify manager
-
-Leave approved
-    -> notify employee
-
-Leave rejected
-    -> notify employee
-
-Leave cancelled
-    -> notify manager where required
-```
-
-Notification failure handling must not corrupt leave state.
-
-Future implementations may move delivery to asynchronous infrastructure.
-
----
-
-# 68. Recommended FastAPI Router Structure
-
-Backend routers should correspond approximately to:
-
-```text
-backend/app/api/routes/
-
-auth.py
-
-employees.py
-
-leave_types.py
-
-leave_balances.py
-
-leave_applications.py
-
-holidays.py
-
-notifications.py
-
-reports.py
-
-admin.py
-```
-
-Routers must remain thin.
-
-They should:
-
-```text
-Accept request
-
-Validate Pydantic schema
-
-Resolve current user
-
-Call service
-
-Return response
-```
-
-They must not contain database queries or leave business logic.
-
----
-
-# 69. Recommended Service Mapping
-
-```text
-Auth API
-    -> AuthService
-
-Employee API
-    -> EmployeeService
-
-Leave Balance API
-    -> LeaveService / LeaveBalanceService
-
-Leave Application API
-    -> LeaveService
-
-Holiday API
-    -> HolidayService
-
-Notification API
-    -> NotificationService
-
-Reporting API
-    -> ReportService
-```
-
----
-
-# 70. Recommended Repository Mapping
-
-```text
-EmployeeService
-    -> EmployeeRepository
-
-LeaveService
-    -> LeaveApplicationRepository
-    -> LeaveBalanceRepository
-    -> LeaveTypeRepository
-    -> EmployeeRepository
-    -> HolidayRepository
-
-HolidayService
-    -> HolidayRepository
-
-NotificationService
-    -> NotificationRepository
-```
-
----
-
-# 71. API Summary
-
-## Authentication
-
-```text
-POST /api/v1/auth/login
-
-GET /api/v1/auth/me
-```
-
-## Employees
-
-```text
-GET /api/v1/employees
-
-GET /api/v1/employees/{employee_id}
-
-GET /api/v1/employees/by-code/{employee_code}
-
-GET /api/v1/employees/{employee_id}/leave-balance
-
-GET /api/v1/employees/{employee_id}/leave-applications
-```
-
-## Leave Types
-
-```text
-GET /api/v1/leave-types
-```
-
-## Leave Applications
-
-```text
-POST /api/v1/leave/applications
-
-GET /api/v1/leave/applications
-
-GET /api/v1/leave/applications/{application_id}
-
-POST /api/v1/leave/applications/{application_id}/cancel
-
-POST /api/v1/leave/applications/{application_id}/approve
-
-POST /api/v1/leave/applications/{application_id}/reject
-
-POST /api/v1/leave/calculate-days
-```
-
-## Manager
-
-```text
-GET /api/v1/managers/me/direct-reports
-
-GET /api/v1/leave/approvals/pending
-```
-
-## Holidays
-
-```text
-GET /api/v1/holidays
-
-GET /api/v1/holidays/{holiday_id}
-```
-
-## Notifications
-
-```text
-GET /api/v1/notifications
-
-POST /api/v1/notifications/{notification_id}/read
-```
-
-## Dashboard
-
-```text
-GET /api/v1/dashboard
-```
-
-## Reports
-
-```text
-GET /api/v1/reports/leave-summary
-```
-
-## Administration
-
-```text
-POST /api/v1/admin/employees
-
-PUT /api/v1/admin/employees/{employee_id}
-
-POST /api/v1/admin/leave-types
-
-PUT /api/v1/admin/leave-types/{leave_type_id}
-
-POST /api/v1/admin/leave-balances
-
-PUT /api/v1/admin/leave-balances/{balance_id}
-
-POST /api/v1/admin/leave-balances/{balance_id}/adjust
-
-POST /api/v1/admin/holidays
-
-PUT /api/v1/admin/holidays/{holiday_id}
-
-DELETE /api/v1/admin/holidays/{holiday_id}
-```
-
----
-
-# 72. Core Leave API Examples
-
-## Get Employee
-
-```http
-GET /api/v1/employees/{employee_id}
-```
-
-Response:
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "name": "S M Basha",
-  "email": "basha@example.com"
-}
-```
-
----
-
-## Get Leave Balance
-
-```http
-GET /api/v1/employees/{employee_id}/leave-balance
-```
-
-Response:
-
-```json
-{
-  "employee_id": "88f21fd2-aea0-4b42-8b26-f7dc41d709ad",
-  "employee_code": "E001",
-  "balances": [
-    {
-      "leave_type": "EARNED",
-      "allocated": 20,
-      "used": 6,
-      "pending": 2,
-      "available": 12
-    }
-  ]
-}
-```
-
----
-
-## Apply Leave
-
-```http
-POST /api/v1/leave/applications
-```
-
-Request:
-
-```json
-{
-  "employee_code": "E001",
-  "leave_type": "EARNED",
-  "from_date": "2026-10-10",
-  "to_date": "2026-10-12",
-  "reason": "Personal work"
-}
-```
-
-Response:
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "number_of_days": 2,
-  "status": "PENDING"
-}
-```
-
----
-
-## Approve Leave
-
-```http
-POST /api/v1/leave/applications/{application_id}/approve
-```
-
-Response:
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "status": "APPROVED",
-  "approved_at": "2026-10-08T11:00:00+05:30"
-}
-```
-
----
-
-## Reject Leave
-
-```http
-POST /api/v1/leave/applications/{application_id}/reject
-```
-
-Request:
-
-```json
-{
-  "reason": "Project requirement"
-}
-```
-
-Response:
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "status": "REJECTED",
-  "rejection_reason": "Project requirement",
-  "rejected_at": "2026-10-08T11:30:00+05:30"
-}
-```
-
----
-
-## Cancel Leave
-
-```http
-POST /api/v1/leave/applications/{application_id}/cancel
-```
-
-Response:
-
-```json
-{
-  "application_id": "fa711b70-f8d5-4d26-b32b-ac6f28198348",
-  "status": "CANCELLED",
-  "cancelled_at": "2026-10-08T12:00:00+05:30"
-}
-```
-
----
-
-# 73. API Design Principles
-
-The API implementation must follow these principles.
-
-### Principle 1 — Backend Is Authoritative
-
-The API determines:
-
-```text
-Leave eligibility
-
-Number of leave days
-
-Available balance
-
-Approval authorization
-
-Valid status transitions
-```
-
-The frontend must not be authoritative for these rules.
-
-### Principle 2 — Resource Ownership Is Validated
-
-Never trust resource IDs supplied by the browser without verifying access.
-
-### Principle 3 — Consistent Errors
-
-All API errors should use a predictable structure.
-
-### Principle 4 — Transactional Workflows
-
-Leave status and leave balance changes must succeed or fail together.
-
-### Principle 5 — Codes and UUIDs Are Distinct
-
-UUIDs are database identifiers.
-
-Employee and leave codes are human-readable business identifiers.
-
-### Principle 6 — APIs Are Versioned
-
-All endpoints use:
-
-```text
-/api/v1
-```
-
-### Principle 7 — Avoid Business Logic in Routers
-
-Business logic belongs in services.
-
-### Principle 8 — Repository Layer Owns Database Access
-
-Routers and UI code must never query PostgreSQL directly.
-
----
-
-# 74. Related Documents
-
-Refer to:
-
-```text
-docs\REQUIREMENTS.md
-```
-
-for functional and business requirements.
-
-```text
-AGENTS.md
-```
-
-for coding and development rules.
-
-```text
-docs\ARCHITECTURE.md
-```
-
-for system structure and backend layering.
-
-```text
-docs\DATABASE.md
-```
-
-for tables, relationships, constraints, and transactions.
-
-```text
-docs\UI_SPEC.md
-```
-
-for screens and frontend behavior.
-
-```text
-docs\IMPLEMENTATION_PLAN.md
-```
-
-for implementation sequence.
-
-```text
-docs\TEST_PLAN.md
-```
-
-for API, service, repository, and end-to-end test coverage.
-
----
-
-# End of API_SPEC.md
+Required employee_id, leave_type_id, leave_year, allocated; carried_forward?=0.
+201 Balance with used=pending=0. No implicit upsert. 409 LEAVE_BALANCE_ALREADY_EXISTS;
+404 EMPLOYEE_NOT_FOUND, LEAVE_TYPE_NOT_FOUND. Allocation permitted for historical years.
+
+### PUT /admin/leave-balances/{balance_id}
+
+Required allocated, carried_forward. 200 Balance. Used/pending rejected as unknown fields.
+
+### POST /admin/leave-balances/{balance_id}/adjust
+
+Required adjustment (nonzero signed decimal), reason (trimmed 1..1000).
+Apply adjustment to allocated only. 200 `{balance_id, adjustment, reason,
+new_allocated: number, available: number}`. Record previous/new values and reason in audit.
+For PUT/adjust require allocated>=0 and allocated+carried_forward>=used+pending;
+otherwise 400 INSUFFICIENT_ALLOCATION. Unknown row: 404 LEAVE_BALANCE_NOT_FOUND.
+All three writes take employee and balance locks and include audit in the transaction.
+
+## 12. Holidays
+
+### GET /holidays
+
+Query year?=business current year, month?, status?=ACTIVE. Non-admin ACTIVE only;
+admin status=ACTIVE|INACTIVE|ALL. 200 `{year: int, month: int or null, items: Holiday[]}`,
+sorted holiday_date asc. Global calendar in v1: no region or location field.
+
+### GET /holidays/{holiday_id}
+
+200 Holiday; inactive records admin only (other callers receive 403).
+
+### POST /admin/holidays
+
+Required holiday_date, name (1..200); description?=null, is_optional?=false.
+201 Holiday with ACTIVE status. One holiday record per date, regardless of name/status.
+
+### PUT /admin/holidays/{holiday_id}
+
+Required holiday_date, name, is_optional, status; description?=null. 200 Holiday.
+
+### DELETE /admin/holidays/{holiday_id}
+
+Soft deactivate only; 200 Holiday. Repeat deactivation also returns 200 unchanged.
+Reactivation uses PUT. 404 HOLIDAY_NOT_FOUND; 409 HOLIDAY_DATE_EXISTS.
+Writes derive year from date and audit atomically. Existing applications retain their
+stored days; changes affect subsequent calculation/submission only.
+
+## 13. Notifications
+
+### GET /notifications
+
+Query is_read? (boolean), page, page_size. 200 Page<Notification>, created_at desc then
+notification_id desc. Unread count is total with is_read=false, page_size=1.
+
+### POST /notifications/{notification_id}/read
+
+No body. Owner only. 200 Notification; repeated calls retain original read_at.
+404 NOTIFICATION_NOT_FOUND; 403 FORBIDDEN. No mark-all API in v1.
+
+Transaction recipients: submit -> owner and snapshot manager; approve/reject -> owner;
+cancel -> owner and snapshot manager. Distinct recipients, one event each. In-app inserts
+are mandatory within the business transaction; failure rolls back the whole operation.
+No external delivery in v1. Notifications referencing a request do not grant access to it.
+
+## 14. Dashboard and reports
+
+### GET /dashboard
+
+Query year?=business current year. 200:
+`{year, employee: EmployeeRef, leave_totals: {allocated,carried_forward,used,pending,available},
+leave_balances: BalanceItem[], pending_application_count: int,
+recent_applications: ApplicationRow[], upcoming_holidays: Holiday[],
+unread_notification_count: int, manager_summary: object or null, admin_summary: object or null}`.
+Recent applications are the own last five by created_at; pending_application_count
+counts all own pending requests for the selected leave year, not just recent items.
+Upcoming holidays: next five ACTIVE mandatory/optional dates >= business today.
+Manager summary (MANAGER only): `{team_size: int, pending_approval_count: int,
+approved_application_count: int, on_leave_today_count: int, upcoming_team_leave: ApplicationRow[]}`.
+Team size/current/upcoming counts use current direct reports, excluding self; pending
+approval count uses actionable snapshot queue; approved count uses current reports/year;
+on-leave today counts distinct employees; upcoming leave is next five APPROVED requests
+ending today or later, sorted from_date asc. Administrator summary (ADMINISTRATOR only):
+`{total_employees,active_employees,pending_application_count,approved_application_count,
+rejected_application_count: int}` using organization/year scope. Unavailable summaries
+remain null during staged development until Phase 17 implements them; document that
+phase state in runtime OpenAPI. Do not fabricate counts in the UI.
+
+### GET /reports/leave-summary
+
+All roles. Query scope? (own|team|organization), year?=business year, employee_id?, department_id?,
+leave_type_id?, page, page_size. 200 `{year,items: BalanceAdminRow[],page,page_size,total}`.
+Scope defaults own for EMPLOYEE, team for MANAGER, organization for ADMINISTRATOR.
+Team excludes self and means current reports; employees may request own only, managers
+own/team, administrators any. Forbidden scope/filter is 403. Includes inactive
+historical types/employees within authorized scope; stable order as
+admin balance list. Utilization is presentation used/allocated*100; zero allocation
+shows an em dash. Use application and holiday read endpoints for other reports.
+CSV/Excel/PDF export is deferred; no export control in v1. No audit-read endpoint in v1.
+
+## 15. Transaction, concurrency and retry contract
+
+Service owns begin/commit/rollback; repositories flush and never independently commit.
+Use PostgreSQL READ COMMITTED plus explicit locks. Consistent acquisition order:
+employee rows sorted UUID (including actors/targets and hierarchy validation as needed),
+app_user rows sorted UUID, auth_session rows sorted UUID, application row, balance rows sorted UUID.
+Determine lock candidates with a preliminary read, then re-read/revalidate under locks;
+if relationships change, restart the bounded transaction rather than acquiring out of order.
+Every apply and transition locks its subject employee before overlap/state validation.
+This serializes cross-type submissions and transitions. Allocation edits/adjustments
+and employee deactivation use the same employee locking protocol. Role/hierarchy changes
+serialize via a transaction advisory lock shared by those operations and employee creation,
+acquired before row locks; last-admin and cycle checks run while holding that lock.
+
+Lock subject employee for logout/account changes too; mutation authentication rechecks
+session and account after locks. Authorization must be validated before revealing resource
+state. Failed invariant checks change nothing. Preserve used/pending equality under every
+terminal action. Deadlock/serialization failures receive safe 409 CONCURRENT_UPDATE after
+rollback; client refetches before an explicit retry. Do not automatically replay mutations
+on network failure or 5xx. Duplicate submissions conflict through serialized overlap checking;
+if the first response is lost, reload history before resubmitting. Formal idempotency keys
+are deferred. Safe reads may retry once. No blind adjustment retry after an ambiguous response.
+
+## 16. Infrastructure and implementation gates
+
+`GET /health` is public, outside `/api/v1`, returning `{status:"ok"}` for process liveness.
+`GET /health/ready` is public, returning 200 `{status:"ready"}` after SELECT 1, or 503
+standard error `DATABASE_UNAVAILABLE` with no connection details. No schema creation on startup.
+Swagger/OpenAPI enabled in development/test; production exposure is a deployment decision.
+
+Implement only the requested phase. Phase 1 configures projects, PostgreSQL, Alembic,
+health/configuration/error foundations and test runners. Phase 2 implements models,
+migrations and development seeds (including auth_session). Phase 3 implements authentication.
+Later phases add the documented business endpoints. See IMPLEMENTATION_PLAN.md and TEST_PLAN.md.

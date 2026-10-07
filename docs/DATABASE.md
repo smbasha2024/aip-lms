@@ -1,2684 +1,333 @@
 # DATABASE.md
 
-# 1. Purpose
-
-This document defines the PostgreSQL database design for the Employee Leave Management System.
-
-It describes:
-
-- Database tables
-- Columns and data types
-- Primary keys
-- Foreign keys
-- Relationships
-- Unique constraints
-- Check constraints
-- Indexes
-- Leave balance handling
-- Leave application status handling
-- Data integrity rules
-- Transaction requirements
-
-The database design must remain consistent with:
-
-```text
-REQUIREMENTS.md
-AGENTS.md
-ARCHITECTURE.md
-API_SPEC.md
-```
-
-The backend is the only application layer permitted to access the database.
-
-The frontend must never connect directly to PostgreSQL.
-
----
-
-# 2. Database Technology
-
-Database:
-
-```text
-PostgreSQL
-```
-
-ORM:
-
-```text
-SQLAlchemy
-```
-
-Schema migration tool:
-
-```text
-Alembic
-```
-
-Primary key strategy:
-
-```text
-UUID
-```
-
-Timestamps should use:
-
-```text
-TIMESTAMP WITH TIME ZONE
-```
-
-wherever the timestamp represents an actual system event.
-
----
-
-# 3. Database Naming Conventions
-
-Use:
-
-```text
-snake_case
-```
-
-for:
-
-- Tables
-- Columns
-- Indexes
-- Constraints
-
-Examples:
-
-```text
-employee
-leave_type
-leave_balance
-leave_appln
-holiday
-audit_log
-```
-
-Primary keys should normally use:
-
-```text
-<table_name>_id
-```
-
-Example:
-
-```text
-employee_id
-leave_type_id
-department_id
-```
-
-For transactional tables where a simple `id` is clearer, `id` may be used.
-
----
-
-# 4. Common Audit Columns
-
-Where appropriate, business tables should contain:
-
-```text
-created_at
-updated_at
-created_by
-updated_by
-```
-
-Recommended types:
-
-```text
-created_at TIMESTAMPTZ
-updated_at TIMESTAMPTZ
-created_by UUID
-updated_by UUID
-```
-
-Default:
-
-```sql
-created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-```
-
-`updated_at` should be updated whenever the record changes.
-
----
-
-# 5. Department Table
-
-## department
-
-Stores organization departments.
-
-```text
-department_id UUID PRIMARY KEY
-
-code VARCHAR(30) UNIQUE NOT NULL
-
-name VARCHAR(150) NOT NULL
-
-description TEXT
-
-status VARCHAR(20) NOT NULL
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Recommended status values:
-
-```text
-ACTIVE
-INACTIVE
-```
-
-Example:
-
-```text
-ENG
-Engineering
-
-HR
-Human Resources
-
-FIN
-Finance
-```
-
----
-
-# 6. Employee Table
-
-## employee
-
-Stores employee master information.
-
-```text
-employee_id UUID PRIMARY KEY
-
-employee_code VARCHAR(50) UNIQUE NOT NULL
-
-name VARCHAR(200) NOT NULL
-
-email VARCHAR(255) UNIQUE NOT NULL
-
-department_id UUID
-
-manager_id UUID
-
-joining_date DATE NOT NULL
-
-status VARCHAR(20) NOT NULL
-
-designation VARCHAR(150)
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Foreign keys:
-
-```text
-department_id
-    -> department.department_id
-
-manager_id
-    -> employee.employee_id
-```
-
-`manager_id` is a self-referencing foreign key.
-
-Example:
-
-```text
-Employee A
-manager_id -> Employee B
-```
-
-This establishes the reporting hierarchy.
-
-Recommended employee status values:
-
-```text
-ACTIVE
-INACTIVE
-RESIGNED
-TERMINATED
-```
-
-Initially, only `ACTIVE` employees should normally be permitted to create new leave applications.
-
----
-
-# 7. User Account Table
-
-## app_user
-
-Stores authentication and authorization information.
-
-Authentication data should be separate from the employee master.
-
-```text
-user_id UUID PRIMARY KEY
-
-employee_id UUID UNIQUE
-
-username VARCHAR(100) UNIQUE NOT NULL
-
-password_hash VARCHAR(255) NOT NULL
-
-role VARCHAR(30) NOT NULL
-
-status VARCHAR(20) NOT NULL
-
-last_login_at TIMESTAMPTZ
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Foreign key:
-
-```text
-employee_id
-    -> employee.employee_id
-```
-
-Supported roles:
-
-```text
-EMPLOYEE
-MANAGER
-ADMINISTRATOR
-```
-
-Supported user statuses:
-
-```text
-ACTIVE
-INACTIVE
-LOCKED
-```
-
-Passwords must never be stored in plaintext.
-
-Only password hashes may be persisted.
-
----
-
-# 8. Leave Type Table
-
-## leave_type
-
-Stores the different categories of employee leave.
-
-```text
-leave_type_id UUID PRIMARY KEY
-
-code VARCHAR(30) UNIQUE NOT NULL
-
-name VARCHAR(100) NOT NULL
-
-description TEXT
-
-is_paid BOOLEAN NOT NULL DEFAULT TRUE
-
-allow_half_day BOOLEAN NOT NULL DEFAULT FALSE
-
-requires_approval BOOLEAN NOT NULL DEFAULT TRUE
-
-status VARCHAR(20) NOT NULL
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Examples:
-
-```text
-EL
-Earned Leave
-
-PL
-Privilege Leave
-
-SL
-Sick Leave
-
-ML
-Maternity Leave
-
-PTL
-Paternity Leave
-
-LOP
-Loss of Pay
-```
-
-Recommended status values:
-
-```text
-ACTIVE
-INACTIVE
-```
-
----
-
-# 9. Leave Balance Table
-
-## leave_balance
-
-Stores employee leave entitlement and utilization for a given leave type and leave year.
-
-Recommended design:
-
-```text
-id UUID PRIMARY KEY
-
-employee_id UUID NOT NULL
-
-leave_type_id UUID NOT NULL
-
-leave_year INTEGER NOT NULL
-
-allocated NUMERIC(10,2) NOT NULL DEFAULT 0
-
-used NUMERIC(10,2) NOT NULL DEFAULT 0
-
-pending NUMERIC(10,2) NOT NULL DEFAULT 0
-
-carried_forward NUMERIC(10,2) NOT NULL DEFAULT 0
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Foreign keys:
-
-```text
-employee_id
-    -> employee.employee_id
-
-leave_type_id
-    -> leave_type.leave_type_id
-```
-
-Unique constraint:
-
-```text
-UNIQUE (
-    employee_id,
-    leave_type_id,
-    leave_year
-)
-```
-
-There must be only one leave balance record for a particular:
-
-```text
-Employee
-+
-Leave Type
-+
-Leave Year
-```
-
----
-
-# 10. Leave Balance Calculation
-
-The authoritative leave balance calculation is:
-
-```text
-Available =
-    Allocated
-    + Carried Forward
-    - Used
-    - Pending
-```
-
-Example:
-
-```text
-Allocated        = 20
-Carried Forward  = 2
-Used             = 5
-Pending          = 3
---------------------------------
-Available        = 14
-```
-
-The recommended database design does **not** store `available` as a separate column.
-
-It should be calculated by the backend service.
-
-This prevents inconsistencies such as:
-
-```text
-allocated = 20
-used = 5
-pending = 2
-available = 19
-```
-
-where the stored available value no longer matches the actual calculation.
-
----
-
-# 11. Leave Balance Constraints
-
-The following values must normally not be negative:
-
-```text
-allocated >= 0
-
-used >= 0
-
-pending >= 0
-
-carried_forward >= 0
-```
-
-Recommended constraints:
-
-```sql
-CHECK (allocated >= 0)
-
-CHECK (used >= 0)
-
-CHECK (pending >= 0)
-
-CHECK (carried_forward >= 0)
-```
-
-Exceptions such as negative balance policies must be explicitly defined before changing these constraints.
-
----
-
-# 12. Leave Application Table
-
-## leave_appln
-
-Stores employee leave applications.
-
-```text
-id UUID PRIMARY KEY
-
-employee_id UUID NOT NULL
-
-leave_type_id UUID NOT NULL
-
-from_date DATE NOT NULL
-
-to_date DATE NOT NULL
-
-number_of_days NUMERIC(5,2) NOT NULL
-
-reason TEXT
-
-status VARCHAR(20) NOT NULL
-
-manager_id UUID
-
-approved_by UUID
-
-approved_at TIMESTAMPTZ
-
-rejected_by UUID
-
-rejected_at TIMESTAMPTZ
-
-rejection_reason TEXT
-
-cancelled_at TIMESTAMPTZ
-
-cancelled_by UUID
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Foreign keys:
-
-```text
-employee_id
-    -> employee.employee_id
-
-leave_type_id
-    -> leave_type.leave_type_id
-
-manager_id
-    -> employee.employee_id
-
-approved_by
-    -> employee.employee_id
-
-rejected_by
-    -> employee.employee_id
-
-cancelled_by
-    -> employee.employee_id
-```
-
----
-
-# 13. Leave Application Status
-
-Supported leave application statuses:
-
-```text
-PENDING
-
-APPROVED
-
-REJECTED
-
-CANCELLED
-```
-
-Recommended PostgreSQL check constraint:
-
-```sql
-CHECK (
-    status IN (
-        'PENDING',
-        'APPROVED',
-        'REJECTED',
-        'CANCELLED'
-    )
-)
-```
-
----
-
-# 14. Leave Application Date Constraint
-
-`from_date` must not be after `to_date`.
-
-Database constraint:
-
-```sql
-CHECK (from_date <= to_date)
-```
-
-Example:
-
-Valid:
-
-```text
-from_date = 2026-10-10
-to_date   = 2026-10-12
-```
-
-Invalid:
-
-```text
-from_date = 2026-10-12
-to_date   = 2026-10-10
-```
-
-The API and service layer must validate this before reaching the database.
-
-The database constraint provides a final integrity check.
-
----
-
-# 15. Number of Leave Days
-
-`number_of_days` represents the effective number of leave days after applying applicable policy rules.
-
-Example:
-
-```text
-Friday    Leave
-Saturday  Weekend
-Sunday    Weekend
-Monday    Leave
-```
-
-Depending on policy:
-
-```text
-number_of_days = 2
-```
-
-The value must be calculated by the backend service.
-
-The frontend must not determine the authoritative number of leave days.
-
-Recommended constraint:
-
-```sql
-CHECK (number_of_days > 0)
-```
-
-Fractional days may be supported.
-
-Example:
-
-```text
-0.5
-1.0
-1.5
-```
-
----
-
-# 16. Leave Application Manager
-
-When a leave request is submitted, the appropriate manager should be associated with the leave application.
-
-```text
-leave_appln.manager_id
-```
-
-normally comes from:
-
-```text
-employee.manager_id
-```
-
-This preserves the approval relationship that existed when the leave was submitted.
-
-This can be useful if an employee changes managers later.
-
----
-
-# 17. Approval Information
-
-When a leave application is approved:
-
-```text
-status = APPROVED
-
-approved_by = manager employee_id
-
-approved_at = approval timestamp
-```
-
-Example:
-
-```text
-status:
-APPROVED
-
-approved_by:
-manager UUID
-
-approved_at:
-2026-10-07 14:32:00+05:30
-```
-
----
-
-# 18. Rejection Information
-
-When a leave application is rejected:
-
-```text
-status = REJECTED
-
-rejected_by = manager employee_id
-
-rejected_at = timestamp
-
-rejection_reason = manager supplied reason
-```
-
-A rejection reason should normally be required.
-
-This requirement should also be enforced through the API.
-
----
-
-# 19. Cancellation Information
-
-When an employee cancels a pending leave:
-
-```text
-status = CANCELLED
-
-cancelled_by = employee_id
-
-cancelled_at = timestamp
-```
-
-Initial business requirements state:
-
-```text
-Only PENDING applications can be cancelled.
-```
-
-If approved-leave cancellation is introduced later, it must be explicitly defined as a new business workflow.
-
----
-
-# 20. Holiday Table
-
-## holiday
-
-Stores the organization holiday calendar.
-
-```text
-holiday_id UUID PRIMARY KEY
-
-holiday_date DATE NOT NULL
-
-name VARCHAR(200) NOT NULL
-
-description TEXT
-
-year INTEGER NOT NULL
-
-is_optional BOOLEAN NOT NULL DEFAULT FALSE
-
-status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'
-
-created_at TIMESTAMPTZ NOT NULL
-
-updated_at TIMESTAMPTZ
-```
-
-Recommended unique constraint:
-
-```text
-UNIQUE (
-    holiday_date,
-    name
-)
-```
-
-Recommended status values:
-
-```text
-ACTIVE
-INACTIVE
-```
-
-Example:
-
-```text
-holiday_date = 2026-01-26
-
-name = Republic Day
-
-year = 2026
-```
-
----
-
-# 21. Holiday Year
-
-Although the year can technically be derived from `holiday_date`, keeping a `year` column may simplify administrative queries and imports.
-
-The application must ensure:
-
-```text
-year = EXTRACT(YEAR FROM holiday_date)
-```
-
-Alternatively, the implementation may choose not to persist the `year` column and derive it from `holiday_date`.
-
-If persisted, the service layer must keep it consistent.
-
----
-
-# 22. Notification Table
-
-## notification
-
-Stores application notifications.
-
-```text
-notification_id UUID PRIMARY KEY
-
-employee_id UUID NOT NULL
-
-notification_type VARCHAR(50) NOT NULL
-
-title VARCHAR(200) NOT NULL
-
-message TEXT NOT NULL
-
-reference_type VARCHAR(50)
-
-reference_id UUID
-
-is_read BOOLEAN NOT NULL DEFAULT FALSE
-
-created_at TIMESTAMPTZ NOT NULL
-
-read_at TIMESTAMPTZ
-```
-
-Foreign key:
-
-```text
-employee_id
-    -> employee.employee_id
-```
-
-Possible notification types:
-
-```text
-LEAVE_SUBMITTED
-
-LEAVE_APPROVED
-
-LEAVE_REJECTED
-
-LEAVE_CANCELLED
-
-SYSTEM
-```
-
-Example:
-
-```text
-A leave application is submitted
-        |
-        v
-Manager receives notification
-```
-
----
-
-# 23. Audit Log Table
-
-## audit_log
-
-Stores important business activity for traceability.
-
-```text
-audit_id UUID PRIMARY KEY
-
-entity_type VARCHAR(100) NOT NULL
-
-entity_id UUID
-
-action VARCHAR(100) NOT NULL
-
-performed_by UUID
-
-old_values JSONB
-
-new_values JSONB
-
-ip_address VARCHAR(50)
-
-created_at TIMESTAMPTZ NOT NULL
-```
-
-`performed_by` references:
-
-```text
-employee.employee_id
-```
-
-where applicable.
-
-Possible actions:
-
-```text
-EMPLOYEE_CREATED
-
-EMPLOYEE_UPDATED
-
-LEAVE_APPLIED
-
-LEAVE_APPROVED
-
-LEAVE_REJECTED
-
-LEAVE_CANCELLED
-
-LEAVE_BALANCE_UPDATED
-
-HOLIDAY_CREATED
-
-HOLIDAY_UPDATED
-```
-
-Example audit entry:
-
-```json
-{
-  "entity_type": "leave_appln",
-  "entity_id": "uuid",
-  "action": "LEAVE_APPROVED",
-  "performed_by": "manager-uuid"
-}
-```
-
----
-
-# 24. Database Relationships
-
-High-level relationships:
-
-```text
-department
-    |
-    |
-    +------ employee
-              |
-              | manager_id
-              +------------------+
-              |                  |
-              |                  |
-              +---- leave_balance
-              |
-              +---- leave_appln
-              |         |
-              |         +---- leave_type
-              |
-              +---- notification
-              |
-              +---- audit_log
-```
-
-Leave-specific relationship:
-
-```text
-employee
-   |
-   +---- leave_balance
-   |          |
-   |          +---- leave_type
-   |
-   +---- leave_appln
-              |
-              +---- leave_type
-```
-
----
-
-# 25. Entity Relationship View
-
-A more detailed representation:
-
-```text
-department
-    |
-    | 1
-    |
-    | *
-employee
-    |
-    +-----------------------------+
-    |                             |
-    | 1                           | 1
-    |                             |
-    | *                           | *
-leave_balance                leave_appln
-    |                             |
-    | *                           | *
-    |                             |
-    | 1                           | 1
-leave_type -----------------------+
-```
-
-Manager relationship:
-
-```text
-employee
-    |
-    | manager_id
-    v
-employee
-```
-
-This is a recursive relationship.
-
----
-
-# 26. Core Business Rules
-
-## Rules
-
-### Rule 1 — Employee Cannot Apply for Leave in the Past
-
-For a new leave application:
-
-```text
-from_date >= current_date
-```
-
-An employee must not create a leave request whose start date is already in the past.
-
-This is primarily a service-layer validation because `CURRENT_DATE` constraints can complicate database design and testing.
-
----
-
-### Rule 2 — From Date Cannot Be After To Date
-
-Required:
-
-```text
-from_date <= to_date
-```
-
-This must be enforced by:
-
-```text
-Pydantic validation
-Service validation
-Database CHECK constraint
-```
-
----
-
-### Rule 3 — Employee Cannot Exceed Available Balance
-
-For balance-controlled leave:
-
-```text
-Requested Days <= Available Balance
-```
-
-where:
-
-```text
-Available =
-Allocated
-+ Carried Forward
-- Used
-- Pending
-```
-
-If:
-
-```text
-Available = 3
-```
-
-then:
-
-```text
-Request for 2 days = Allowed
-
-Request for 4 days = Rejected
-```
-
-unless the selected leave type explicitly permits an exception such as Loss of Pay.
-
----
-
-### Rule 4 — Only Pending Applications Can Be Cancelled
-
-Valid transition:
-
-```text
-PENDING
-   |
-   v
-CANCELLED
-```
-
-Invalid under the initial requirements:
-
-```text
-APPROVED -> CANCELLED
-
-REJECTED -> CANCELLED
-
-CANCELLED -> CANCELLED
-```
-
-Approved-leave cancellation may be implemented later as a separate business workflow.
-
----
-
-### Rule 5 — Only Manager Can Approve or Reject
-
-The manager associated with the employee may approve or reject the employee's leave application.
-
-The backend must verify:
-
-```text
-current_user.employee_id
-    ==
-leave_appln.manager_id
-```
-
-or the equivalent authorization rule.
-
-Frontend visibility is not sufficient authorization.
-
----
-
-### Rule 6 — Manager Cannot Approve Own Leave
-
-Required:
-
-```text
-leave_appln.employee_id
-    !=
-current_manager.employee_id
-```
-
-An employee who also has a `MANAGER` role must never be able to approve their own leave request.
-
----
-
-### Rule 7 — Approved Leave Reduces Available Balance
-
-When an employee submits leave:
-
-```text
-pending += number_of_days
-```
-
-Available becomes:
-
-```text
-allocated
-+ carried_forward
-- used
-- pending
-```
-
-When leave is approved:
-
-```text
-pending -= number_of_days
-
-used += number_of_days
-```
-
-Therefore approved leave reduces the employee's remaining balance.
-
----
-
-### Rule 8 — Rejected Leave Does Not Reduce Balance
-
-When a pending leave application is rejected:
-
-```text
-pending -= number_of_days
-```
-
-but:
-
-```text
-used
-```
-
-must not increase.
-
-Therefore:
-
-```text
-Available balance is restored.
-```
-
----
-
-### Rule 9 — Cancelled Pending Leave Releases Balance
-
-When a pending application is cancelled:
-
-```text
-pending -= number_of_days
-```
-
-and:
-
-```text
-used remains unchanged
-```
-
-The reserved leave becomes available again.
-
----
-
-### Rule 10 — Duplicate or Overlapping Leave Must Be Prevented
-
-An employee should not be allowed to submit overlapping active leave applications.
-
-Overlap exists where:
-
-```text
-new_from_date <= existing_to_date
-
-AND
-
-new_to_date >= existing_from_date
-```
-
-for applications whose status is:
-
-```text
-PENDING
-or
-APPROVED
-```
-
-Applications with statuses:
-
-```text
-REJECTED
-CANCELLED
-```
-
-should not block a new leave request.
-
----
-
-### Rule 11 — Inactive Employees Cannot Apply
-
-Normally:
-
-```text
-employee.status = ACTIVE
-```
-
-must be true before creating a leave application.
-
----
-
-### Rule 12 — Leave Type Must Be Active
-
-A new leave request may only use:
-
-```text
-leave_type.status = ACTIVE
-```
-
-Inactive leave types remain stored for historical records.
-
----
-
-### Rule 13 — Leave Application Must Reference Existing Employee
-
-Every:
-
-```text
-leave_appln.employee_id
-```
-
-must reference a valid employee.
-
-Enforced through a foreign key.
-
----
-
-### Rule 14 — Leave Application Must Reference Existing Leave Type
-
-Every:
-
-```text
-leave_appln.leave_type_id
-```
-
-must reference a valid leave type.
-
-Enforced through a foreign key.
-
----
-
-### Rule 15 — Leave Balance Must Be Unique
-
-The database must prevent duplicate balance records for the same:
-
-```text
-employee
-leave_type
-leave_year
-```
-
-Using:
-
-```sql
-UNIQUE (
-    employee_id,
-    leave_type_id,
-    leave_year
-)
-```
-
----
-
-# 27. Leave Status Transitions
-
-Allowed initial workflow:
-
-```text
-                  +----------+
-                  | PENDING  |
-                  +----------+
-                    /   |   \
-                   /    |    \
-                  v     v     v
-           APPROVED  REJECTED CANCELLED
-```
-
-Allowed transitions:
-
-```text
-PENDING -> APPROVED
-
-PENDING -> REJECTED
-
-PENDING -> CANCELLED
-```
-
-Not allowed:
-
-```text
-APPROVED -> PENDING
-
-REJECTED -> APPROVED
-
-CANCELLED -> APPROVED
-
-REJECTED -> PENDING
-```
-
-Any future status transition must be explicitly defined in requirements before implementation.
-
----
-
-# 28. Leave Balance Transaction Flow
-
-## Applying Leave
-
-Example:
-
-Initial balance:
-
-```text
-Allocated = 20
-Used      = 5
-Pending   = 0
-Available = 15
-```
-
-Employee applies for:
-
-```text
-3 days
-```
-
-After applying:
-
-```text
-Allocated = 20
-Used      = 5
-Pending   = 3
-Available = 12
-```
-
-Application:
-
-```text
-status = PENDING
-```
-
----
-
-# 29. Approving Leave
-
-Before approval:
-
-```text
-Used    = 5
-Pending = 3
-```
-
-After approval:
-
-```text
-Used    = 8
-Pending = 0
-```
-
-Application:
-
-```text
-status = APPROVED
-```
-
-This must occur in one database transaction.
-
----
-
-# 30. Rejecting Leave
-
-Before rejection:
-
-```text
-Used    = 5
-Pending = 3
-```
-
-After rejection:
-
-```text
-Used    = 5
-Pending = 0
-```
-
-Application:
-
-```text
-status = REJECTED
-```
-
-The available balance is restored.
-
----
-
-# 31. Cancelling Leave
-
-For a pending application:
-
-Before cancellation:
-
-```text
-Used    = 5
-Pending = 3
-```
-
-After cancellation:
-
-```text
-Used    = 5
-Pending = 0
-```
-
-Application:
-
-```text
-status = CANCELLED
-```
-
----
-
-# 32. Transaction Requirements
-
-The following operations must use database transactions.
-
-## Apply Leave
-
-Transaction should include:
-
-```text
-Validate / lock leave balance
-
-Create leave_appln
-
-Increase pending balance
-
-Create audit record
-
-Create notification if applicable
-```
-
-Then:
-
-```text
-COMMIT
-```
-
-If any required operation fails:
-
-```text
-ROLLBACK
-```
-
----
-
-## Approve Leave
-
-Transaction:
-
-```text
-Lock leave application
-
-Validate status
-
-Lock leave balance
-
-Update leave application
-
-Decrease pending
-
-Increase used
-
-Insert audit record
-
-Create notification
-```
-
-Then:
-
-```text
-COMMIT
-```
-
----
-
-## Reject Leave
-
-Transaction:
-
-```text
-Lock leave application
-
-Validate status
-
-Lock leave balance
-
-Update status
-
-Decrease pending
-
-Create audit record
-
-Create notification
-```
-
-Then:
-
-```text
-COMMIT
-```
-
----
-
-## Cancel Leave
-
-Transaction:
-
-```text
-Lock leave application
-
-Validate ownership
-
-Validate status
-
-Lock leave balance
-
-Update application
-
-Decrease pending
-
-Create audit record
-```
-
-Then:
-
-```text
-COMMIT
-```
-
----
-
-# 33. Concurrency Handling
-
-Leave balances are transactional financial-like counters and must be protected against concurrent modification.
-
-Consider the following scenario:
-
-```text
-Available balance = 5
-
-Request A = 4 days
-Request B = 4 days
-```
-
-If both requests read balance simultaneously without locking, both could incorrectly succeed.
-
-The application should therefore lock the balance row during relevant operations.
-
-Conceptual SQL:
-
-```sql
-SELECT *
-FROM leave_balance
-WHERE employee_id = :employee_id
-  AND leave_type_id = :leave_type_id
-  AND leave_year = :leave_year
-FOR UPDATE;
-```
-
-Equivalent SQLAlchemy row-locking should be used where required.
-
----
-
-# 34. Foreign Key Delete Strategy
-
-Business records must not disappear accidentally.
-
-Avoid unrestricted:
-
-```text
-ON DELETE CASCADE
-```
-
-for important records such as:
-
-```text
-employee
-leave_type
-leave_appln
-leave_balance
-```
-
-Historical records should normally be preserved.
-
-Instead of physically deleting employees or leave types, use:
-
-```text
-status = INACTIVE
-```
-
-where appropriate.
-
----
-
-# 35. Recommended Indexes
-
-Indexes should support common queries.
-
-## Employee
-
-```sql
-CREATE UNIQUE INDEX ux_employee_email
-ON employee(email);
-```
-
-```sql
-CREATE UNIQUE INDEX ux_employee_code
-ON employee(employee_code);
-```
-
-```sql
-CREATE INDEX ix_employee_manager_id
-ON employee(manager_id);
-```
-
-```sql
-CREATE INDEX ix_employee_department_id
-ON employee(department_id);
-```
-
-```sql
-CREATE INDEX ix_employee_status
-ON employee(status);
-```
-
----
-
-# 36. Leave Type Indexes
-
-```sql
-CREATE UNIQUE INDEX ux_leave_type_code
-ON leave_type(code);
-```
-
-```sql
-CREATE INDEX ix_leave_type_status
-ON leave_type(status);
-```
-
----
-
-# 37. Leave Balance Indexes
-
-Unique index:
-
-```sql
-CREATE UNIQUE INDEX ux_leave_balance_employee_type_year
-ON leave_balance(
-    employee_id,
-    leave_type_id,
-    leave_year
-);
-```
-
-Additional index if required:
-
-```sql
-CREATE INDEX ix_leave_balance_employee
-ON leave_balance(employee_id);
-```
-
----
-
-# 38. Leave Application Indexes
-
-Recommended:
-
-```sql
-CREATE INDEX ix_leave_appln_employee
-ON leave_appln(employee_id);
-```
-
-```sql
-CREATE INDEX ix_leave_appln_manager
-ON leave_appln(manager_id);
-```
-
-```sql
-CREATE INDEX ix_leave_appln_status
-ON leave_appln(status);
-```
-
-```sql
-CREATE INDEX ix_leave_appln_leave_type
-ON leave_appln(leave_type_id);
-```
-
-```sql
-CREATE INDEX ix_leave_appln_employee_dates
-ON leave_appln(
-    employee_id,
-    from_date,
-    to_date
-);
-```
-
-For manager approval queues:
-
-```sql
-CREATE INDEX ix_leave_appln_manager_status
-ON leave_appln(
-    manager_id,
-    status
-);
-```
-
----
-
-# 39. Holiday Indexes
-
-```sql
-CREATE INDEX ix_holiday_date
-ON holiday(holiday_date);
-```
-
-```sql
-CREATE INDEX ix_holiday_year
-ON holiday(year);
-```
-
-This supports:
-
-```text
-GET holidays for year
-
-GET holidays for month/year
-
-Leave-day calculation
-```
-
----
-
-# 40. Notification Indexes
-
-Recommended:
-
-```sql
-CREATE INDEX ix_notification_employee_created
-ON notification(
-    employee_id,
-    created_at
-);
-```
-
-```sql
-CREATE INDEX ix_notification_employee_unread
-ON notification(
-    employee_id,
-    is_read
-);
-```
-
----
-
-# 41. Audit Log Indexes
-
-Recommended:
-
-```sql
-CREATE INDEX ix_audit_entity
-ON audit_log(
-    entity_type,
-    entity_id
-);
-```
-
-```sql
-CREATE INDEX ix_audit_performed_by
-ON audit_log(performed_by);
-```
-
-```sql
-CREATE INDEX ix_audit_created_at
-ON audit_log(created_at);
-```
-
----
-
-# 42. PostgreSQL Table Summary
-
-Core tables:
-
-```text
-department
-
-employee
-
-app_user
-
-leave_type
-
-leave_balance
-
-leave_appln
-
-holiday
-
-notification
-
-audit_log
-```
-
-Future tables may include:
-
-```text
-leave_policy
-
-leave_allocation_history
-
-leave_balance_transaction
-
-employee_role
-
-organization
-
-location
-
-calendar
-
-attachment
-```
-
-They should only be introduced when requirements require them.
-
----
-
-# 43. Recommended SQL Schema — department
-
-```sql
-CREATE TABLE department (
-    department_id UUID PRIMARY KEY,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    name VARCHAR(150) NOT NULL,
-    description TEXT,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ,
-
-    CONSTRAINT chk_department_status
-        CHECK (status IN ('ACTIVE', 'INACTIVE'))
-);
-```
-
----
-
-# 44. Recommended SQL Schema — employee
-
-```sql
-CREATE TABLE employee (
-    employee_id UUID PRIMARY KEY,
-    employee_code VARCHAR(50) NOT NULL UNIQUE,
-    name VARCHAR(200) NOT NULL,
-    email VARCHAR(255) NOT NULL UNIQUE,
-    department_id UUID,
-    manager_id UUID,
-    designation VARCHAR(150),
-    joining_date DATE NOT NULL,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ,
-
-    CONSTRAINT fk_employee_department
-        FOREIGN KEY (department_id)
-        REFERENCES department(department_id),
-
-    CONSTRAINT fk_employee_manager
-        FOREIGN KEY (manager_id)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT chk_employee_status
-        CHECK (
-            status IN (
-                'ACTIVE',
-                'INACTIVE',
-                'RESIGNED',
-                'TERMINATED'
-            )
-        )
-);
-```
-
----
-
-# 45. Recommended SQL Schema — leave_type
-
-```sql
-CREATE TABLE leave_type (
-    leave_type_id UUID PRIMARY KEY,
-    code VARCHAR(30) NOT NULL UNIQUE,
-    name VARCHAR(100) NOT NULL,
-    description TEXT,
-    is_paid BOOLEAN NOT NULL DEFAULT TRUE,
-    allow_half_day BOOLEAN NOT NULL DEFAULT FALSE,
-    requires_approval BOOLEAN NOT NULL DEFAULT TRUE,
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ,
-
-    CONSTRAINT chk_leave_type_status
-        CHECK (status IN ('ACTIVE', 'INACTIVE'))
-);
-```
-
----
-
-# 46. Recommended SQL Schema — leave_balance
-
-```sql
-CREATE TABLE leave_balance (
-    id UUID PRIMARY KEY,
-    employee_id UUID NOT NULL,
-    leave_type_id UUID NOT NULL,
-    leave_year INTEGER NOT NULL,
-    allocated NUMERIC(10,2) NOT NULL DEFAULT 0,
-    used NUMERIC(10,2) NOT NULL DEFAULT 0,
-    pending NUMERIC(10,2) NOT NULL DEFAULT 0,
-    carried_forward NUMERIC(10,2) NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMPTZ,
-
-    CONSTRAINT fk_leave_balance_employee
-        FOREIGN KEY (employee_id)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT fk_leave_balance_type
-        FOREIGN KEY (leave_type_id)
-        REFERENCES leave_type(leave_type_id),
-
-    CONSTRAINT uq_leave_balance_employee_type_year
-        UNIQUE (
-            employee_id,
-            leave_type_id,
-            leave_year
-        ),
-
-    CONSTRAINT chk_leave_balance_allocated
-        CHECK (allocated >= 0),
-
-    CONSTRAINT chk_leave_balance_used
-        CHECK (used >= 0),
-
-    CONSTRAINT chk_leave_balance_pending
-        CHECK (pending >= 0),
-
-    CONSTRAINT chk_leave_balance_carried_forward
-        CHECK (carried_forward >= 0)
-);
-```
-
----
-
-# 47. Recommended SQL Schema — leave_appln
-
-```sql
-CREATE TABLE leave_appln (
-    id UUID PRIMARY KEY,
-
-    employee_id UUID NOT NULL,
-
-    leave_type_id UUID NOT NULL,
-
-    from_date DATE NOT NULL,
-
-    to_date DATE NOT NULL,
-
-    number_of_days NUMERIC(5,2) NOT NULL,
-
-    reason TEXT,
-
-    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
-
-    manager_id UUID,
-
-    approved_by UUID,
-
-    approved_at TIMESTAMPTZ,
-
-    rejected_by UUID,
-
-    rejected_at TIMESTAMPTZ,
-
-    rejection_reason TEXT,
-
-    cancelled_by UUID,
-
-    cancelled_at TIMESTAMPTZ,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    updated_at TIMESTAMPTZ,
-
-    CONSTRAINT fk_leave_appln_employee
-        FOREIGN KEY (employee_id)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT fk_leave_appln_leave_type
-        FOREIGN KEY (leave_type_id)
-        REFERENCES leave_type(leave_type_id),
-
-    CONSTRAINT fk_leave_appln_manager
-        FOREIGN KEY (manager_id)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT fk_leave_appln_approved_by
-        FOREIGN KEY (approved_by)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT fk_leave_appln_rejected_by
-        FOREIGN KEY (rejected_by)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT fk_leave_appln_cancelled_by
-        FOREIGN KEY (cancelled_by)
-        REFERENCES employee(employee_id),
-
-    CONSTRAINT chk_leave_appln_dates
-        CHECK (from_date <= to_date),
-
-    CONSTRAINT chk_leave_appln_days
-        CHECK (number_of_days > 0),
-
-    CONSTRAINT chk_leave_appln_status
-        CHECK (
-            status IN (
-                'PENDING',
-                'APPROVED',
-                'REJECTED',
-                'CANCELLED'
-            )
-        )
-);
-```
-
----
-
-# 48. Recommended SQL Schema — holiday
-
-```sql
-CREATE TABLE holiday (
-    holiday_id UUID PRIMARY KEY,
-
-    holiday_date DATE NOT NULL,
-
-    name VARCHAR(200) NOT NULL,
-
-    description TEXT,
-
-    year INTEGER NOT NULL,
-
-    is_optional BOOLEAN NOT NULL DEFAULT FALSE,
-
-    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    updated_at TIMESTAMPTZ,
-
-    CONSTRAINT uq_holiday_date_name
-        UNIQUE (holiday_date, name),
-
-    CONSTRAINT chk_holiday_status
-        CHECK (
-            status IN (
-                'ACTIVE',
-                'INACTIVE'
-            )
-        )
-);
-```
-
----
-
-# 49. Recommended Initial Index SQL
-
-```sql
-CREATE INDEX ix_employee_department_id
-ON employee(department_id);
-
-CREATE INDEX ix_employee_manager_id
-ON employee(manager_id);
-
-CREATE INDEX ix_employee_status
-ON employee(status);
-
-CREATE INDEX ix_leave_balance_employee
-ON leave_balance(employee_id);
-
-CREATE INDEX ix_leave_appln_employee
-ON leave_appln(employee_id);
-
-CREATE INDEX ix_leave_appln_manager
-ON leave_appln(manager_id);
-
-CREATE INDEX ix_leave_appln_status
-ON leave_appln(status);
-
-CREATE INDEX ix_leave_appln_leave_type
-ON leave_appln(leave_type_id);
-
-CREATE INDEX ix_leave_appln_employee_dates
-ON leave_appln(
-    employee_id,
-    from_date,
-    to_date
-);
-
-CREATE INDEX ix_leave_appln_manager_status
-ON leave_appln(
-    manager_id,
-    status
-);
-
-CREATE INDEX ix_holiday_date
-ON holiday(holiday_date);
-
-CREATE INDEX ix_holiday_year
-ON holiday(year);
-```
-
----
-
-# 50. Database Ownership Rules
-
-The repository layer is responsible for database interaction.
-
-Architecture:
-
-```text
-FastAPI Router
-     |
-     v
-Service
-     |
-     v
-Repository
-     |
-     v
-SQLAlchemy
-     |
-     v
-PostgreSQL
-```
-
-Routers must not query PostgreSQL directly.
-
-Services should not normally contain raw SQL.
-
-React components must never access PostgreSQL.
-
----
-
-# 51. Repository Responsibilities
-
-Repositories may perform:
-
-```text
-SELECT
-INSERT
-UPDATE
-DELETE where allowed
-Filtering
-Pagination
-Ordering
-Row locking
-Existence checks
-```
-
-Repositories must not decide:
-
-```text
-Whether leave can be approved
-
-Whether balance is sufficient
-
-Whether an employee is eligible for leave
-
-Whether a status transition is valid
-```
-
-Those decisions belong to the service layer.
-
----
-
-# 52. Service Responsibilities
-
-The service layer owns rules such as:
-
-```text
-Is employee active?
-
-Is leave type active?
-
-Are dates valid?
-
-Is the leave request in the past?
-
-How many working leave days are involved?
-
-Does the application overlap another leave?
-
-Does the employee have sufficient balance?
-
-Who is the approving manager?
-
-Can the current manager approve the request?
-
-Can the employee cancel the request?
-
-How must leave balances change?
-```
-
----
-
-# 53. Data Integrity Principle
-
-The database is the final integrity layer.
-
-Validation should therefore occur at:
-
-```text
-Frontend
-    |
-    v
-Pydantic
-    |
-    v
-Service Layer
-    |
-    v
-Database Constraints
-```
-
-However:
-
-```text
-Frontend validation
-```
-
-is only for user experience.
-
-It must never be considered sufficient protection for business data.
-
----
-
-# 54. Production Schema Changes
-
-Production schema must never be modified manually.
-
-Required process:
-
-```text
-SQLAlchemy Model Change
-        |
-        v
-Alembic Migration
-        |
-        v
-Migration Review
-        |
-        v
-Apply to Development
-        |
-        v
-Test
-        |
-        v
-Apply to Production
-```
-
-Migration files must be committed to Git.
-
----
-
-# 55. Seed Data
-
-Development environments may contain seed data.
-
-Recommended initial leave types:
-
-```text
-EL  - Earned Leave
-
-PL  - Privilege Leave
-
-SL  - Sick Leave
-
-PTL - Paternity Leave
-
-ML  - Maternity Leave
-
-LOP - Loss of Pay
-```
-
-Seed data must never overwrite existing production data.
-
----
-
-# 56. Future Leave Balance Transaction Ledger
-
-The first implementation may use:
-
-```text
-leave_balance
-```
-
-with:
-
-```text
-allocated
-used
-pending
-```
-
-A future implementation may introduce:
-
-```text
-leave_balance_transaction
-```
-
-for complete balance history.
-
-Possible structure:
-
-```text
-transaction_id UUID PRIMARY KEY
-
-employee_id UUID
-
-leave_type_id UUID
-
-leave_appln_id UUID
-
-transaction_type VARCHAR(30)
-
-amount NUMERIC(10,2)
-
-balance_after NUMERIC(10,2)
-
-created_at TIMESTAMPTZ
-```
-
-Possible transaction types:
-
-```text
-ALLOCATION
-
-CARRY_FORWARD
-
-PENDING_RESERVATION
-
-PENDING_RELEASE
-
-LEAVE_USED
-
-MANUAL_ADJUSTMENT
-```
-
-This should only be added when required.
-
----
-
-# 57. Final Core Data Model
-
-The core leave-management database model is:
-
-```text
-                    department
-                         |
-                         v
-                     employee
-                    /    |    \
-                   /     |     \
-                  v      v      v
-          leave_balance  |   notification
-                |        |
-                v        v
-           leave_type  leave_appln
-                          |
-                          v
-                     leave_type
-```
-
-Manager hierarchy:
-
-```text
-employee
-   |
-   | manager_id
-   |
-   +-----------> employee
-```
-
-Authentication:
-
-```text
-employee
-   |
-   v
-app_user
-```
-
-Audit:
-
-```text
-Business Entities
-       |
-       v
-   audit_log
-```
-
----
-
-# 58. Core Table Summary
-
-## employee
-
-```text
-employee_id UUID PRIMARY KEY
-employee_code VARCHAR(50) UNIQUE
-name VARCHAR(200)
-email VARCHAR(255) UNIQUE
-department_id UUID
-manager_id UUID
-designation VARCHAR(150)
-joining_date DATE
-status VARCHAR(20)
-```
-
-## leave_type
-
-```text
-leave_type_id UUID PRIMARY KEY
-code VARCHAR(30) UNIQUE
-name VARCHAR(100)
-description TEXT
-is_paid BOOLEAN
-allow_half_day BOOLEAN
-requires_approval BOOLEAN
-status VARCHAR(20)
-```
-
-## leave_balance
-
-```text
-id UUID PRIMARY KEY
-employee_id UUID
-leave_type_id UUID
-leave_year INTEGER
-allocated NUMERIC(10,2)
-used NUMERIC(10,2)
-pending NUMERIC(10,2)
-carried_forward NUMERIC(10,2)
-```
-
-Calculated:
-
-```text
-available =
-allocated
-+ carried_forward
-- used
-- pending
-```
-
-## leave_appln
-
-```text
-id UUID PRIMARY KEY
-employee_id UUID
-leave_type_id UUID
-from_date DATE
-to_date DATE
-number_of_days NUMERIC(5,2)
-reason TEXT
-status VARCHAR(20)
-manager_id UUID
-approved_by UUID
-approved_at TIMESTAMPTZ
-rejected_by UUID
-rejected_at TIMESTAMPTZ
-rejection_reason TEXT
-cancelled_by UUID
-cancelled_at TIMESTAMPTZ
-created_at TIMESTAMPTZ
-updated_at TIMESTAMPTZ
-```
-
-## holiday
-
-```text
-holiday_id UUID PRIMARY KEY
-holiday_date DATE
-name VARCHAR(200)
-description TEXT
-year INTEGER
-is_optional BOOLEAN
-status VARCHAR(20)
-```
-
----
-
-# 59. Final Business Rule Summary
-
-1. Employee cannot apply for leave in the past.
-
-2. `from_date` cannot be after `to_date`.
-
-3. Employee cannot request more leave than the available balance unless the leave type explicitly permits it.
-
-4. Only `PENDING` applications can initially be cancelled.
-
-5. Only the authorized manager can approve or reject an employee's leave.
-
-6. A manager cannot approve or reject their own leave.
-
-7. Applying for leave reserves the requested number of days in `pending`.
-
-8. Approved leave moves days from `pending` to `used`.
-
-9. Rejected leave removes days from `pending` without increasing `used`.
-
-10. Cancelled pending leave removes days from `pending` without increasing `used`.
-
-11. `PENDING` and `APPROVED` leave applications must not overlap.
-
-12. Only active employees may normally submit leave requests.
-
-13. Only active leave types may be selected for new applications.
-
-14. Leave status and leave balance changes must occur transactionally.
-
-15. Leave balance rows must be locked when necessary to prevent concurrent over-allocation.
-
-16. Foreign keys must preserve referential integrity.
-
-17. Important business changes must be auditable.
-
-18. Production database changes must be performed using migrations.
-
----
-
-# 60. Related Documents
-
-This document defines persistence and data integrity.
-
-Refer to:
-
-```text
-docs\REQUIREMENTS.md
-```
-
-for business requirements.
-
-```text
-AGENTS.md
-```
-
-for development rules.
-
-```text
-docs\ARCHITECTURE.md
-```
-
-for system layering and component responsibilities.
-
-```text
-docs\API_SPEC.md
-```
-
-for API request and response contracts.
-
-```text
-docs\UI_SPEC.md
-```
-
-for frontend screens and behavior.
-
-```text
-docs\IMPLEMENTATION_PLAN.md
-```
-
-for implementation order.
-
-```text
-docs\TEST_PLAN.md
-```
-
-for database, API, service, and integration testing requirements.
-
----
-
-# End of DATABASE.md
+# Employee Leave Management System — Persistence Contract (v1)
+
+Updated 7 October 2026 after the Phase 0 audit. This document owns PostgreSQL
+persistence. API_SPEC.md owns wire names; REQUIREMENTS.md owns business behavior.
+This is a target schema, not an applied migration. Phase 2 implements it with Alembic.
+
+## 1. Foundation decisions
+
+- PostgreSQL; SQLAlchemy 2 style with synchronous Session and Psycopg 3 driver.
+- One metadata registry in `backend/app/models/base.py`; models registered through
+  `backend/app/models/__init__.py`. Never use create_all for deployed schema changes.
+- UUID primary keys generated in Python with uuid4, before flush; no UUID extension
+  required. Names snake_case. Named constraints permit predictable migrations.
+- All event timestamps TIMESTAMPTZ, persisted in UTC; date-only values remain DATE.
+- Every business table has created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  and updated_at TIMESTAMPTZ NULL unless the table description says otherwise.
+  Services set updated_at on actual mutation; repeat read/deactivate calls preserve it.
+- All FKs use ON DELETE RESTRICT. No employee, account, leave type, application or
+  balance physical deletion in v1. Notification/session expiry maintenance must be
+  reviewed separately and must not cascade into business records.
+- Model FK names/indexes must be explicit. UNIQUE creates its own index; do not also
+  create a duplicate unique index on the same columns.
+- Status CHECKs use the exact enums in API_SPEC.md. NOT NULL unless marked NULL below.
+- NUMERIC values use Decimal. No binary float accounting. Counter precision is (10,2);
+  application days (5,2), positive whole-day values in v1, at most 366.
+- Organizational timezone comes from ORG_TIMEZONE; initial policy Asia/Kolkata,
+  calendar leave year January 1 to December 31, Monday-Friday working days.
+
+## 2. department
+
+| Column | Type / constraints |
+|---|---|
+| department_id | UUID PK |
+| code | VARCHAR(30) UNIQUE; uppercase normalized code |
+| name | VARCHAR(150) |
+| description | TEXT NULL; max 2000 in service |
+| status | VARCHAR(20), ACTIVE/INACTIVE; default ACTIVE |
+| created_at, updated_at | common timestamps |
+
+Departments are seeded/managed operationally; no department write API in v1.
+Inactive departments cannot receive new employee assignments. Existing assignments remain.
+
+## 3. employee
+
+| Column | Type / constraints |
+|---|---|
+| employee_id | UUID PK |
+| employee_code | VARCHAR(50) UNIQUE; uppercase, no @; immutable |
+| name | VARCHAR(200); one full-name field in v1 |
+| email | VARCHAR(255) UNIQUE; lowercase normalized; immutable casing |
+| phone | VARCHAR(30) NULL |
+| department_id | UUID FK department, NOT NULL |
+| manager_id | UUID FK employee NULL for top-level MANAGER/ADMINISTRATOR only |
+| joining_date | DATE |
+| designation | VARCHAR(150) NULL |
+| status | VARCHAR(20), ACTIVE/INACTIVE/RESIGNED/TERMINATED; default ACTIVE |
+| created_at, updated_at | common timestamps |
+
+CHECK manager_id IS NULL OR manager_id <> employee_id. Service checks hierarchy cycles,
+manager account/employee ACTIVE and role MANAGER/ADMINISTRATOR, and role-dependent
+manager requirement. Role checks cannot be a cross-table CHECK. Employee creation,
+role/status/hierarchy changes hold the common hierarchy advisory lock while validating.
+Email uniqueness is case-insensitive because all writes normalize lowercase; include
+CHECK email = lower(email) and employee_code = upper(employee_code).
+
+## 4. app_user
+
+| Column | Type / constraints |
+|---|---|
+| user_id | UUID PK |
+| employee_id | UUID FK employee UNIQUE NOT NULL |
+| username | VARCHAR(255) UNIQUE; equals linked employee normalized email |
+| password_hash | VARCHAR(255); Argon2id encoded hash, never API-visible |
+| role | VARCHAR(30), EMPLOYEE/MANAGER/ADMINISTRATOR |
+| status | VARCHAR(20), ACTIVE/INACTIVE/LOCKED; default ACTIVE |
+| last_login_at | TIMESTAMPTZ NULL |
+| created_at, updated_at | common timestamps |
+
+Exactly one account per employee created through admin API; existing employee seeds
+must also create linked accounts. No orphan or service accounts in v1. An inactive
+employee blocks access even if account is ACTIVE. Role/account changes and employee
+non-ACTIVE transitions revoke sessions. Email/username updates are one transaction.
+Username equality with employee email is service-enforced and tested.
+No separate role table or many-role association in v1.
+
+## 5. auth_session
+
+Server-revocable opaque bearer sessions; no JWT/revocation blacklist design in v1.
+
+| Column | Type / constraints |
+|---|---|
+| session_id | UUID PK |
+| user_id | UUID FK app_user |
+| token_hash | CHAR(64) UNIQUE; lowercase SHA-256 hex, never plaintext token |
+| created_at | TIMESTAMPTZ default CURRENT_TIMESTAMP |
+| expires_at | TIMESTAMPTZ |
+| revoked_at | TIMESTAMPTZ NULL |
+
+CHECK expires_at > created_at; CHECK revoked_at IS NULL OR revoked_at >= created_at.
+Token generated using at least 32 cryptographically random bytes and returned once
+at login. Tokens are never logged, audited or stored plaintext. Sessions do not have
+updated_at. Login writes session and last_login_at atomically. Logout marks only the
+presented session revoked; account changes revoke all account sessions. Expired/revoked
+sessions are rejected by current-user resolution. Retention/cleanup is future operations
+work; implementation must tolerate retained expired rows.
+
+## 6. leave_type
+
+| Column | Type / constraints |
+|---|---|
+| leave_type_id | UUID PK |
+| code | VARCHAR(30) UNIQUE; uppercase immutable |
+| name | VARCHAR(100) |
+| description | TEXT NULL; max 2000 |
+| is_paid | BOOLEAN default TRUE |
+| allow_employee_application | BOOLEAN default TRUE |
+| allow_half_day | BOOLEAN default FALSE; CHECK = FALSE for v1 |
+| requires_approval | BOOLEAN default TRUE; CHECK = TRUE for v1 |
+| status | VARCHAR(20), ACTIVE/INACTIVE; default ACTIVE |
+| created_at, updated_at | common timestamps |
+
+All leave types including LOP require allocated balances. is_paid is classification,
+not a permission to exceed balance. Half-day/automatic approval are deferred. Annual
+allocation is per employee/type/year in leave_balance; no default annual entitlement,
+automatic allocation/accrual or employee eligibility engine in v1. Employee application
+eligibility is the flag plus existence of an allocated balance.
+Seed codes are EARNED, PRIVILEGE, SICK, PATERNITY, MATERNITY, LOP. Configurable codes
+are business data; services/UI must not branch on these example strings.
+
+## 7. leave_balance
+
+| Column | Type / constraints |
+|---|---|
+| id | UUID PK; exposed as balance_id in all API schemas |
+| employee_id | UUID FK employee |
+| leave_type_id | UUID FK leave_type |
+| leave_year | INTEGER, CHECK 1900..9999 |
+| allocated | NUMERIC(10,2) default 0 |
+| carried_forward | NUMERIC(10,2) default 0 |
+| used | NUMERIC(10,2) default 0 |
+| pending | NUMERIC(10,2) default 0 |
+| created_at, updated_at | common timestamps |
+
+UNIQUE(employee_id, leave_type_id, leave_year).
+CHECK allocated>=0, carried_forward>=0, used>=0, pending>=0.
+CHECK allocated+carried_forward>=used+pending.
+Available is computed in backend: allocated+carried_forward-used-pending; never stored.
+Allocation edits cannot lower entitlement below used+pending. Adjustments alter only
+allocated, with required reason in audit; used/pending change only through leave actions.
+Numeric range checks in API prevent overflow, and service rejects insufficient allocation
+before reaching the CHECK constraint. No ledger table in v1.
+
+## 8. leave_appln
+
+| Column | Type / constraints |
+|---|---|
+| id | UUID PK; exposed as application_id |
+| employee_id | UUID FK employee |
+| leave_type_id | UUID FK leave_type |
+| leave_year | INTEGER; same year as from_date and to_date |
+| from_date, to_date | DATE |
+| number_of_days | NUMERIC(5,2); positive integer <=366 |
+| reason | TEXT NOT NULL; trimmed 1..1000 in service |
+| status | VARCHAR(20), PENDING/APPROVED/REJECTED/CANCELLED; default PENDING |
+| manager_id | UUID FK employee; required snapshot at submission |
+| approved_by, rejected_by, cancelled_by | UUID FK employee NULL |
+| approved_at, rejected_at, cancelled_at | TIMESTAMPTZ NULL |
+| approval_comment, rejection_reason, cancellation_reason | TEXT NULL; max 1000 |
+| created_at, updated_at | common timestamps |
+
+CHECK from_date<=to_date; CHECK EXTRACT(YEAR FROM from_date)=leave_year AND
+EXTRACT(YEAR FROM to_date)=leave_year; CHECK number_of_days>0 AND
+number_of_days<=366 AND number_of_days=trunc(number_of_days).
+CHECK manager_id<>employee_id. Status metadata constraints:
+
+- PENDING: all terminal actors/timestamps/reasons/comments NULL.
+- APPROVED: approved_by and approved_at present; rejected/cancelled metadata NULL;
+  approval_comment optional. approved_by<>employee_id.
+- REJECTED: rejected_by and rejected_at present; nonblank rejection_reason present;
+  approved/cancelled metadata NULL. rejected_by<>employee_id.
+- CANCELLED: cancelled_by=employee_id and cancelled_at present; approved/rejected
+  metadata NULL; cancellation_reason optional.
+
+Persisted days, leave_year and manager snapshot never change after submission.
+New applications cannot start before business today. This time-relative check is in
+service, not a CURRENT_DATE database constraint. Pending past-date applications can
+be processed using stored days. Inactive employees cannot be approved but may have
+reservations released by an authorized rejection. Administrator override is permitted
+for approve/reject, excluding self. Only owners cancel pending requests.
+
+Overlap is inclusive from_date/to_date across all leave types for PENDING/APPROVED;
+weekend-only intersections still overlap. Mandatory employee row locking before the
+query prevents cross-type write skew. There is no claim that a balance-row lock alone
+or the dates index enforces overlap. All production writes must use the service path.
+
+## 9. holiday
+
+| Column | Type / constraints |
+|---|---|
+| holiday_id | UUID PK |
+| holiday_date | DATE UNIQUE across active/inactive records |
+| name | VARCHAR(200) |
+| description | TEXT NULL; max 2000 |
+| year | INTEGER, derived from holiday_date |
+| is_optional | BOOLEAN default FALSE |
+| status | VARCHAR(20), ACTIVE/INACTIVE; default ACTIVE |
+| created_at, updated_at | common timestamps |
+
+CHECK year=EXTRACT(YEAR FROM holiday_date). Service derives year; never trust input.
+One global holiday per date; regional calendars are deferred. Optional holidays are
+shown but do not reduce leave days in v1. Only ACTIVE mandatory weekday holidays
+exclude working days. Count distinct dates; a weekend holiday contributes zero holiday_days.
+Existing applications retain stored days after holiday changes. Soft deactivate;
+reactivate/edit the existing row rather than insert another holiday for the date.
+
+## 10. notification
+
+| Column | Type / constraints |
+|---|---|
+| notification_id | UUID PK |
+| employee_id | UUID FK employee; recipient |
+| notification_type | VARCHAR(50), LEAVE_SUBMITTED/LEAVE_APPROVED/LEAVE_REJECTED/LEAVE_CANCELLED/SYSTEM |
+| title | VARCHAR(200) |
+| message | TEXT |
+| reference_type | VARCHAR(50) NULL |
+| reference_id | UUID NULL |
+| is_read | BOOLEAN default FALSE |
+| created_at | TIMESTAMPTZ default CURRENT_TIMESTAMP |
+| read_at | TIMESTAMPTZ NULL |
+
+CHECK (is_read AND read_at IS NOT NULL) OR (NOT is_read AND read_at IS NULL).
+References are polymorphic, not an FK; referenced access is rechecked on navigation.
+Submission creates distinct owner+manager notifications; approve/reject owner only;
+cancel owner+snapshot manager. Each insertion is part of the leave transaction.
+No updated_at. Repeated mark-read preserves original read_at. No external delivery.
+
+## 11. audit_log
+
+| Column | Type / constraints |
+|---|---|
+| audit_id | UUID PK |
+| entity_type | VARCHAR(100) |
+| entity_id | UUID NULL |
+| action | VARCHAR(100) |
+| performed_by | UUID FK employee NULL only for system/development seed operations |
+| old_values, new_values | JSONB NULL |
+| ip_address | VARCHAR(50) NULL |
+| created_at | TIMESTAMPTZ default CURRENT_TIMESTAMP |
+
+Append-only through application services; no update/delete API. No updated_at.
+User mutations must have performed_by; seed/system actions identify their origin in
+safe JSON metadata. Application audit values include old/new status and actor; balance
+adjustments include amount, reason and old/new counters. Never store initial passwords,
+hashes, tokens, session hashes or unrestricted request bodies in audit JSON.
+Audit creation is mandatory for employee/account, leave, balance, leave-type and holiday
+writes and participates in their transaction. An audit viewer is a later release,
+independent of mandatory audit creation. Production retention policy requires a separate
+review; no destructive retention job is authorized by this schema.
+
+## 12. Required indexes
+
+UNIQUE constraints provide indexes for department.code, employee.code/email,
+app_user.employee_id/username, auth_session.token_hash, leave_type.code,
+leave_balance(employee_id,leave_type_id,leave_year), holiday.holiday_date.
+Add non-unique indexes for:
+
+- employee(manager_id), employee(department_id), employee(status)
+- app_user(role,status), auth_session(user_id), auth_session(expires_at)
+- leave_appln(employee_id,created_at), leave_appln(manager_id,status),
+  leave_appln(employee_id,from_date,to_date), leave_appln(leave_type_id),
+  leave_appln(status), leave_appln(leave_year)
+- holiday(year), notification(employee_id,created_at), notification(employee_id,is_read)
+- audit_log(entity_type,entity_id), audit_log(performed_by), audit_log(created_at)
+
+Avoid redundant employee-only balance index unless query plans justify it: the unique
+balance index already starts with employee_id. Performance tests review plans with
+representative data before introducing additional indexes.
+
+## 13. Transactions and concurrency
+
+Services own transactions; repositories flush but never commit. SQLAlchemy Session is
+request-scoped. Avoid implicit commit in the dependency cleanup. READ COMMITTED plus
+explicit locking is the chosen v1 strategy. API_SPEC.md §15 defines the shared global
+lock ordering and bounded transaction restart policy; every mutation follows it.
+
+Apply: employee lock -> validate current identity/type/manager -> balance lock ->
+recheck cross-type overlap/balance -> insert PENDING -> pending+=days -> audit +
+owner/manager notifications -> commit.
+
+Terminal actions: employee lock -> revalidate actor/session -> application lock ->
+validate authorization/PENDING -> balance lock -> move pending to used (approve) or
+release pending (reject/cancel) -> write metadata -> audit + notifications -> commit.
+Use one counter update for the pending/used transfer so CHECKs remain valid at flush.
+
+Allocation/create/edit/adjust also locks employee then balance; account/hierarchy changes
+use the common advisory lock before sorted employee/account/session row locks. Revalidate
+a preliminary lookup after locking. Never lock an application then try to acquire its
+employee row; all operations use the same order. Duplicate status actions update nothing.
+
+In-app notification/audit failure rolls back the entire transaction. No post-commit
+in-app insertion that could silently lose the required event. Authentication/session
+revocation must not permit a mutation authorized with stale role/status after locking.
+Read responses expose committed states. Independent-session PostgreSQL race tests are
+required; SQLite is not evidence for locking behavior.
+
+## 14. Migrations and seeds
+
+Canonical paths: database/alembic.ini, database/migrations/env.py,
+database/migrations/script.py.mako, database/migrations/versions/.
+Run from repository root with backend import path configured in Alembic; versions
+register the complete model metadata. One migration authority, no duplicate backend
+migration directory. Phase 1 supplies configuration and an empty versions directory;
+Phase 2 supplies the first reviewed migration for all ten tables.
+
+Migrations: department -> employee -> app_user -> auth_session -> leave_type ->
+leave_balance -> leave_appln -> holiday -> notification -> audit_log. Self-referencing
+employee FK is allowed before seed insertion. Downgrade reverses dependency order;
+destructive downgrade is tested only on disposable databases, never automated in production.
+
+Verify upgrade from empty PostgreSQL and representative prior schema; inspect named
+FKs, checks, indexes and head. Do not create duplicate indexes via ORM+migration.
+For future required columns: add nullable, backfill, validate, constrain; do not discard data.
+Existing repository has no migrations or application data migration to perform.
+
+Development-only seed script: database/seed.py (Phase 2). APP_ENV must be development
+or test; refuse production. Hash passwords with the chosen password library before
+insertion. Idempotent creation by business keys; reruns do not overwrite changed rows,
+passwords, roles or balances. Seed departments, EMP001/MGR001/ADM001, reporting hierarchy,
+EARNED/PRIVILEGE/SICK/PATERNITY/MATERNITY/LOP, current-year balances and holidays.
+Never load fixtures from a real production dump. Test data is independently created,
+not dependent on manual development rows.

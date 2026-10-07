@@ -1,3 +1,5 @@
+> ARCHIVED REFERENCE — superseded on 7 October 2026. Use AGENTS.md. Historical fallbacks and instructions below are not current requirements.
+
 # AGENTS.md
 
 # Project

@@ -1,4069 +1,1077 @@
 # UI_SPEC.md
 
-# 1. Purpose
+# Employee Leave Management System — Frontend / UI Specification
 
-This document defines the frontend user-interface specification for the Employee Leave Management System.
-
-It describes:
-
-- Application layout
-- Navigation
-- Visual design
-- Responsive behavior
-- Employee screens
-- Manager screens
-- Administrator screens
-- Forms
-- Tables
-- Cards
-- Status indicators
-- Empty states
-- Loading states
-- Error states
-- Confirmation dialogs
-- Accessibility expectations
-- API integrations
-- Component structure
-- Frontend implementation rules
-
-The frontend must be implemented using:
-
-```text
-Next.js
-React
-TypeScript
-Tailwind CSS
-```
-
-The UI must communicate with the backend only through the REST APIs defined in:
-
-```text
-API_SPEC.md
-```
-
-The frontend must never access PostgreSQL directly.
+| | |
+|---|---|
+| Applies to | `frontend/` (Next.js + React + TypeScript + Tailwind CSS) |
+| Audience | Claude Code / Codex building the frontend |
+| Companion docs | `REQUIREMENTS.md`, `ARCHITECTURE.md`, `DATABASE.md`, `API_SPEC.md` |
+| Status | Initial release (v1) |
 
 ---
 
-# 2. Design Goals
+# 1. Purpose and How to Use This Document
 
-The application must feel like a modern enterprise SaaS product.
+This document defines **what the frontend must look like and how it must behave**: routes, screens, components, states, validation, error handling, accessibility and tests.
 
-The UI should be:
+Rules for the implementer:
 
-- Clean
-- Professional
-- Fast
-- Minimal
-- Responsive
-- Accessible
-- Consistent
-- Easy to scan
-- Easy to use
-- Suitable for desktop and mobile
-- Suitable for employees, managers, and administrators
-
-Avoid overly decorative designs.
-
-The application should prioritize:
-
-```text
-Clarity
-Information hierarchy
-Fast task completion
-Consistency
-Readable data
-Clear status visibility
-Simple workflows
-```
+1. Build only against the REST contracts in `API_SPEC.md`. Never invent endpoints or fields. If a contract is missing, stop the affected feature and update the owning specification first. Appendix A records resolved audit decisions.
+2. The backend is the source of truth for authentication, authorization, leave-day calculation, balances, overlap checks and status transitions. The UI may **hide or disable** controls for usability, but must never be the only guard (`ARCHITECTURE.md` §29, §42).
+3. Follow the layering in `ARCHITECTURE.md` §47: **Page → Feature component → Hook → Service/API client → Backend**. No raw `fetch()` inside components.
+4. Do not hardcode employees, leave types, holidays, managers, departments or balances. Everything comes from the API.
+5. Implement screens in the build order in §16. Each screen section lists its acceptance criteria; treat them as the definition of done.
 
 ---
 
-# 3. Visual Style
+# 2. Document Ownership and Canonical Routes
 
-Recommended overall visual direction:
+Updated 7 October 2026. This file is the canonical UI specification. UI_SPEC_V2.md
+is an archived predecessor. The current route map below matches IMPLEMENTATION_PLAN.md.
+Use AGENTS.md §7 subject-specific ownership: Requirements owns behavior, API owns
+wire contract, Database owns persistence, Architecture owns structure, UI owns
+presentation, Implementation Plan owns sequence, Test Plan owns gates. No universal
+precedence chain. Historical examples are not implementation contracts.
 
-```text
-Modern enterprise SaaS
-Light interface
-White and soft-gray surfaces
-Subtle borders
-Comfortable spacing
-Rounded cards
-Minimal shadows
-Clear typography
-Reserved use of color
-```
-
-The interface should resemble a polished HR or business operations platform rather than a generic admin template.
+Use /api/v1 and API snake_case. Roles use ADMINISTRATOR. UUID employee_id differs from
+human employee_code. Logout revokes a server session. A single full name and optional
+phone are supported. Allocations belong to employee/type/year balances. Regional
+calendars, half-day, automatic approval, exports, Settings, department CRUD and audit
+viewer are later-release work. No navigation to unsupported controls.
 
 ---
 
-# 4. Color System
+# 3. Technology and Conventions
 
-Use Tailwind-compatible semantic colors.
+## 3.1 Stack
 
-Recommended concepts:
+| Concern | Choice |
+|---|---|
+| Framework | Next.js (App Router), React, TypeScript (`strict: true`) |
+| Styling | Tailwind CSS (core utilities only; design tokens in §4) |
+| Server state | TanStack Query (React Query), used **inside hooks only** |
+| Forms / validation | react-hook-form + zod (UI-level validation only; backend is authoritative) |
+| Icons | lucide-react |
+| Dates | `date-fns` for formatting and calendar arithmetic. Never use it to compute leave days. |
+| Tests | Vitest, React Testing Library, MSW (API mocking); Playwright for the end-to-end flow |
 
-```text
-Primary:
-Blue
+The listed libraries are the chosen foundation stack. Do not introduce alternatives or duplicate libraries without an approved architectural change.
 
-Background:
-Very light gray
+## 3.2 Rendering model
 
-Surface:
-White
+Authentication is a bearer token held by the browser, so all authenticated pages are **client components** (`"use client"`) that fetch through hooks. Public layout and static shells may be server components. Do not attempt server-side authenticated fetches.
 
-Border:
-Soft gray
+## 3.3 Environment
 
-Primary text:
-Dark slate
-
-Secondary text:
-Medium gray
-
-Success:
-Green
-
-Warning:
-Amber
-
-Danger:
-Red
-
-Information:
-Blue
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_APP_NAME=Employee Leave Management
 ```
 
-Do not hardcode colors throughout components.
+The API client builds its base URL as `${NEXT_PUBLIC_API_URL}/api/v1`. No secrets in frontend env vars. Provide `frontend/.env.example`.
 
-Define reusable design tokens or Tailwind utility conventions.
-
----
-
-# 5. Status Colors
-
-Leave status must be visually consistent across the application.
-
-## PENDING
-
-Use:
+## 3.4 Directory structure (follows ARCHITECTURE.md §13)
 
 ```text
-Amber / Yellow
+frontend/
+├── app/
+│   ├── layout.tsx                  # root: fonts, providers
+│   ├── page.tsx                    # redirects to /dashboard or /login
+│   ├── login/page.tsx
+│   ├── forbidden/page.tsx
+│   ├── not-found.tsx
+│   └── (app)/                      # authenticated shell (AuthGate + AppShell)
+│       ├── layout.tsx
+│       ├── dashboard/page.tsx
+│       ├── profile/page.tsx
+│       ├── leave/
+│       │   ├── balance/page.tsx
+│       │   ├── apply/page.tsx
+│       │   ├── history/page.tsx
+│       │   └── applications/[id]/page.tsx
+│       ├── holidays/page.tsx
+│       ├── notifications/page.tsx
+│       ├── approvals/page.tsx
+│       ├── team/page.tsx
+│       ├── team/[employeeId]/page.tsx
+│       ├── team/calendar/page.tsx
+│       ├── reports/page.tsx
+│       └── admin/
+│           ├── employees/page.tsx
+│           ├── employees/new/page.tsx
+│           ├── employees/[id]/page.tsx
+│           ├── employees/[id]/edit/page.tsx
+│           ├── leave-types/page.tsx
+│           ├── leave-balances/page.tsx
+│           ├── leave-applications/page.tsx
+│           └── holidays/page.tsx
+├── components/
+│   ├── ui/        # Button, Input, Select, Textarea, DatePicker, Modal, ConfirmDialog,
+│   │              # Tabs, Toast, Badge, Card, Skeleton, Spinner
+│   ├── layout/    # AppShell, Sidebar, TopBar, MobileDrawer, PageHeader, Breadcrumbs
+│   ├── forms/     # FormField, FormError, AsyncEmployeeSelect
+│   └── common/    # DataTable, Pagination, StatusBadge, EmptyState, ErrorState,
+│                  # ForbiddenState, FilterBar, StatCard, RoleGate
+├── features/
+│   ├── auth/          # LoginForm, AuthProvider, AuthGate
+│   ├── employees/     # EmployeeTable, EmployeeForm, EmployeeProfileCard
+│   ├── leave/         # BalanceTable, BalanceCard, LeaveApplicationForm, LeaveSummaryPanel,
+│   │                  # LeaveHistoryTable, LeaveDetailCard, LeaveTimeline, CancelDialog
+│   ├── approvals/     # ApprovalTable, ApproveDialog, RejectDialog, TeamLeaveCalendar
+│   ├── holidays/      # HolidayCalendar, HolidayList, HolidayForm
+│   ├── notifications/ # NotificationBell, NotificationList
+│   └── reports/       # ReportFilters, SummaryReportTable, UtilizationCell
+├── services/
+│   ├── api-client.ts
+│   ├── auth-service.ts
+│   ├── employee-service.ts
+│   ├── leave-service.ts
+│   ├── holiday-service.ts
+│   ├── notification-service.ts
+│   ├── dashboard-service.ts
+│   ├── report-service.ts
+│   └── admin-service.ts
+├── hooks/                          # use-auth, use-leave-balance, use-leave-applications,
+│                                   # use-pending-approvals, use-holidays, use-notifications, ...
+├── types/                          # auth.ts, employee.ts, leave.ts, holiday.ts, common.ts
+├── lib/                            # constants.ts, date-utils.ts, format.ts, permissions.ts,
+│                                   # validators.ts, error-messages.ts
+└── tests/
 ```
 
-Example badge:
+## 3.5 Naming and code rules
 
-```text
-PENDING
-```
-
-## APPROVED
-
-Use:
-
-```text
-Green
-```
-
-## REJECTED
-
-Use:
-
-```text
-Red
-```
-
-## CANCELLED
-
-Use:
-
-```text
-Gray
-```
-
-Status colors must always be accompanied by text.
-
-Do not communicate status using color alone.
-
----
-
-# 6. Typography
-
-Use a clean modern sans-serif font.
-
-Preferred:
-
-```text
-Inter
-```
-
-or the default high-quality Next.js system font stack.
-
-Recommended hierarchy:
-
-```text
-Page title:
-24px–32px
-Semibold / Bold
-
-Section title:
-18px–22px
-Semibold
-
-Card value:
-24px–32px
-Bold
-
-Body:
-14px–16px
-
-Secondary text:
-13px–14px
-
-Table:
-13px–14px
-```
-
-Avoid excessive font-size variation.
+- Components `PascalCase.tsx`; hooks `use-*.ts`; services `*-service.ts`.
+- Page files only compose feature components and call hooks. No business rules in components.
+- Every list/detail screen must implement all four states: **loading, empty, error, success** (§8.1).
+- Every mutation button disables while pending and shows a spinner (prevents double submit).
+- User-supplied text (reason, rejection reason, names, descriptions) is rendered as **plain text** (`whitespace-pre-wrap`). Never use `dangerouslySetInnerHTML`.
 
 ---
 
-# 7. Global Application Layout
+# 4. Design System
 
-Desktop layout:
+## 4.1 Principles
 
-```text
-+------------------------------------------------------+
-| Top Header                                           |
-+---------------+--------------------------------------+
-|               |                                      |
-| Sidebar       | Main Content                         |
-|               |                                      |
-|               |                                      |
-|               |                                      |
-+---------------+--------------------------------------+
-```
+Clean, calm, data-first HR tooling. Information density is moderate; status must always be obvious; destructive actions are always confirmed.
 
-Recommended:
+## 4.2 Tokens (configure through the selected Tailwind version)
 
-```text
-Header height:
-64px
+| Token | Value / Tailwind |
+|---|---|
+| Font | Inter via `next/font`, fallback `system-ui, sans-serif` |
+| Base size | 16px body, 14px dense table text, 12px captions |
+| Primary | `blue-600` (hover `blue-700`, focus ring `blue-500`) |
+| Neutrals | `slate-50` page bg, `white` surfaces, `slate-200` borders, `slate-700` body text, `slate-900` headings |
+| Danger | `red-600` / bg `red-50` |
+| Success | `green-600` / bg `green-50` |
+| Warning | `amber-600` / bg `amber-50` |
+| Radius | `rounded-lg` cards/modals, `rounded-md` inputs/buttons |
+| Spacing | 4px scale; page padding `p-4 md:p-6`; card padding `p-4 md:p-6` |
+| Shadow | `shadow-sm` cards; `shadow-lg` modals/menus |
+| Focus | Always visible: `focus-visible:ring-2 ring-blue-500 ring-offset-2` |
 
-Sidebar width:
-240px–260px
-```
+Dark mode is out of scope for v1. All text/background pairs must meet WCAG AA contrast (4.5:1).
 
-Main content should have:
+## 4.3 Status badges (never colour-only — always include the text label)
 
-```text
-24px–32px desktop padding
-16px mobile padding
-```
+| Value | Label | Style |
+|---|---|---|
+| `PENDING` | Pending | `bg-amber-100 text-amber-900` |
+| `APPROVED` | Approved | `bg-green-100 text-green-900` |
+| `REJECTED` | Rejected | `bg-red-100 text-red-900` |
+| `CANCELLED` | Cancelled | `bg-slate-100 text-slate-700` |
+| Employee `ACTIVE` | Active | green |
+| Employee `INACTIVE` | Inactive | slate |
+| Employee `RESIGNED` / `TERMINATED` | Resigned / Terminated | slate / red |
+| Leave type / holiday `ACTIVE` / `INACTIVE` | Active / Inactive | green / slate |
 
----
+## 4.4 Formatting rules (`lib/format.ts`, `lib/date-utils.ts`)
 
-# 8. Header
+| Data | Display |
+|---|---|
+| Dates (`YYYY-MM-DD`) | `10-Oct-2026`. Parse as **local calendar date**, not UTC (avoid off-by-one from `new Date("2026-10-10")`). |
+| Date range | `10-Oct-2026 – 12-Oct-2026`; same day shows a single date |
+| Timestamps (ISO 8601) | `10-Oct-2026, 2:30 PM` in ORG_TIMEZONE, with an explicit timezone label |
+| Leave days (`2.0`, `0.5`) | Trim trailing zeros: `2`, `0.5`, `1.5` |
+| Empty/unknown value | `—` |
+| Person | `Name (E001)` where space allows; name only in compact cells |
+| Weekday hint | Show weekday in date pickers and the apply summary (`Sat, 10-Oct-2026`) |
 
-## Desktop Header
+Dates sent to the API are always `YYYY-MM-DD`.
 
-### Left
+## 4.5 Shared component contracts
 
-- Company logo
-- Optional company name
-
-### Center / Main Area
-
-Optional current page title or breadcrumb.
-
-### Right
-
-- Notification icon
-- Employee name
-- Employee role
-- Profile avatar
-- User menu
-
-User menu items:
-
-```text
-My Profile
-Settings
-Logout
-```
-
-Example:
-
-```text
-[Logo] Employee Leave Management              🔔  S M Basha ▼
-```
-
----
-
-# 9. Mobile Header
-
-Mobile header should contain:
-
-```text
-Menu button
-Company logo
-Page title
-Notification icon
-Profile/avatar
-```
-
-The desktop sidebar should become a drawer on smaller screens.
+| Component | Key behaviour |
+|---|---|
+| `Button` | Variants `primary / secondary / danger / ghost`; `loading` prop shows spinner and sets `aria-busy`, disables clicks |
+| `FormField` | Label, control, help text, error text; wires `htmlFor`, `aria-invalid`, `aria-describedby`; required marked with `*` **and** `aria-required` |
+| `DatePicker` | Native `<input type="date">` styled; supports `min`/`max`; keyboard accessible |
+| `Modal` / `ConfirmDialog` | Focus trap, `Esc` closes, focus returns to trigger, backdrop click closes unless a request is pending; becomes full-screen sheet below `md` |
+| `DataTable<T>` | Column defs, sortable headers (only for sorts the API supports), row actions. **≥ md renders a table; < md renders a stacked card list** with `label: value` pairs and actions at the bottom |
+| `Pagination` | Uses `page`, `page_size`, `total`; page size options 10/20/50/100 (default 20, max 100); shows "Showing 21–40 of 87" |
+| `StatusBadge` | Maps any status value in §4.3 |
+| `EmptyState` | Icon, title, one-line explanation, optional primary action |
+| `ErrorState` | Message + **Retry** button (re-runs the failed query) |
+| `ForbiddenState` | "You don't have permission to view this page." + link to dashboard |
+| `FilterBar` | Controlled filters synced to the URL query string so views are shareable and survive refresh; **Clear filters** button |
+| `StatCard` | Label, large value, optional sub-text and link |
+| `AsyncEmployeeSelect` | Combobox backed by `GET /employees?search=&page_size=20`, debounced 300 ms, shows `Name (E001)`, accessible listbox semantics |
+| `RoleGate` | `<RoleGate allow={["MANAGER","ADMINISTRATOR"]}>` hides children (UI convenience only) |
+| `Toast` | Success auto-dismiss 4 s; errors persist until dismissed; announced with `aria-live` |
 
 ---
 
-# 10. Sidebar Navigation
-
-Navigation must change based on user role.
-
-Common navigation:
-
-```text
-Dashboard
-Apply Leave
-My Leave
-Leave Balance
-Holiday Calendar
-Notifications
-```
-
-Manager navigation additionally includes:
-
-```text
-Pending Approvals
-Team Leave
-Direct Reports
-Reports
-```
-
-Administrator navigation additionally includes:
-
-```text
-Employees
-Departments
-Leave Types
-Leave Allocation
-Holidays
-Reports
-Audit Logs
-```
-
-Recommended grouping:
-
-```text
-MAIN
-Dashboard
-
-LEAVE
-Apply Leave
-My Leave
-Leave Balance
-Holiday Calendar
-
-MANAGEMENT
-Pending Approvals
-Team Leave
-
-ADMINISTRATION
-Employees
-Leave Types
-Leave Allocation
-Holidays
-Reports
-
-ACCOUNT
-Notifications
-Profile
-```
-
-Only show sections available to the current role.
-
-Backend authorization remains authoritative.
-
----
-
-# 11. Breadcrumbs
-
-Use breadcrumbs on secondary pages.
-
-Example:
-
-```text
-Dashboard / Leave / Apply Leave
-```
-
-or:
-
-```text
-Dashboard / Employees / E001
-```
-
-Do not use breadcrumbs on the main dashboard if unnecessary.
-
----
-
-# 12. Page Header Pattern
-
-Each major screen should start with:
-
-```text
-Page title
-Short description
-Optional primary action
-```
-
-Example:
-
-```text
-My Leave
-
-View and manage your leave applications.
-
-                         [+ Apply Leave]
-```
-
----
-
-# 13. Global Card Style
-
-Cards should use:
-
-```text
-White background
-Subtle gray border
-Rounded corners
-Minimal shadow or no shadow
-16px–24px padding
-```
-
-Cards should maintain consistent spacing.
-
----
-
-# 14. Global Button Styles
-
-## Primary Button
-
-Use for the most important action.
-
-Examples:
-
-```text
-Apply Leave
-Approve
-Save Employee
-Create Holiday
-```
-
-## Secondary Button
-
-Examples:
-
-```text
-Cancel
-Back
-Reset
-```
-
-## Danger Button
-
-Examples:
-
-```text
-Reject
-Cancel Leave
-Deactivate
-```
-
-## Ghost/Text Button
-
-Examples:
-
-```text
-View
-Details
-View All
-```
-
-Buttons must have:
-
-```text
-Default
-Hover
-Focus
-Disabled
-Loading
-```
-
-states.
-
----
-
-# 15. Form Standards
-
-All forms should use consistent:
-
-```text
-Label
-Input
-Helper text
-Validation error
-Spacing
-```
-
-Example:
-
-```text
-Leave Type *
-
-[ Select Leave Type ▼ ]
-
-Choose the leave category you want to apply for.
-```
-
-Required fields should have:
-
-```text
-*
-```
-
-Error:
-
-```text
-Leave type is required.
-```
-
----
-
-# 16. Form Validation
-
-Frontend validation improves user experience but is not authoritative.
-
-Validate:
-
-```text
-Required fields
-Date format
-Date ranges
-Email format
-Character limits
-Numeric ranges
-```
-
-Backend validation errors must also be displayed clearly.
-
----
-
-# 17. Loading States
-
-Every asynchronous screen must handle loading.
-
-Use:
-
-```text
-Skeleton cards
-Skeleton rows
-Spinner inside buttons
-Loading placeholders
-```
-
-Avoid showing completely blank pages.
-
-Example:
-
-```text
-Loading leave applications...
-```
-
-for small components.
-
-Prefer skeletons for primary screens.
-
----
-
-# 18. Empty States
-
-Every list must support an empty state.
-
-Example:
-
-```text
-No leave applications yet.
-
-You have not submitted any leave requests.
-
-[Apply Leave]
-```
-
-Manager example:
-
-```text
-No pending approvals.
-
-You're all caught up.
-```
-
----
-
-# 19. Error States
-
-Errors should be readable and actionable.
-
-Example:
-
-```text
-Unable to load leave applications.
-
-Please try again.
-
-[Retry]
-```
-
-Do not display backend stack traces.
-
----
-
-# 20. Toast Notifications
-
-Use toast notifications for completed actions.
-
-Examples:
-
-```text
-Leave application submitted successfully.
-
-Leave approved successfully.
-
-Leave rejected successfully.
-
-Leave application cancelled.
-
-Employee updated successfully.
-```
-
-Error example:
-
-```text
-Unable to submit leave application.
-```
-
-Use inline validation for field-level errors.
-
----
-
-# 21. Confirmation Dialogs
-
-Destructive or irreversible actions require confirmation.
-
-Examples:
-
-```text
-Cancel Leave
-
-Are you sure you want to cancel this leave application?
-
-[Keep Leave] [Cancel Leave]
-```
-
-Manager:
-
-```text
-Approve Leave
-
-Approve this leave request for 3 days?
-
-[Cancel] [Approve]
-```
-
-Reject should require a reason.
-
----
-
-# 22. Employee Dashboard
-
-Route:
-
-```text
-/dashboard
-```
-
-Primary dashboard for employees.
-
----
-
-# 23. Employee Dashboard Header
-
-## Left
-
-- Page title: Dashboard
-- Greeting
-
-Example:
-
-```text
-Good morning, Basha
-Here's an overview of your leave.
-```
-
-## Right
-
-Primary action:
-
-```text
-+ Apply Leave
-```
-
----
-
-# 24. Employee Summary Section
-
-Top summary may include:
-
-```text
-Employee Name
-Employee Code
-Department
-Manager
-```
-
-Example:
-
-```text
-S M Basha
-E001
-Engineering
-Reports to: Reporting Manager
-```
-
-Keep this compact.
-
----
-
-# 25. Leave Balance Cards
-
-Display one card per important leave type.
-
-Example:
-
-```text
-+-------------------+
-| Earned Leave      |
-|                   |
-| 12                |
-| Available         |
-|                   |
-| 20 Allocated      |
-| 6 Used • 2 Pending|
-+-------------------+
-```
-
-Suggested cards:
-
-1. Earned Leave
-2. Privileged Leave
-3. Sick Leave
-4. Paternity / Maternity depending on availability
-5. LOP if applicable
-
-Cards must be data-driven from:
-
-```text
-GET /api/v1/employees/{employee_id}/leave-balance
-```
-
-Do not hardcode leave categories.
-
-If the employee has six leave types, display all relevant balances.
-
-Desktop:
-
-```text
-3–4 cards per row
-```
-
-Tablet:
-
-```text
-2 cards per row
-```
-
-Mobile:
-
-```text
-1 card per row
-```
-
----
-
-# 26. Leave Balance Card Content
-
-Each card should display:
-
-```text
-Leave type name
-Available balance
-Allocated
-Used
-Pending
-```
-
-Example:
-
-```text
-Earned Leave
-
-12 days
-Available
-
-Allocated 20
-Used       6
-Pending    2
-```
-
-Avoid displaying false precision.
-
-Display:
-
-```text
-12
-```
-
-instead of:
-
-```text
-12.00
-```
-
-unless fractions exist.
-
-Example:
-
-```text
-11.5 days
-```
-
----
-
-# 27. Dashboard Quick Actions
-
-Display quick actions below balance cards.
-
-Possible actions:
-
-```text
-Apply Leave
-View My Leave
-View Holiday Calendar
-View Leave Balance
-```
-
-Use compact cards or buttons with icons.
-
----
-
-# 28. Recent Leave Applications
-
-Dashboard section:
-
-```text
-Recent Leave Applications                     View All
-```
-
-Columns:
-
-```text
-Application ID
-Leave Type
-From
-To
-Days
-Status
-Actions
-```
-
-For readability, Application ID may show only a shortened form:
-
-```text
-#FA711B70
-```
-
-Full ID should remain accessible in details.
-
-Example:
-
-| Application | Leave Type | From | To | Days | Status | Action |
-|---|---|---|---|---:|---|---|
-| #FA711B70 | Earned Leave | 10 Oct 2026 | 12 Oct 2026 | 2 | PENDING | View |
-
-Actions:
-
-```text
-View
-
-Cancel
-```
-
-Cancel appears only when the application is eligible.
-
----
-
-# 29. Upcoming Holidays
-
-Dashboard should include:
-
-```text
-Upcoming Holidays
-```
-
-Example:
-
-```text
-02 Oct
-Gandhi Jayanti
-
-20 Oct
-Company Holiday
-
-25 Dec
-Christmas
-```
-
-Show approximately 3–5 upcoming holidays.
-
-Action:
-
-```text
-View Calendar
-```
-
----
-
-# 30. Employee Dashboard Notifications
-
-Optional dashboard card:
-
-```text
-Notifications
-```
-
-Show most recent 3–5 notifications.
-
-Examples:
-
-```text
-Your leave has been approved.
-
-Your leave request is pending approval.
-
-Your leave application was rejected.
-```
-
----
-
-# 31. Apply Leave Screen
-
-Route:
-
-```text
-/leave/apply
-```
-
-Page header:
-
-```text
-Apply Leave
-
-Submit a new leave request.
-```
-
----
-
-# 32. Apply Leave Layout
-
-Desktop:
-
-```text
-+-----------------------------------+---------------------+
-| Apply Leave Form                  | Leave Balance       |
-|                                   | Summary             |
-|                                   |                     |
-+-----------------------------------+---------------------+
-```
-
-Recommended ratio:
-
-```text
-2/3 form
-1/3 supporting information
-```
-
-Mobile:
-
-```text
-Form
-then
-Balance Summary
-```
-
----
-
-# 33. Apply Leave Form Fields
-
-Fields:
-
-```text
-Leave Type *
-
-From Date *
-
-To Date *
-
-Reason *
-```
-
-Optional future fields:
-
-```text
-Half Day
-Attachment
-Contact During Leave
-```
-
-Do not implement future fields unless requirements explicitly enable them.
-
----
-
-# 34. Leave Type Field
-
-Use:
-
-```text
-Select / Combobox
-```
-
-Options come from:
-
-```text
-GET /api/v1/leave-types
-```
-
-Example:
-
-```text
-Earned Leave — 12 days available
-
-Sick Leave — 8 days available
-
-Privilege Leave — 5 days available
-```
-
-Showing balance within the selector is recommended.
-
----
-
-# 35. From Date
-
-Use date picker.
-
-Rules:
-
-```text
-Past dates disabled where possible.
-
-Current date and future dates selectable.
-```
-
-Backend remains authoritative.
-
----
-
-# 36. To Date
-
-Use date picker.
-
-Rules:
-
-```text
-Must not be before From Date.
-```
-
-When `from_date` changes, ensure invalid `to_date` is cleared or corrected.
-
----
-
-# 37. Leave Day Calculation
-
-After both dates and leave type are selected, display:
-
-```text
-Leave Summary
-```
-
-Example:
-
-```text
-Calendar Days      5
-Weekends           2
-Holidays           1
-Leave Days         2
-```
-
-Use:
-
-```text
-POST /api/v1/leave/calculate-days
-```
-
-if implemented.
-
-The actual submission API remains authoritative.
-
----
-
-# 38. Leave Balance Preview
-
-Show balance impact.
-
-Example:
-
-```text
-Earned Leave
-
-Current Available     12
-Requested               2
-Remaining              10
-```
-
-If insufficient:
-
-```text
-Current Available      1
-Requested              2
-
-Insufficient leave balance.
-```
-
-Disable submit only where the response clearly indicates that submission cannot succeed.
-
-Backend must still validate.
-
----
-
-# 39. Reason Field
-
-Use multiline textarea.
-
-Recommended:
-
-```text
-3–5 rows
-```
-
-Example placeholder:
-
-```text
-Briefly explain the reason for your leave.
-```
-
-Recommended maximum:
-
-```text
-500 or 1000 characters
-```
-
-Match backend validation.
-
----
-
-# 40. Apply Leave Buttons
-
-Bottom-right actions:
-
-```text
-Cancel
-Apply Leave
-```
-
-`Cancel`:
-
-```text
-Navigate back without submitting.
-```
-
-`Apply Leave`:
-
-```text
-Primary action.
-```
-
-While submitting:
-
-```text
-Applying...
-```
-
-Button should be disabled during submission.
-
----
-
-# 41. Apply Leave Success
-
-After successful submission:
-
-Display toast:
-
-```text
-Leave application submitted successfully.
-```
-
-Recommended navigation:
-
-```text
-/leave/{application_id}
-```
-
-or:
-
-```text
-/leave/my
-```
-
-The details screen should show:
-
-```text
-Status: PENDING
-```
-
----
-
-# 42. My Leave Screen
-
-Route:
-
-```text
-/leave/my
-```
-
-Header:
-
-```text
-My Leave
-
-View and manage your leave applications.
-
-[+ Apply Leave]
-```
-
----
-
-# 43. My Leave Filters
-
-Provide:
-
-```text
-Status
-Leave Type
-Year
-Date Range
-Search
-```
-
-Recommended default:
-
-```text
-Current year
-All statuses
-```
-
-Status options:
-
-```text
-All
-Pending
-Approved
-Rejected
-Cancelled
-```
-
----
-
-# 44. My Leave Table
-
-Columns:
-
-```text
-Application
-Leave Type
-From
-To
-Days
-Reason
-Status
-Applied On
-Actions
-```
-
-Desktop example:
-
-| Application | Leave Type | From | To | Days | Status | Applied | Actions |
-|---|---|---|---|---:|---|---|---|
-| #FA711B70 | Earned | 10 Oct | 12 Oct | 2 | PENDING | 7 Oct | View |
-
----
-
-# 45. My Leave Row Actions
-
-Actions depend on status.
-
-For `PENDING`:
-
-```text
-View
-Cancel
-```
-
-For `APPROVED`:
-
-```text
-View
-```
-
-For `REJECTED`:
-
-```text
-View
-```
-
-For `CANCELLED`:
-
-```text
-View
-```
-
-Do not display actions the user cannot perform.
-
----
-
-# 46. Leave Application Details Screen
-
-Route:
-
-```text
-/leave/[application_id]
-```
-
-Header:
-
-```text
-Leave Application
-
-#FA711B70
-```
-
-Status badge beside application ID.
-
----
-
-# 47. Leave Details Layout
-
-Recommended desktop layout:
-
-```text
-+--------------------------------+-----------------------+
-| Leave Details                  | Approval Information  |
-|                                |                       |
-+--------------------------------+-----------------------+
-```
-
-Main details:
-
-```text
-Leave Type
-From Date
-To Date
-Number of Days
-Reason
-Application Date
-Status
-```
-
-Approval information:
-
-```text
-Manager
-Approved By
-Approved At
-Rejected By
-Rejected At
-Rejection Reason
-Cancelled At
-```
-
-Display only relevant fields.
-
----
-
-# 48. Leave Timeline
-
-A visual timeline is recommended.
-
-Example pending request:
-
-```text
-✓ Application submitted
-  07 Oct 2026, 2:30 PM
-
-● Pending manager approval
-```
-
-Approved:
-
-```text
-✓ Application submitted
-✓ Approved by Reporting Manager
-```
-
-Rejected:
-
-```text
-✓ Application submitted
-✕ Rejected by Reporting Manager
-```
-
-Cancelled:
-
-```text
-✓ Application submitted
-○ Cancelled by employee
-```
-
----
-
-# 49. Cancel Leave Action
-
-When status is `PENDING`, show:
-
-```text
-Cancel Leave
-```
-
-as danger-secondary button.
-
-Confirmation dialog:
-
-```text
-Cancel Leave Application?
-
-This will withdraw your leave request and restore the reserved leave balance.
-
-Optional reason:
-[                         ]
-
-[Keep Application] [Cancel Leave]
-```
-
----
-
-# 50. Leave Balance Screen
-
-Route:
-
-```text
-/leave/balance
-```
-
-Header:
-
-```text
-Leave Balance
-
-View your leave entitlement and usage.
-```
-
----
-
-# 51. Leave Balance Screen Content
-
-Top:
-
-```text
-Year selector
-```
-
-Example:
-
-```text
-2026 ▼
-```
-
-Then balance cards.
-
-Below cards show detailed table.
-
-Columns:
-
-```text
-Leave Type
-Allocated
-Carried Forward
-Used
-Pending
-Available
-```
-
-Example:
-
-| Leave Type | Allocated | Carried | Used | Pending | Available |
-|---|---:|---:|---:|---:|---:|
-| Earned Leave | 20 | 2 | 8 | 2 | 12 |
-| Sick Leave | 10 | 0 | 2 | 0 | 8 |
-
----
-
-# 52. Holiday Calendar Screen
-
-Route:
-
-```text
-/holidays
-```
-
-Header:
-
-```text
-Holiday Calendar
-
-Company holidays and optional holidays.
-```
-
-Controls:
-
-```text
-Year
-Month
-```
-
-Recommended views:
-
-```text
-Calendar View
-List View
-```
-
----
-
-# 53. Holiday Calendar View
-
-Show holidays inside a standard month calendar.
-
-Holiday cell:
-
-```text
-02
-
-Gandhi Jayanti
-```
-
-Use subtle highlight.
-
-Optional holidays should use a visual indicator:
-
-```text
-Optional
-```
-
----
-
-# 54. Holiday List View
-
-Columns:
-
-```text
-Date
-Day
-Holiday
-Type
-```
-
-Example:
-
-| Date | Day | Holiday | Type |
+# 5. Routing, Navigation and Access
+
+## 5.1 Route map
+
+| Route | Screen | EMPLOYEE | MANAGER | ADMINISTRATOR |
+|---|---|:-:|:-:|:-:|
+| `/login` | Login | public | public | public |
+| `/` | Redirect → `/dashboard` (or `/login`) | ✓ | ✓ | ✓ |
+| `/dashboard` | Role-specific dashboard | ✓ | ✓ | ✓ |
+| `/profile` | My Profile | ✓ | ✓ | ✓ |
+| `/leave/balance` | Leave Balance | ✓ | ✓ | ✓ |
+| `/leave/apply` | Apply Leave | ✓ | ✓ | ✓ |
+| `/leave/history` | My Leave Applications & History | ✓ | ✓ | ✓ |
+| `/leave/applications/[id]` | Leave Application Details | owner | owner / current team / assigned snapshot | any |
+| `/holidays` | Holiday Calendar | ✓ | ✓ | ✓ |
+| `/notifications` | Notifications | ✓ | ✓ | ✓ |
+| `/approvals` | Team Leave Applications (default = Pending) | — | ✓ | ✓ |
+| `/team` | My Team (direct reports) | — | ✓ | ✓ |
+| `/team/[employeeId]` | Team member profile, balance, history | — | direct reports | any |
+| `/team/calendar` | Team Leave Calendar | — | ✓ | ✓ |
+| `/reports` | Reports (content varies by role) | ✓ | ✓ | ✓ |
+| `/admin/employees` | Employee Management | — | — | ✓ |
+| `/admin/employees/new` | Create Employee | — | — | ✓ |
+| `/admin/employees/[id]` | Employee detail (Profile / Balance / History tabs) | — | — | ✓ |
+| `/admin/employees/[id]/edit` | Edit Employee | — | — | ✓ |
+| `/admin/leave-types` | Leave Type Management | — | — | ✓ |
+| `/admin/leave-balances` | Leave Balance Management | — | — | ✓ |
+| `/admin/leave-applications` | All Leave Applications | — | — | ✓ |
+| `/admin/holidays` | Holiday Management | — | — | ✓ |
+| `/forbidden` | 403 page | ✓ | ✓ | ✓ |
+
+## 5.2 Guards (`features/auth/AuthGate`, `lib/permissions.ts`)
+
+1. **AuthGate** wraps the `(app)` layout. While the session is being restored it renders a full-page spinner. No token or expired token → redirect to `/login?returnTo=<current path>`.
+2. **Role guard** per route using the table above. A role mismatch renders `ForbiddenState` (or redirects to `/forbidden`). It must never flash protected content first.
+3. After login, redirect to `returnTo` if it is a same-origin relative path and the role may access it; otherwise `/dashboard`.
+4. The UI role comes from the login response / `GET /auth/me`. It is **only** for showing/hiding UI. Never send the role to the API as authority.
+5. A direct URL to an unauthorized resource (e.g. another employee's application) will return 403 FORBIDDEN for existing out-of-scope resources and 404 for missing authorized resources; show ForbiddenState / not-found accordingly. Do not rely on the guard to protect data.
+
+## 5.3 Navigation per role
+
+Sidebar (≥ `lg`, fixed 240 px) / top-bar hamburger drawer (< `lg`).
+
+| Group | Item | Route | Roles |
 |---|---|---|---|
-| 02 Oct 2026 | Friday | Gandhi Jayanti | Holiday |
-| 25 Dec 2026 | Friday | Christmas | Holiday |
+| — | Dashboard | `/dashboard` | all |
+| Leave | Apply Leave | `/leave/apply` | all |
+| Leave | Leave Balance | `/leave/balance` | all |
+| Leave | My Leave Applications | `/leave/history` | all |
+| Leave | Holidays | `/holidays` | all |
+| Team | Pending Approvals (badge with count) | `/approvals` | MANAGER, ADMINISTRATOR |
+| Team | My Team | `/team` | MANAGER, ADMINISTRATOR |
+| Team | Team Calendar | `/team/calendar` | MANAGER, ADMINISTRATOR |
+| — | Reports | `/reports` | all |
+| Admin | Employees | `/admin/employees` | ADMINISTRATOR |
+| Admin | Leave Types | `/admin/leave-types` | ADMINISTRATOR |
+| Admin | Leave Balances | `/admin/leave-balances` | ADMINISTRATOR |
+| Admin | All Applications | `/admin/leave-applications` | ADMINISTRATOR |
+| Admin | Holiday Management | `/admin/holidays` | ADMINISTRATOR |
+
+Top bar (all screens): hamburger (< `lg`), app name, **notification bell** with unread badge (§13), **user menu** (name, employee code, role; items: My Profile, Logout). The active nav item has `aria-current="page"`.
+
+---
+
+# 6. API Client, Session and Error Handling
+
+## 6.1 `services/api-client.ts`
+
+```ts
+request<T>(method, path, { query?, body?, signal? }): Promise<T>
+```
+
+- Prefixes `${NEXT_PUBLIC_API_URL}/api/v1`; sends `Content-Type: application/json` and `Authorization: Bearer <token>` when a token exists.
+- Serializes `query` omitting `undefined`/empty values; dates as `YYYY-MM-DD`.
+- `204` → resolves `undefined`.
+- Non-2xx: parse `{ "error": { "code", "message", "details" } }` into `ApiError { status, code, message, details }`.
+- Unparseable error body or `5xx` → `ApiError { code: "SERVER_ERROR", message: "Something went wrong. Please try again later." }`.
+- `fetch` rejection (backend down) → `ApiError { code: "NETWORK_ERROR", message: "Unable to connect to the server. Please try again." }`. The UI must not crash.
+- `401` on an authenticated request → call the session-expired handler (§6.2). Never retry automatically.
+- Never log tokens, passwords or full request bodies. Strip stack traces and SQL-like text from anything shown to users.
+- Supports `AbortSignal` so superseded requests (e.g. leave-day calculation) are cancelled.
+
+## 6.2 Session handling (`features/auth`, `hooks/use-auth.ts`)
+
+- API uses opaque bearer sessions, not JWT/cookies/refresh tokens. Keep token in
+  memory with a sessionStorage copy for reload; do not use localStorage. Storage is
+  readable by same-origin scripts, so render user text plainly and enforce production
+  CSP through deployment. Stored identity is untrusted until GET /auth/me succeeds.
+- Store expires_at from expires_in. On startup call GET /auth/me before protected
+  rendering. On 401 clear credentials and the entire query cache, redirect with the
+  session-expired message. On account/employee status 403 clear session and show the
+  inactive/locked message rather than leaving protected cached data visible.
+- Explicit Logout calls POST /auth/logout with the current token and waits for 204;
+  clear token, sessionStorage and query cache in all outcomes and redirect to login.
+  If server revocation could not be confirmed, show: "Signed out on this device;
+  server sign-out could not be confirmed." Do not claim copied credentials were revoked.
+- Do not automatically retry login/logout or other mutations on network failure.
+  Refresh safe queries before manual retries; resolve ambiguous submissions from history.
+- Passwords live only in form memory. Never store/log them or include them in URLs.
+- Remove Remember Me and password reset/settings controls from v1.
+
+---
+
+## 6.3 Error presentation matrix
+
+| Situation | Presentation |
+|---|---|
+| Field-level `422 VALIDATION_ERROR` with `details[]` of `{field, message}` | Show each message under the matching field (`field` is the API snake_case name); focus the first invalid field; also show a summary banner |
+| Business error on a form submit (`400`/`409`) | Inline `ErrorBanner` at the top of the form with the mapped message (§6.4); keep user input |
+| Business error on a row action (approve, cancel, deactivate) | Toast error; refetch the affected list/row |
+| `401` | Session-expired flow above |
+| `403` on page load | `ForbiddenState` |
+| `403` on an action | Toast with the server message |
+| `404` on a detail page | "Not found" state with a link back to the list |
+| `500` / network failure on a query | `ErrorState` with **Retry** |
+| `500` / network failure on a mutation | Toast: generic message above; form stays open |
+
+## 6.4 Error code → user message (`lib/error-messages.ts`)
+
+Prefer the server-provided `message`; use these where the UI should add context or where the server message may be too technical. Interpolate `details` when present.
+
+| Code | Message shown |
+|---|---|
+| `INVALID_CREDENTIALS` | Invalid username or password. |
+| `USER_INACTIVE` | Your account is inactive. Please contact your administrator. |
+| `USER_LOCKED` | Your account is locked. Please contact your administrator. |
+| `FORBIDDEN` | You don't have permission to perform this action. |
+| `LEAVE_DATE_IN_PAST` | Leave cannot be applied for a past date. |
+| `INVALID_DATE_RANGE` | The start date cannot be after the end date. |
+| `INSUFFICIENT_LEAVE_BALANCE` | Insufficient leave balance. Available: {available} days. Requested: {requested} days. |
+| `OVERLAPPING_LEAVE_APPLICATION` | A leave application already exists for the selected dates. (+ link to `details.application_id`) |
+| `EMPLOYEE_INACTIVE` | Your account is inactive, so you cannot apply for leave. |
+| `LEAVE_TYPE_INACTIVE` | This leave type is no longer available. |
+| `LEAVE_TYPE_NOT_FOUND` / `EMPLOYEE_NOT_FOUND` / `LEAVE_APPLICATION_NOT_FOUND` / `MANAGER_NOT_FOUND` / `DEPARTMENT_NOT_FOUND` | The requested record could not be found. |
+| `NOT_APPLICATION_OWNER` | Only the employee who applied can cancel this application. |
+| `CROSS_YEAR_LEAVE_NOT_ALLOWED` | Submit a separate request for each calendar leave year. |
+| `ZERO_WORKING_DAYS` | The selected dates contain no working days. |
+| `LEAVE_BALANCE_NOT_ALLOCATED` | Contact your administrator to allocate this leave type. |
+| `LEAVE_TYPE_NOT_ELIGIBLE` | This leave type is not available for employee applications. |
+| `MANAGER_UNAVAILABLE` | Your assigned manager is unavailable; contact your administrator. |
+| `CONCURRENT_UPDATE` | Data changed during this action. Refresh before trying again. |
+| `INSUFFICIENT_ALLOCATION` | Allocation cannot be lower than used and reserved leave. |
+| `LOGIN_RATE_LIMITED` | Too many sign-in attempts. Try again after the indicated delay. |
+| `LEAVE_CANNOT_BE_CANCELLED` | This application can no longer be cancelled. |
+| `INVALID_LEAVE_STATUS` / `LEAVE_ALREADY_PROCESSED` | This application has already been processed. The list has been refreshed. |
+| `NOT_AUTHORIZED_MANAGER` | You are not authorized to approve or reject this application. |
+| `SELF_APPROVAL_NOT_ALLOWED` | You cannot approve or reject your own leave application. |
+| `REJECTION_REASON_REQUIRED` | Please enter a reason for rejection. |
+| `EMPLOYEE_CODE_EXISTS` | Employee ID already exists. (field: `employee_code`) |
+| `EMPLOYEE_EMAIL_EXISTS` | Email already exists. (field: `email`) |
+| `LEAVE_BALANCE_ALREADY_EXISTS` | A balance already exists for this employee, leave type and year. |
+| `TRANSACTION_FAILED` | The operation could not be completed. No changes were made. Please try again. |
+| `SERVER_ERROR` | Something went wrong. Please try again later. |
+| `NETWORK_ERROR` | Unable to connect to the server. Please try again. |
+| anything else | Server `message` if present, otherwise the `SERVER_ERROR` text |
 
 ---
 
-# 55. Notifications Screen
+# 7. Data Fetching, Caching and Invalidation
 
-Route:
+Hooks wrap services with TanStack Query. Query keys are arrays beginning with the entity name so invalidation is simple.
 
-```text
-/notifications
-```
-
-Header:
-
-```text
-Notifications
-```
-
-Filters:
-
-```text
-All
-Unread
-Read
-```
-
-Notification card:
-
-```text
-Leave Approved
-
-Your Earned Leave request from 10 Oct to 12 Oct has been approved.
-
-5 minutes ago
-```
-
-Unread cards should be visually emphasized.
-
-Clicking a leave-related notification should navigate to its leave application.
-
----
-
-# 56. Profile Screen
-
-Route:
-
-```text
-/profile
-```
-
-Show:
-
-```text
-Employee Name
-Employee Code
-Email
-Designation
-Department
-Joining Date
-Manager
-Role
-Status
-```
-
-Initial profile screen may be read-only.
-
----
-
-# 57. Manager Dashboard
-
-Route:
-
-```text
-/manager/dashboard
-```
-
-Managers may use `/dashboard` with role-aware content, but a dedicated route is also acceptable.
-
-Recommended page title:
-
-```text
-Team Dashboard
-```
-
----
-
-# 58. Manager Summary Cards
-
-Display:
-
-```text
-Pending Approvals
-Team Members
-Employees On Leave Today
-Upcoming Team Leave
-```
-
-Example:
-
-```text
-Pending Approvals
-4
-
-Team Members
-12
-
-On Leave Today
-2
-
-Upcoming This Week
-3
-```
-
----
-
-# 59. Manager Pending Approval Preview
-
-Show recent pending approvals.
-
-Columns:
-
-```text
-Employee
-Leave Type
-From
-To
-Days
-Applied On
-Actions
-```
-
-Actions:
-
-```text
-View
-Approve
-Reject
-```
-
-Primary action:
-
-```text
-View All Approvals
-```
-
----
-
-# 60. Pending Approvals Screen
-
-Route:
-
-```text
-/manager/approvals
-```
-
-Header:
-
-```text
-Pending Approvals
-
-Review leave requests from your team.
-```
-
----
-
-# 61. Approval Filters
-
-Provide:
-
-```text
-Employee
-Leave Type
-Date Range
-Department
-```
-
-Only show filters relevant to manager scope.
-
----
-
-# 62. Pending Approval Table
-
-Columns:
-
-```text
-Employee
-Employee Code
-Leave Type
-From
-To
-Days
-Reason
-Applied On
-Actions
-```
-
-Example:
-
-| Employee | Leave Type | From | To | Days | Applied | Actions |
-|---|---|---|---|---:|---|---|
-| Ananya Rao | Sick | 12 Oct | 13 Oct | 2 | 7 Oct | Review |
-
-Prefer one `Review` action over crowded inline buttons on smaller screens.
-
----
-
-# 63. Approval Review Screen
-
-Route:
-
-```text
-/manager/approvals/[application_id]
-```
-
-Layout:
-
-```text
-+----------------------------------+----------------------+
-| Employee / Leave Details         | Balance Context      |
-|                                  |                      |
-+----------------------------------+----------------------+
-
-Reason
-
-Leave Timeline
-
-[Reject]                              [Approve]
-```
-
----
-
-# 64. Approval Employee Information
-
-Show:
-
-```text
-Employee Name
-Employee Code
-Department
-Designation
-Joining Date
-```
-
-Do not overload with unrelated employee information.
-
----
-
-# 65. Approval Leave Information
-
-Show:
-
-```text
-Leave Type
-From
-To
-Number of Days
-Reason
-Submitted On
-Current Status
-```
-
----
-
-# 66. Manager Balance Context
-
-Display employee's relevant leave balance.
-
-Example:
-
-```text
-Earned Leave Balance
-
-Allocated      20
-Used            8
-Pending         2
-Available      10
-
-This request
-2 days
-```
-
-This helps the manager make an informed decision.
-
----
-
-# 67. Approve Action
-
-Button:
-
-```text
-Approve
-```
-
-Confirmation:
-
-```text
-Approve Leave?
-
-Approve 2 days of Earned Leave for Ananya Rao?
-
-[Cancel] [Approve]
-```
-
-On success:
-
-```text
-Leave approved successfully.
-```
-
-Then return to pending approvals or remain on detail screen with updated status.
-
----
-
-# 68. Reject Action
-
-Button:
-
-```text
-Reject
-```
-
-Click opens modal:
-
-```text
-Reject Leave Request
-
-Reason *
-
-[textarea]
-
-[Cancel] [Reject Leave]
-```
-
-Reason is required.
-
-On success:
-
-```text
-Leave rejected successfully.
-```
-
----
-
-# 69. Team Leave Screen
-
-Route:
-
-```text
-/manager/team-leave
-```
-
-Show employee leave activity for the manager's direct reports.
-
-Recommended views:
-
-```text
-Table
-Calendar
-```
-
-Filters:
-
-```text
-Employee
-Status
-Leave Type
-Month
-Date Range
-```
-
----
-
-# 70. Team Leave Calendar
-
-Calendar should visually show:
-
-```text
-Employee
-Leave dates
-Leave status
-```
-
-Avoid excessive colors.
-
-Approved leave should be prominent.
-
-Pending leave can be visually distinct.
-
-Rejected/cancelled leave should normally not appear in the primary calendar view.
-
----
-
-# 71. Direct Reports Screen
-
-Route:
-
-```text
-/manager/team
-```
-
-Header:
-
-```text
-My Team
-```
-
-Columns:
-
-```text
-Employee
-Employee Code
-Designation
-Department
-Status
-Actions
-```
-
-Action:
-
-```text
-View
-```
-
-Optional future:
-
-```text
-View Leave
-View Balance
-```
-
----
-
-# 72. Administrator Dashboard
-
-Route:
-
-```text
-/admin/dashboard
-```
-
-Header:
-
-```text
-Administration
-```
-
-Summary cards:
-
-```text
-Total Employees
-Active Employees
-Pending Approvals
-Leave Applications This Month
-Upcoming Holidays
-```
-
-Optional charts:
-
-```text
-Leave Usage by Type
-Leave Applications by Status
-Monthly Leave Trend
-```
-
-Do not add charts merely for decoration.
-
-Charts must provide useful information.
-
----
-
-# 73. Employee Management Screen
-
-Route:
-
-```text
-/admin/employees
-```
-
-Header:
-
-```text
-Employees
-
-Manage employee records.
-
-[+ Add Employee]
-```
-
----
-
-# 74. Employee Management Filters
-
-```text
-Search
-Department
-Manager
-Status
-```
-
-Search should match:
-
-```text
-Employee name
-Employee code
-Email
-```
-
----
-
-# 75. Employee Table
-
-Columns:
-
-```text
-Employee
-Employee Code
-Email
-Department
-Designation
-Manager
-Status
-Actions
-```
-
-Example action menu:
-
-```text
-View
-Edit
-Manage Leave
-Deactivate
-```
-
-Do not permanently delete employees through the standard UI.
-
----
-
-# 76. Add Employee Screen
-
-Route:
-
-```text
-/admin/employees/new
-```
-
-Fields:
-
-```text
-Employee Code *
-Name *
-Email *
-Department
-Manager
-Designation
-Joining Date *
-Status
-```
-
-Default:
-
-```text
-Status = ACTIVE
-```
-
-Buttons:
-
-```text
-Cancel
-Create Employee
-```
-
----
-
-# 77. Edit Employee Screen
-
-Route:
-
-```text
-/admin/employees/[employee_id]/edit
-```
-
-Fields:
-
-```text
-Name
-Email
-Department
-Manager
-Designation
-Status
-```
-
-Employee code should normally remain immutable after creation unless requirements explicitly allow editing.
-
----
-
-# 78. Employee Details Admin Screen
-
-Route:
-
-```text
-/admin/employees/[employee_id]
-```
-
-Sections:
-
-```text
-Profile
-Reporting Information
-Leave Balance
-Recent Leave Applications
-```
-
-Actions:
-
-```text
-Edit Employee
-Manage Leave Allocation
-```
-
----
-
-# 79. Department Management
-
-Route:
-
-```text
-/admin/departments
-```
-
-If department CRUD is implemented, display:
-
-```text
-Department Code
-Department Name
-Status
-Employees
-Actions
-```
-
-Actions:
-
-```text
-Edit
-Deactivate
-```
-
----
-
-# 80. Leave Type Management
-
-Route:
-
-```text
-/admin/leave-types
-```
-
-Header:
-
-```text
-Leave Types
-
-Configure leave categories.
-
-[+ Add Leave Type]
-```
-
-Table columns:
-
-```text
-Code
-Name
-Paid
-Half Day
-Approval Required
-Status
-Actions
-```
-
----
-
-# 81. Add Leave Type
-
-Fields:
-
-```text
-Code *
-Name *
-Description
-Paid Leave
-Allow Half Day
-Requires Approval
-Status
-```
-
-Buttons:
-
-```text
-Cancel
-Create Leave Type
-```
-
----
-
-# 82. Leave Allocation Screen
-
-Route:
-
-```text
-/admin/leave-balances
-```
-
-Header:
-
-```text
-Leave Allocation
-
-Manage employee leave entitlements.
-```
-
-Filters:
-
-```text
-Employee
-Department
-Leave Type
-Year
-```
-
-Table:
-
-```text
-Employee
-Leave Type
-Year
-Allocated
-Carried Forward
-Used
-Pending
-Available
-Actions
-```
-
----
-
-# 83. Leave Allocation Actions
-
-Actions:
-
-```text
-Edit Allocation
-Adjust Balance
-View History
-```
-
-`Used` and `Pending` should not be editable directly.
-
----
-
-# 84. Create Leave Allocation
-
-Modal or dedicated page.
-
-Fields:
-
-```text
-Employee *
-Leave Type *
-Year *
-Allocated *
-Carried Forward
-```
-
-Buttons:
-
-```text
-Cancel
-Allocate Leave
-```
-
----
-
-# 85. Adjust Leave Balance
-
-Use a controlled dialog.
-
-Fields:
-
-```text
-Adjustment Amount *
-Reason *
-```
-
-Display:
-
-```text
-Current allocation
-Current available
-New expected available
-```
-
-Confirmation should be explicit.
-
----
-
-# 86. Holiday Administration Screen
-
-Route:
-
-```text
-/admin/holidays
-```
-
-Header:
-
-```text
-Holiday Calendar
-
-Manage company holidays.
-
-[+ Add Holiday]
-```
-
-Filters:
-
-```text
-Year
-Month
-Status
-```
-
-Table:
-
-```text
-Date
-Holiday
-Optional
-Status
-Actions
-```
-
----
-
-# 87. Add Holiday Screen
-
-Fields:
-
-```text
-Holiday Date *
-Name *
-Description
-Optional Holiday
-```
-
-Buttons:
-
-```text
-Cancel
-Create Holiday
-```
-
----
-
-# 88. Edit Holiday Screen
-
-Fields:
-
-```text
-Holiday Date
-Name
-Description
-Optional Holiday
-Status
-```
-
-Buttons:
-
-```text
-Cancel
-Save Changes
-```
-
----
-
-# 89. Reports Screen
-
-Route:
-
-```text
-/reports
-```
-
-Manager and administrator views differ based on authorization.
-
-Filters:
-
-```text
-Year
-Department
-Employee
-Leave Type
-```
-
-Summary cards:
-
-```text
-Allocated Leave
-Used Leave
-Pending Leave
-Available Leave
-```
-
----
-
-# 90. Leave Summary Report
-
-Table:
-
-```text
-Employee
-Employee Code
-Leave Type
-Allocated
-Carried Forward
-Used
-Pending
-Available
-```
-
-Optional export:
-
-```text
-Export CSV
-```
-
-Do not add export until backend support exists.
-
----
-
-# 91. Audit Log Screen
-
-Route:
-
-```text
-/admin/audit
-```
-
-Administrator only.
-
-Filters:
-
-```text
-Action
-Entity Type
-Performed By
-Date Range
-```
-
-Columns:
-
-```text
-Date / Time
-Action
-Entity
-Performed By
-Details
-```
-
-Use expandable rows or a drawer for JSON change details.
-
-Do not expose secrets.
-
----
-
-# 92. Search Behavior
-
-Search fields should generally:
-
-```text
-Debounce input by approximately 300–500 ms
-```
-
-or require explicit search submission.
-
-Do not send an API request on every keystroke without control.
-
----
-
-# 93. Table Standards
-
-All major tables should support, where relevant:
-
-```text
-Pagination
-Sorting
-Filtering
-Loading state
-Empty state
-Error state
-Responsive display
-```
-
-Avoid extremely wide tables.
-
-Use:
-
-```text
-Horizontal scrolling
-Column prioritization
-Responsive card layouts
-```
-
-when necessary.
-
----
-
-# 94. Mobile Table Behavior
-
-On small screens, convert complex rows into cards where appropriate.
-
-Example:
-
-```text
-Earned Leave
-10 Oct 2026 → 12 Oct 2026
-2 days
-
-PENDING
-
-[View]
-```
-
-This is preferable to forcing a nine-column table into a narrow viewport.
-
----
-
-# 95. Pagination
-
-Table footer:
-
-```text
-Showing 1–20 of 87
-
-< Previous    1 2 3 4 5    Next >
-```
-
-Use API pagination:
-
-```text
-page
-page_size
-```
-
-Allow page sizes such as:
-
-```text
-10
-20
-50
-```
-
-Maximum must respect API limits.
-
----
-
-# 96. Date Display
-
-Backend date format:
-
-```text
-2026-10-10
-```
-
-UI display:
-
-```text
-10 Oct 2026
-```
-
-Timestamp:
-
-```text
-7 Oct 2026, 2:30 PM
-```
-
-Avoid showing raw ISO timestamps to users.
-
----
-
-# 97. Numeric Leave Display
-
-Examples:
-
-```text
-12 days
-```
-
-For fractional values:
-
-```text
-0.5 day
-1.5 days
-```
-
-Avoid:
-
-```text
-12.00
-```
-
-unless required by business reporting.
-
----
-
-# 98. API Integration Rules
-
-All frontend API calls must be implemented inside:
-
-```text
-frontend/services/
-```
-
-Example:
-
-```text
-services/
-├── api-client.ts
-├── auth-service.ts
-├── employee-service.ts
-├── leave-service.ts
-├── holiday-service.ts
-├── notification-service.ts
-└── admin-service.ts
-```
-
-React components must not directly contain repeated `fetch()` calls.
-
----
-
-# 99. API Client
-
-Create a reusable API client responsible for:
-
-```text
-Base URL
-Authentication token
-JSON headers
-Response parsing
-Common errors
-401 handling
-```
-
-Conceptually:
-
-```text
-Component
-   |
-   v
-Hook
-   |
-   v
-Service
-   |
-   v
-API Client
-   |
-   v
-FastAPI
-```
-
----
-
-# 100. TypeScript Types
-
-Types should live under:
-
-```text
-frontend/types/
-```
-
-Example:
-
-```text
-employee.ts
-leave.ts
-holiday.ts
-notification.ts
-api.ts
-```
-
-Recommended entities:
-
-```text
-Employee
-EmployeeSummary
-LeaveType
-LeaveBalance
-LeaveApplication
-Holiday
-Notification
-Pagination
-ApiError
-```
-
-Types must match `API_SPEC.md`.
-
----
-
-# 101. Feature Modules
-
-Recommended structure:
-
-```text
-frontend/features/
-│
-├── auth/
-├── dashboard/
-├── employees/
-├── leave/
-├── approvals/
-├── holidays/
-├── notifications/
-├── reports/
-└── admin/
-```
-
-Each feature may contain:
-
-```text
-components/
-hooks/
-utils/
-```
-
-Keep feature-specific logic out of generic components.
-
----
-
-# 102. Shared Components
-
-Recommended:
-
-```text
-frontend/components/
-│
-├── ui/
-│   ├── button.tsx
-│   ├── input.tsx
-│   ├── select.tsx
-│   ├── textarea.tsx
-│   ├── modal.tsx
-│   ├── badge.tsx
-│   ├── card.tsx
-│   ├── table.tsx
-│   ├── pagination.tsx
-│   └── skeleton.tsx
-│
-├── layout/
-│   ├── app-header.tsx
-│   ├── sidebar.tsx
-│   ├── mobile-nav.tsx
-│   └── page-header.tsx
-│
-└── common/
-    ├── status-badge.tsx
-    ├── empty-state.tsx
-    ├── error-state.tsx
-    ├── loading-state.tsx
-    └── confirmation-dialog.tsx
-```
-
----
-
-# 103. Recommended Next.js Route Structure
-
-Using App Router:
-
-```text
-frontend/app/
-│
-├── layout.tsx
-├── page.tsx
-│
-├── login/
-│   └── page.tsx
-│
-├── dashboard/
-│   └── page.tsx
-│
-├── leave/
-│   ├── apply/
-│   │   └── page.tsx
-│   │
-│   ├── my/
-│   │   └── page.tsx
-│   │
-│   ├── balance/
-│   │   └── page.tsx
-│   │
-│   └── [application_id]/
-│       └── page.tsx
-│
-├── holidays/
-│   └── page.tsx
-│
-├── notifications/
-│   └── page.tsx
-│
-├── profile/
-│   └── page.tsx
-│
-├── manager/
-│   ├── dashboard/
-│   │   └── page.tsx
-│   │
-│   ├── approvals/
-│   │   ├── page.tsx
-│   │   └── [application_id]/
-│   │       └── page.tsx
-│   │
-│   ├── team/
-│   │   └── page.tsx
-│   │
-│   └── team-leave/
-│       └── page.tsx
-│
-└── admin/
-    ├── dashboard/
-    │   └── page.tsx
-    │
-    ├── employees/
-    │   ├── page.tsx
-    │   ├── new/
-    │   │   └── page.tsx
-    │   └── [employee_id]/
-    │       ├── page.tsx
-    │       └── edit/
-    │           └── page.tsx
-    │
-    ├── leave-types/
-    │   └── page.tsx
-    │
-    ├── leave-balances/
-    │   └── page.tsx
-    │
-    ├── holidays/
-    │   └── page.tsx
-    │
-    └── audit/
-        └── page.tsx
-```
-
----
-
-# 104. Authentication UI
-
-## Login Screen
-
-Route:
-
-```text
-/login
-```
-
-Layout:
-
-```text
-Centered authentication card
-```
-
-Fields:
-
-```text
-Username / Email
-Password
-```
-
-Controls:
-
-```text
-Show/Hide Password
-Remember Me - optional
-Login
-```
-
-Example:
-
-```text
-Employee Leave Management
-
-Sign in to continue
-
-Email
-[________________]
-
-Password
-[________________] 👁
-
-[ Sign In ]
-```
-
----
-
-# 105. Login Error
-
-Example:
-
-```text
-Invalid username or password.
-```
-
-Do not reveal whether a specific username exists.
-
----
-
-# 106. Session Expiry
-
-When backend returns:
-
-```text
-401 Unauthorized
-```
-
-the UI should:
-
-```text
-Clear invalid session
-Redirect to /login
-Display message:
-"Your session has expired. Please sign in again."
-```
-
----
-
-# 107. Role-Based Navigation
-
-After login:
-
-```text
-EMPLOYEE
--> Employee navigation
-```
-
-```text
-MANAGER
--> Employee + Manager navigation
-```
-
-```text
-ADMINISTRATOR
--> Employee + Administration navigation
-```
-
-Frontend role checks control presentation only.
-
-Backend remains authoritative.
-
----
-
-# 108. Unauthorized Screen
-
-Route may be:
-
-```text
-/unauthorized
-```
-
-Message:
-
-```text
-You don't have permission to access this page.
-
-[Return to Dashboard]
-```
+| Hook | Service call | Key |
+|---|---|---|
+| `useAuth` | `auth-service.login / me` | `["me"]` |
+| `useDashboard` | `GET /dashboard` | `["dashboard"]` |
+| `useEmployee(id)` | `GET /employees/{id}` | `["employees", id]` |
+| `useEmployees(filters)` | `GET /employees` | `["employees","list",filters]` |
+| `useDirectReports` | `GET /managers/me/direct-reports` | `["team"]` |
+| `useLeaveBalance(employeeId, year)` | `GET /employees/{id}/leave-balance` | `["balances", employeeId, year]` |
+| `useLeaveTypes(status)` | `GET /leave-types` | `["leave-types", status]` |
+| `useLeaveApplications(filters)` | `GET /leave/applications` | `["applications","list",filters]` |
+| `useEmployeeLeaveHistory(id, filters)` | `GET /employees/{id}/leave-applications` | `["applications","employee",id,filters]` |
+| `useLeaveApplication(id)` | `GET /leave/applications/{id}` | `["applications", id]` |
+| `usePendingApprovals(filters)` | `GET /leave/approvals/pending` | `["approvals", filters]` |
+| `useCalculateDays(params)` | `POST /leave/calculate-days` | `["calc", params]` (debounced) |
+| `useHolidays(year, month?)` | `GET /holidays` | `["holidays", year, month]` |
+| `useNotifications(filters)` | `GET /notifications` | `["notifications", filters]` |
+| `useLeaveSummaryReport(filters)` | `GET /reports/leave-summary` | `["reports","summary",filters]` |
 
----
-
-# 109. Not Found Screen
-
-Use custom 404:
-
-```text
-Page Not Found
+**Invalidation after mutations:**
 
-The page you're looking for doesn't exist.
+| Mutation | Invalidate |
+|---|---|
+| Apply leave | `balances`, `applications`, `dashboard`, `notifications` |
+| Cancel leave | `balances`, `applications`, `dashboard`, `approvals` |
+| Approve / Reject | `approvals`, `applications`, `balances`, `dashboard`, `notifications` |
+| Admin employee create/update | `employees`, `team` |
+| Admin leave type create/update | `leave-types` |
+| Admin balance create/update/adjust | `balances`, `reports` |
+| Admin holiday create/update/delete | `holidays` |
+| Mark notification read | `notifications`, `dashboard` |
 
-[Back to Dashboard]
-```
+Defaults: `staleTime` 30 s; `refetchOnWindowFocus` on; no automatic retries for `4xx`; one retry for network errors on safe read queries only; mutations never automatically retry. Do **not** use optimistic updates for leave state changes — wait for the server, then refetch (balances and status are server-authoritative).
 
 ---
-
-# 110. Accessibility Requirements
-
-The UI must support:
-
-```text
-Keyboard navigation
-Visible focus states
-Semantic HTML
-Proper labels
-ARIA attributes where required
-Sufficient contrast
-Accessible dialogs
-Accessible tables
-Screen-reader-friendly status text
-```
-
-Inputs must have real labels.
 
-Do not rely only on placeholder text.
+# 8. Shared UX Patterns
 
----
-
-# 111. Keyboard Behavior
+## 8.1 Screen states
 
-Dialogs:
+| State | Behaviour |
+|---|---|
+| Loading | Skeletons matching the final layout (tables: 5 skeleton rows; cards: skeleton blocks). Spinner only for tiny inline actions. |
+| Empty | `EmptyState` with a specific message (e.g. "No leave applications yet" + **Apply Leave** button). A filtered-empty result says "No results match your filters" + **Clear filters**. |
+| Error | `ErrorState` with **Retry**. Keep previously loaded data visible if a background refetch fails (show a small banner). |
+| Success | Render data. Toast for mutations. |
 
-```text
-ESC closes dialog where safe.
-```
+## 8.2 Forms
 
-Forms:
+- Validate on blur and on submit; show errors under fields in plain language.
+- Required fields marked `*`. Trim whitespace before submit. Disable submit only while a request is pending (not merely because the form is invalid — let the user press it and see what is wrong; exception: Apply Leave rules in §9.5).
+- Preserve input after a server error. Warn before leaving a dirty form (Apply Leave, Employee form, Holiday form).
+- Server messages are authoritative. UI validation exists to give faster feedback, mirroring (never replacing) backend rules.
 
-```text
-Tab navigation must be logical.
-```
+## 8.3 Tables and filters
 
-Buttons:
+- Server-side pagination, filtering and sorting via the query params in `API_SPEC.md`. Do not load everything and filter in the browser. Month calendar expansion is limited to the selected month; exports are deferred.
+- Default sort `created_at desc` for application lists. Only expose sort controls for columns the API is confirmed to accept.
+- Filter state lives in the URL query string; changing any filter resets `page` to 1.
+- Destructive or irreversible row actions use `ConfirmDialog` with the consequence stated in the body.
 
-```text
-Enter / Space activation.
-```
+## 8.3.1 Standard confirm dialogs
 
-Focus must return appropriately after modal closure.
+| Action | Title | Body |
+|---|---|---|
+| Cancel application | Cancel this leave application? | "Your pending request for {range} ({days} days) will be cancelled and the reserved balance released." Optional reason field. Buttons: **Keep application** / **Cancel application** |
+| Approve | Approve leave? | Employee, type, dates, days. Optional comment. **Cancel** / **Approve** |
+| Reject | Reject leave? | Same summary + **required** reason textarea (trimmed, non-empty). **Cancel** / **Reject** |
+| Deactivate employee | Deactivate {name}? | "They will no longer be able to sign in or apply for leave. Existing leave records are kept." |
+| Deactivate leave type / holiday | Deactivate {name}? | Leave type: "It will no longer be offered for new applications." Holiday: "It will no longer be excluded from leave-day calculation for new applications." |
 
 ---
-
-# 112. Responsive Breakpoints
-
-Use Tailwind responsive breakpoints.
-
-Recommended behavior:
 
-```text
-Mobile:
-< 768px
+# 9. Screens — Common and Employee
 
-Tablet:
-768px–1024px
+Each screen lists: **Route / Roles**, **APIs**, **Layout**, **Behaviour**, **States/Errors**, **Acceptance**.
 
-Desktop:
-> 1024px
-```
-
-Design mobile first where practical.
+## 9.1 Login (`/login`)
 
----
+**APIs:** `POST /auth/login`, then `GET /auth/me` only when restoring a session.
 
-# 113. Mobile Navigation
+**Layout:** centered card on `slate-50`, max width 400 px. App name/logo at top, heading "Sign in".
 
-Sidebar becomes slide-out drawer.
+| Field | Control | Rules |
+|---|---|---|
+| Email or Employee ID | text, `autocomplete="username"`, autofocus | required |
+| Password | password with show/hide toggle (button has `aria-label`, `aria-pressed`), `autocomplete="current-password"` | required |
 
-Include:
+**Actions:** `Sign in` (primary, full width, loading state). Pressing Enter submits.
 
-```text
-Dashboard
-Leave
-Approvals if manager
-Admin if administrator
-Profile
-Logout
-```
+**Behaviour**
+- Empty fields → "Email or Employee ID is required." / "Password is required." (client-side, no request sent).
+- Success → store session (§6.2), redirect per §5.2(3). One shared `/dashboard` renders the role-specific view.
+- `401 INVALID_CREDENTIALS` → banner "Invalid username or password." Clear the password field, keep the username, focus the password field. Do not reveal which part was wrong.
+- `403 USER_INACTIVE` / `USER_LOCKED` → banner with the mapped message (§6.4).
+- Network/server errors → banner with generic message. Banner uses `role="alert"`.
+- If already authenticated, visiting `/login` redirects to `/dashboard`.
+- Show `reason=expired` banner when present.
+- In development builds only, an optional collapsible hint may list the seed users (`EMP001`, `MGR001`, `ADM001`) documented in the README. It must be compiled out of production builds and must not contain passwords.
 
-Close menu after route navigation.
+**Acceptance:** AC-AUTH-001, 002, 003.
 
 ---
 
-# 114. Mobile Forms
+## 9.2 Dashboard (`/dashboard`)
 
-Forms should:
+API: GET /dashboard?year=. One shared dashboard presents personal data for all roles.
+Display leave_totals (including carried_forward), data-driven leave_balances, all-own
+pending_application_count, recent_applications, upcoming_holidays and unread count.
+Recent list is not a source for the total pending count. Details link to canonical
+/leave/applications/[id]; history to /leave/history; quick apply to /leave/apply.
 
-```text
-Use full-width fields
-Stack form controls vertically
-Use appropriately sized date pickers
-Keep primary CTA visible and easy to tap
-```
-
-Minimum target size should be touch-friendly.
+MANAGER additionally renders manager_summary team_size, pending_approval_count,
+approved_application_count, on_leave_today_count and upcoming_team_leave. Counts have
+the scope defined in API_SPEC.md §14; assigned approval scope differs from current team.
+ADMINISTRATOR renders admin_summary organization employee/application counts.
+Never simulate aggregates with many one-row list calls or count a single paginated
+page. During staged development a null role summary is an unavailable section,
+not a zero-count assertion. Final Phase 17 must provide the role summary.
+Loading/empty/error states remain accessible; API-backed values are authoritative.
 
 ---
 
-# 115. Desktop Density
+## 9.3 My Profile (`/profile`)
 
-Use medium information density.
+**APIs:** `GET /auth/me`, `GET /employees/{employee_id}`.
 
-Avoid both:
-
-```text
-Very large empty spaces
-```
+**Layout:** read-only card with a two-column definition list (single column < `md`).
 
-and:
+Fields: **Employee ID** (`employee_code`), Name, Email, Department, Designation, Joining Date, Reporting Manager (name + code), Employment Status (badge).
 
-```text
-Overly compact legacy admin layouts
-```
+**Behaviour:** No edit controls (requirements §8.5). Footer note: "To update your details, contact your administrator." Optional phone is displayed when present; use an em dash when null.
 
-The application should feel modern and efficient.
+**Acceptance:** all fields render; manager shows `—` when null; department is required by the employee schema.
 
 ---
-
-# 116. Skeleton Loading Examples
 
-Dashboard:
+## 9.4 Leave Balance (`/leave/balance`)
 
-```text
-[ balance skeleton ][ balance skeleton ][ balance skeleton ]
-
-[ recent applications table skeleton ]
-```
+**API:** `GET /employees/{employee_id}/leave-balance?year=`.
 
-Employee table:
+**Layout:** page header with **Year** select (default current year; options current year −2 … +1). Below: `BalanceTable` (≥ md) / `BalanceCard` stack (< md).
 
-```text
-5–10 placeholder rows
-```
+| Column | Source |
+|---|---|
+| Leave Type | `leave_type_name` |
+| Allocated | `allocated` |
+| Carried Forward | `carried_forward` (hide column when all values are 0) |
+| Used | `used` |
+| Pending | `pending` |
+| Available | `available` — emphasised (bold) |
 
-Details:
+**Behaviour**
+- Render `available` exactly as returned. **Never recompute it** (the backend formula is `allocated + carried_forward − used − pending`).
+- Show a one-line help text: "Available = Allocated + Carried Forward − Used − Pending."
+- Highlight rows where `available` is `0` with a muted "No balance left" note.
+- Empty → "No leave balances have been allocated for {year}. Contact your administrator."
+- Year change updates the URL (`?year=2026`).
 
-```text
-Skeleton title
-Skeleton fields
-Skeleton timeline
-```
+**Acceptance:** AC-BAL-001, AC-BAL-002 (the example 15/3/2/10 renders as shown by the API).
 
 ---
-
-# 117. Error Handling by API Response
-
-## 400
 
-Display business-specific error.
+## 9.5 Apply Leave (`/leave/apply`)
 
-Example:
+**APIs:** `GET /leave-types`, `GET /employees/{me}/leave-balance`, `GET /holidays` (for the date-picker hint, optional), `POST /leave/calculate-days`, `POST /leave/applications`.
 
-```text
-Insufficient leave balance.
-```
-
-## 401
-
-Redirect to login.
-
-## 403
-
-Display:
-
-```text
-You don't have permission to perform this action.
-```
-
-## 404
+Use the **UUID request form** (`employee_id`, `leave_type_id`) from `GET /auth/me` and the leave type list. Do not send `employee_code`/`leave_type` code form.
 
-Display appropriate resource-not-found screen.
+**Layout:** two columns ≥ `lg` — form (left, 2/3) and sticky **Leave Summary** panel (right, 1/3); stacked < `lg` with the summary above the submit button.
 
-## 409
+### Form fields
 
-Display conflict message.
+| Field | Control | Rules (UI-level; backend authoritative) |
+|---|---|---|
+| Leave Type | select of **active** leave types; each option shows the type name and "(X available)" from the balance response | required |
+| From Date | date picker, `min = business today in ORG_TIMEZONE` | required; `LEAVE_DATE_IN_PAST` is the backend rule |
+| To Date | date picker, `min = From Date` | required; must be ≥ From Date and in the same calendar leave year |
+| Half Day | checkbox | **Hidden in v1** — No half-day input is supported and allow_half_day must remain false. A future release needs a complete approved contract before exposing the control. |
+| Reason | textarea, 3–5 rows | required, trimmed, 1..1000; show character count |
 
-Example:
+### Leave Summary panel
 
-```text
-You already have a leave application overlapping these dates.
-```
-
-## 422
+| Row | Value |
+|---|---|
+| Leave type | selected name |
+| Period | `Sat, 10-Oct-2026 – Mon, 12-Oct-2026` |
+| Calendar days / Weekend days / Holiday days | from `calculate-days` |
+| **Requested days** | `leave_days` from `calculate-days` |
+| **Available balance** | `available` for the selected type |
+| **Remaining balance** | `available − leave_days` (advisory arithmetic, labelled "estimated") |
 
-Map validation errors to corresponding form fields.
+Example matching requirements §8.7: Available Balance 10 · Requested Days 3 · Remaining Balance 7.
 
-## 500
+### Behaviour
 
-Display:
-
-```text
-Something went wrong. Please try again.
-```
+1. When leave type, From and To are all present and valid, call `POST /leave/calculate-days` (debounced 400 ms; cancel in-flight requests when inputs change). Show a skeleton in the summary while loading.
+2. The calculation result is **advisory**; the backend recalculates on submit. If the submit response `number_of_days` differs from what was shown, the details page (shown after submit) is the truth — no special handling needed.
+3. If `leave_days` is `0` → inline note "The selected dates contain no working days (weekends/holidays only)." and submit is disabled.
+4. If `remaining < 0`, show insufficient balance and disable submit. All v1 types are balance-controlled; backend still revalidates. Missing allocation prevents submission and displays contact-administrator guidance.
+5. Submit disabled while: required fields missing, `To < From`, calculation in flight or failed, or a request is pending.
+6. On `201`: toast "Leave application submitted", invalidate caches (§7), navigate to `/leave/applications/{application_id}`.
+7. Error mapping:
+   - `422 VALIDATION_ERROR` → field errors (e.g. `from_date`).
+   - `409 OVERLAPPING_LEAVE_APPLICATION` → banner with a "View existing application" link (`details.application_id`).
+   - `400 INSUFFICIENT_LEAVE_BALANCE`, `LEAVE_DATE_IN_PAST`, `INVALID_DATE_RANGE`, `EMPLOYEE_INACTIVE`, `LEAVE_TYPE_INACTIVE`, `MANAGER_NOT_FOUND` → banner (§6.4), keep input.
+8. If the employee has no eligible manager and the API rejects with `MANAGER_NOT_FOUND` or `MANAGER_UNAVAILABLE`, show: "No reporting manager is assigned to you. Please contact your administrator."
+9. Cancel button → `/leave/history` (with dirty-form confirmation).
 
-Do not expose technical details.
+**Acceptance:** AC-LEAVE-001, 002, 003, 004 (holiday days shown in summary), 005.
 
 ---
-
-# 118. API Error Mapping
-
-Common leave errors:
-
-```text
-LEAVE_DATE_IN_PAST
--> "Leave cannot be applied for a past date."
-
-INVALID_DATE_RANGE
--> "From date cannot be after To date."
 
-INSUFFICIENT_LEAVE_BALANCE
--> "You don't have enough available leave balance."
+## 9.6 My Leave Applications & History (`/leave/history`)
 
-OVERLAPPING_LEAVE_APPLICATION
--> "You already have an active leave request for these dates."
+Covers requirements §8.8 (My Leave Applications) and §5.3.11 (Leave History) in one screen.
 
-INVALID_LEAVE_STATUS
--> "This leave request has already been processed."
+**API:** `GET /employees/{me}/leave-applications` (params `status`, `year`, `leave_type_id`, `page`, `page_size`). Date-range filtering uses `GET /leave/applications` with `employee_id={me}&from_date&to_date`; use that endpoint for the whole screen if a date range is selected.
 
-NOT_AUTHORIZED_MANAGER
--> "You are not authorized to process this leave request."
-```
-
-Centralize this mapping where practical.
-
----
+**Filters:** Year (default current year), Status (All/Pending/Approved/Rejected/Cancelled), Leave Type, Date range (From/To). **Clear filters** link.
 
-# 119. Status Badge Component
+**Columns**
 
-Create reusable:
+| Column | Source |
+|---|---|
+| Application ID | short form: first 8 chars of `application_id` (monospace, with copy-on-click); full id on the details page |
+| Leave Type | `leave_type_name` |
+| From / To | `from_date` / `to_date` |
+| Days | `number_of_days` |
+| Applied Date | `created_at` (date) |
+| Status | `StatusBadge` |
+| Action | **View**; **Cancel** only when `status === "PENDING"` |
 
-```text
-<StatusBadge status="PENDING" />
-```
-
-Supported statuses:
-
-```text
-PENDING
-APPROVED
-REJECTED
-CANCELLED
-ACTIVE
-INACTIVE
-```
+**Behaviour**
+- Cancel → `CancelDialog` (§8.3.1) → `POST /leave/applications/{id}/cancel` with optional `{ "reason" }`. On success toast "Leave application cancelled", refetch.
+- Cancel is **not rendered** for `APPROVED`, `REJECTED`, `CANCELLED` (AC-CANCEL-002). If the server still returns `INVALID_LEAVE_STATUS` / `LEAVE_CANNOT_BE_CANCELLED`, show the mapped message and refetch.
+- Row click opens details. Sorted by `created_at desc`.
+- Empty → "You haven't applied for leave yet." + **Apply Leave**.
 
-Avoid duplicating badge styling across screens.
+**Acceptance:** AC-CANCEL-001, 002.
 
 ---
-
-# 120. Leave Balance Card Component
 
-Recommended reusable component:
+## 9.7 Leave Application Details (`/leave/applications/[id]`)
 
-```text
-<LeaveBalanceCard />
-```
+**API:** `GET /leave/applications/{application_id}`; for managers/admins also `GET /employees/{employee.employee_id}/leave-balance?year={from_date.year}&application_id={application_id}` for pending context. Former-report profile links are hidden; application visibility does not authorize full profile access.
 
-Inputs:
-
-```text
-leaveType
-allocated
-carriedForward
-used
-pending
-available
-```
+**Layout:** header with application short id and status badge; two-column detail card; **timeline** below; action bar at the bottom (sticky on mobile).
 
----
+| Detail | Source |
+|---|---|
+| Application ID | `application_id` (full, copyable) |
+| Employee | `employee.name (employee_code)` — link to profile for managers/admins |
+| Leave Type | `leave_type.name` |
+| Dates | `from_date – to_date` |
+| Number of Days | `number_of_days` |
+| Reason | `reason` (plain text, preserve line breaks) |
+| Applied Date | `created_at` |
+| Status | badge |
+| Manager | `manager.name` |
+| Manager Action Date | `approved_at` / `rejected_at` / `cancelled_at` (whichever is set) |
+| Rejection Reason | `rejection_reason` — shown only when `REJECTED`, in a highlighted block |
+| Manager Comments | approval_comment; shown when non-null |
 
-# 121. Leave Application Table Component
+**Timeline (`LeaveTimeline`)** — built from the timestamps present: *Submitted* (`created_at`) → *Approved by {approved_by.name}* / *Rejected by {rejected_by.name}* / *Cancelled* (`cancelled_at`, `cancelled_by`).
 
-Reusable where possible:
+**Action bar (visibility rules; the backend still enforces):**
 
-```text
-<LeaveApplicationsTable />
-```
+| Condition | Actions |
+|---|---|
+| `status = PENDING` and viewer is the owner | **Cancel** |
+| `status = PENDING` and viewer is the assigned MANAGER or ADMINISTRATOR and **not** the owner | **Approve**, **Reject** (also show the employee's available balance for this leave type as context: "Available {x} · Requested {y}") |
+| Viewer is owner and is also MANAGER/ADMINISTRATOR | Cancel only — never Approve/Reject on own application (`SELF_APPROVAL_NOT_ALLOWED`) |
+| Any other status | No actions |
 
-Configurable based on:
+Approve/Reject open the dialogs in §8.3.1. After success: toast, refetch the application, and invalidate lists. For `409 INVALID_LEAVE_STATUS` / `LEAVE_ALREADY_PROCESSED` show the mapped message and refetch (the page then shows the current status and no actions).
 
-```text
-Employee view
-Manager view
-Admin view
-```
+`403`/`404` → `ForbiddenState` / not-found state (e.g. employee opening someone else's id).
 
-Avoid duplicating complete table implementations.
+**Acceptance:** AC-APPROVAL-001/003/004 (UI side), AC-SEC-002.
 
 ---
-
-# 122. Date Range Component
-
-Create reusable component for:
-
-```text
-From Date
-To Date
-```
 
-It should handle:
+## 9.8 Holiday Calendar (`/holidays`) — all roles
 
-```text
-Minimum dates
-Invalid range state
-Accessibility
-```
+**API:** `GET /holidays?year=&month=`.
 
----
+**Controls:** Year select (default current year), Month filter (All months + Jan–Dec), **View toggle: Calendar | List** (default Calendar on ≥ `md`, List on < `md`).
 
-# 123. Confirmation Dialog Component
+**Calendar view (`HolidayCalendar`)**
+- Month grid (Mon–Sun or Sun–Sat per a single constant), previous/next month buttons, "Today" button, month/year heading.
+- Fetch the whole year once (`GET /holidays?year=&status=ALL`) and filter by month on the client for instant navigation.
+- Holiday cells show a dot and the holiday name (truncate with tooltip/`title`); optional holidays use a different marker (outline) and legend "Mandatory / Optional". Weekends have a subtle background. Today has a ring.
+- Each day cell is a button with `aria-label` like "Friday, 02 October 2026, Gandhi Jayanti". Selecting a holiday day shows a popover/panel with name, date, description, type.
+- Arrow keys move between days; `Enter` opens details.
 
-Reusable:
+**List view (`HolidayList`)**: table/cards of Date, Day, Holiday, Type (Mandatory/Optional), Description. Grouped by month when "All months" is selected.
 
-```text
-<ConfirmationDialog />
-```
+**States:** Empty → "No holidays have been published for {year}." Inactive holidays are not returned/shown to non-admins.
 
-Properties may include:
-
-```text
-title
-description
-confirmLabel
-cancelLabel
-variant
-loading
-```
+**Acceptance:** AC-HOL-001, AC-HOL-002.
 
 ---
-
-# 124. Data Refresh
 
-After mutations, UI should refresh affected data.
+# 10. Screens — Manager (also available to Administrator where noted)
 
-Examples:
+## 10.1 Team Leave Applications (`/approvals`)
 
-After applying leave:
+**APIs:** `GET /leave/approvals/pending` (default tab), `GET /leave/applications` (other statuses), `POST .../approve`, `POST .../reject`.
 
-```text
-Refresh leave balance
-Refresh recent applications
-```
+**Layout:** page header "Team Leave Applications"; status tabs **Pending (default) | Approved | Rejected | Cancelled | All** with a count badge on Pending (`total`); `FilterBar`; table/cards.
 
-After manager approval:
+**Filters:** Employee (`AsyncEmployeeSelect` limited to direct reports — use `GET /managers/me/direct-reports` as the option source for managers), Leave Type, Date range (`from_date`/`to_date`).
+- **Pending tab** → `GET /leave/approvals/pending` (supports `employee_id`, `leave_type_id`, `from_date`, `to_date`, `page`, `page_size`; also `department_id` for admins).
+- **Other tabs** → `GET /leave/applications?status={S}` (administrators omit `manager_id`).
 
-```text
-Refresh pending approvals
-Refresh application details
-Refresh dashboard counts
-```
+**Columns:** Employee (name + code), Leave Type, From, To, Days, Reason (truncated, full on hover/details), Applied Date, Status, Actions.
 
-After cancellation:
+**Row actions:** **View**; for `PENDING` rows: **Approve** (check icon), **Reject** (x icon). Icon buttons must have text labels for screen readers and tooltips. Rows belonging to the viewer themself (administrators) show **View** only.
 
-```text
-Refresh leave history
-Refresh balance
-```
+**Behaviour**
+- Approve → dialog (optional comment) → `POST /leave/applications/{id}/approve` with `{ "comment" }` if provided.
+- Reject → dialog with **required** reason; submit disabled until non-empty after trimming; `400 REJECTION_REASON_REQUIRED` from the server shows the field error → `POST .../reject` with `{ "reason" }`.
+- While a row's request is pending, only that row's buttons are disabled.
+- On success: toast ("Leave approved" / "Leave rejected"), refetch the list and the sidebar pending badge.
+- Errors: `403 NOT_AUTHORIZED_MANAGER` / `SELF_APPROVAL_NOT_ALLOWED` → toast; `409 INVALID_LEAVE_STATUS` / `LEAVE_ALREADY_PROCESSED` → toast "already processed" and refetch; `TRANSACTION_FAILED` → toast stating nothing was changed.
+- Empty (Pending) → "You're all caught up. No pending approvals."
 
-Do not show stale data after successful actions.
+**Acceptance:** AC-APPROVAL-001, 002, 003, 004; AC-SEC-002.
 
 ---
-
-# 125. Optimistic Updates
 
-Use optimistic updates cautiously.
+## 10.2 My Team (`/team`, `/team/[employeeId]`)
 
-For critical workflows such as:
-
-```text
-Leave approval
-Leave rejection
-Leave cancellation
-Balance allocation
-```
+GET /managers/me/direct-reports is paginated with page/page_size, search and status.
+Use server search and pagination; do not assume a small unpaginated list. Current
+reports only. Administrator direct-reports means reports of that administrator;
+organization browsing uses /admin/employees.
 
-prefer confirmation from backend before displaying final state.
+Team detail tabs use employee profile/balance/history endpoints, subject to current
+report permissions. A former assigned application's detail remains readable through
+/leave/applications/[id]; it does not grant employee profile/history access. Empty,
+loading, error, responsive cards and URL filters use shared components.
 
 ---
 
-# 126. Browser URL State
+## 10.3 Team Leave Calendar (`/team/calendar`)
 
-Filters that users may want to bookmark should be represented in URL query parameters where practical.
+**APIs:** `GET /leave/applications?scope=team&status=APPROVED&from_date={monthStart}&to_date={monthEnd}&page_size=100` (loop pages if `total > 100`), `GET /holidays?year=&month=`.
 
-Example:
+**Layout:** month grid like §9.8 with month navigation. Each day cell lists team members on leave (name chips, max 3 then "+N more" opening a popover). Chip style: **Approved** solid, **Pending** hatched/outlined — with a legend, never colour-only. Holidays and weekends are shaded.
 
-```text
-/leave/my?status=PENDING&year=2026
-```
+**Filters:** Employee, Leave Type, "Include pending" toggle (default on). Fetch a second scoped PENDING list when enabled; exhaust pages for the displayed month only. Administrators use scope=organization. A team calendar must not include the manager’s own or former reports merely because an approval snapshot exists.
 
-Manager:
+**Mobile (< md):** replace the grid with an agenda list grouped by date.
 
-```text
-/manager/approvals?employee_id=...&leave_type_id=...
-```
+**Note:** day expansion (a multi-day application covering several cells) is a display concern computed from `from_date`/`to_date`; it is not a leave-day calculation.
 
 ---
-
-# 127. Page Titles
-
-Set meaningful browser titles.
 
-Examples:
+# 11. Screens — Administrator
 
-```text
-Dashboard | Leave Management
+All routes below render `ForbiddenState` for non-administrators. Backend enforces `ADMINISTRATOR` on `/admin/*`.
 
-Apply Leave | Leave Management
+## 11.1 Employee Management (`/admin/employees`)
 
-Pending Approvals | Leave Management
+**API:** `GET /employees` (`page`, `page_size`, `department_id`, `manager_id`, `status`, `search`).
 
-Employees | Leave Management
-```
-
----
-
-# 128. Unsaved Form Protection
+**Toolbar:** search box (debounced 300 ms, matches name/email/code as the backend supports), Status filter, **Add Employee** button.
 
-For larger admin forms, warn before navigating away if meaningful unsaved changes exist.
+**Columns** (requirements §8.11): Employee ID (`employee_code`), Name, Email, Department, Designation, Manager, Status, Actions.
+- API Employee items include department and manager objects. Render nullable values as an em dash. Do not issue one request per row.
 
-Avoid unnecessary warnings for small simple filters.
+**Row actions (menu):** View Profile → `/admin/employees/[id]`; Edit → `/admin/employees/[id]/edit`; View Leave Balance → detail page Balance tab; View Leave History → detail page History tab; **Activate / Deactivate** (label depends on status; hidden for `RESIGNED`/`TERMINATED`).
 
----
-
-# 129. User-Friendly Identifiers
+**Activate/Deactivate:** confirm dialog (§8.3.1) → `GET /employees/{id}` for the current values, then `PUT /admin/employees/{id}` with all update fields and `status` flipped (`API_SPEC.md` defines no status-only endpoint). Toast on success; refetch.
+An administrator cannot deactivate/demote/lock themselves. Hide these controls; backend also enforces self and final-admin safeguards. A separate account form submits role/status to PUT /admin/employees/{id}/account and revokes all target sessions. Never reuse initial-password fields on edit.
 
-Database UUIDs must not dominate the UI.
+## 11.2 Create / Edit Employee (`/admin/employees/new`, `/admin/employees/[id]/edit`)
 
-Prefer:
-
-```text
-E001
-#FA711B70
-```
+**APIs:** `POST /admin/employees`, `PUT /admin/employees/{id}`, `GET /employees/{id}` (edit prefill), GET /departments, `GET /employees?status=ACTIVE&role=MANAGER` and role=ADMINISTRATOR (manager search).
 
-instead of showing:
+| Field | Control | Create | Edit | Rules |
+|---|---|:-:|:-:|---|
+| Employee ID (`employee_code`) | text | ✓ | read-only | required, max 50, unique (server) |
+| Name | text | ✓ | ✓ | required, max 200 |
+| Email | email | ✓ | ✓ | required, valid format, max 255, unique (server) |
+| Department | select | ✓ | ✓ | required |
+| Designation | text | ✓ | ✓ | max 150 |
+| Manager | `AsyncEmployeeSelect` (ACTIVE employees; excludes the employee being edited) | ✓ | ✓ | optional only for top-level roles (e.g. CEO); show helper text |
+| Joining Date | date | ✓ | ✓ | required, valid date |
+| Status | select ACTIVE / INACTIVE / RESIGNED / TERMINATED | create ACTIVE/INACTIVE | ✓ | matches backend status schema |
+| Role | select | ✓ | separate account form | required EMPLOYEE/MANAGER/ADMINISTRATOR |
+| Initial password | password | ✓ | — | required 12..128; never retain after success |
+| Phone | text | ✓ | ✓ | optional, max 30 |
 
-```text
-88f21fd2-aea0-4b42-8b26-f7dc41d709ad
-```
+**Behaviour:** Validate then `POST`/`PUT`. Map `EMPLOYEE_CODE_EXISTS` → code field, `EMPLOYEE_EMAIL_EXISTS` → email field, `DEPARTMENT_NOT_FOUND`/`MANAGER_NOT_FOUND` → their fields. Success → toast and return to the list. Cancel returns to the list with dirty-form confirmation. Editing master data does not change historical leave data (backend guarantee); show a small note.
 
-unless full ID is needed for troubleshooting or administration.
+**Acceptance:** AC-EMP-001, AC-EMP-002 (duplicate code error shown on the field).
 
----
+## 11.3 Employee Detail (`/admin/employees/[id]`)
 
-# 130. Application ID Presentation
+Header (name, code, status badge, **Edit**, **Activate/Deactivate**) and tabs **Profile | Leave Balance | Leave History** — the same components as §9.3/§9.4/§9.6 pointed at this employee's id. The Balance tab includes **Allocate / Adjust** shortcuts (§11.5). Tab is stored in the URL (`?tab=balance`).
 
-The API uses UUIDs.
+## 11.4 Leave Type Management (`/admin/leave-types`)
 
-UI may display shortened identifier:
+**APIs:** `GET /leave-types?status=ACTIVE|INACTIVE|ALL` (one request with the selected status), `POST /admin/leave-types`, `PUT /admin/leave-types/{id}`.
 
-```text
-#FA711B70
-```
+**Columns:** Code, Name, Description, Paid/Unpaid, Approval Required, Half-day Allowed (read-only false), Status, Actions (Edit, Activate/Deactivate).
 
-derived from the application UUID.
+**Form (modal):**
 
-The complete UUID remains available internally.
+| Field | Control | Create | Edit |
+|---|---|:-:|:-:|
+| Code | text, uppercase, max 30 | ✓ | read-only |
+| Name | text, max 100 | ✓ | ✓ |
+| Description | textarea | ✓ | ✓ |
+| Paid leave | switch | ✓ (default on) | ✓ |
+| Employee application allowed | switch | ✓ (default on) | ✓ |
+| Approval required | read-only true | ✓ | ✓ |
+| Half-day allowed | read-only false | ✓ | ✓ |
+| Status | select | — (create is ACTIVE) | ✓ |
 
----
+Deactivate/Activate uses `PUT` with `status`. Confirm text per §8.3.1. Annual allocation is **not** on this form (see §2).
 
-# 131. Empty Dashboard State
+## 11.5 Leave Balance Management (`/admin/leave-balances`)
 
-For newly onboarded employee:
+**APIs:** `GET /admin/leave-balances?year=&employee_id=&department_id=&leave_type_id=&page=&page_size=`, `POST /admin/leave-balances`, `PUT /admin/leave-balances/{balance_id}`, `POST /admin/leave-balances/{balance_id}/adjust`, `GET /leave-types`.
 
-```text
-Welcome to Leave Management.
+**Layout:** paginated organization balance table with Employee, Department, Leave Type and Year filters. Employee selection is optional for browsing and required for allocation. Show employee/type/year and counters; actions use returned balance_id.
 
-Your leave balances will appear here once they are allocated.
-```
+| Action | UI | API | Rules |
+|---|---|---|---|
+| **Allocate** | modal: Leave Type (only types with no balance for that employee+year), Year, Allocated, Carried Forward | `POST /admin/leave-balances` | numbers ≥ 0, up to 2 decimals; `409 LEAVE_BALANCE_ALREADY_EXISTS` shown in the modal |
+| **Edit allocation** | modal: Allocated, Carried Forward only | `PUT /admin/leave-balances/{id}` | **Used and Pending are read-only** — they are maintained by leave workflows |
+| **Adjust** | modal: Adjustment (signed decimal, e.g. `2` or `-1.5`), **Reason (required)** | `POST .../adjust` | Preview: "New allocated = {allocated + adjustment}" (advisory). On success show returned `new_allocated` and `available` |
 
-If balances exist but no leave applications:
+All balance read/create responses return balance_id. Edit/Adjust remain available only after their backend phase is implemented. Never identify a balance by array position or type code.
 
-```text
-No leave applications yet.
+## 11.6 All Leave Applications (`/admin/leave-applications`)
 
-[Apply Leave]
-```
+Same component as §10.1 but organization-wide: tabs by status (default **Pending**), filters Employee, Department (GET /departments), Leave Type, Date range, Year. Uses `GET /leave/applications` (all roles' visibility rules apply server-side) and `GET /leave/approvals/pending` for the Pending tab.
 
----
+Actions: **View**, **Approve**, **Reject** for `PENDING` rows that are not the administrator's own. There is **no Cancel-on-behalf action** (the API restricts cancel to the owner: `NOT_APPLICATION_OWNER`).
 
-# 132. First-Use Admin States
+## 11.7 Holiday Management (`/admin/holidays`)
 
-If no leave types exist:
+**APIs:** `GET /holidays?year=&status=ALL`, `POST /admin/holidays`, `PUT /admin/holidays/{id}`, `DELETE /admin/holidays/{id}` (deactivates, returns full Holiday with status INACTIVE).
 
-```text
-No leave types configured.
+**Toolbar:** Year select, Show inactive toggle, Calendar/List view toggle (reuse §9.8), **Add Holiday**.
 
-Create leave types before allocating leave.
+**Table columns** (requirements §8.13): Holiday, Date, Type (Mandatory/Optional), Description, Status, Actions (Edit, Activate/Deactivate). Region is not in the contract (§2).
 
-[Create Leave Type]
-```
+**Form (modal):**
 
-If no employees exist:
+| Field | Control | Rules |
+|---|---|---|
+| Holiday name | text | required |
+| Date | date | required, valid; year is derived by the backend |
+| Description | textarea | optional |
+| Optional holiday | switch (`is_optional`) | default off |
+| Status | select | edit only |
 
-```text
-No employees found.
+**Behaviour:** Duplicate/conflict responses (`409`) are shown on the form with the server message. **Deactivate** → `DELETE` after confirmation. **Activate** → `PUT` with `status: "ACTIVE"` and the existing values. After any change show an informational toast: "Changes apply to future leave-day calculations." Historical applications are never recalculated by the UI.
 
-[Add Employee]
-```
+**Acceptance:** AC-HOL-001 (created holiday appears in calendar/list after refetch).
 
 ---
-
-# 133. Security UI Rules
 
-Never display:
-
-```text
-Password hashes
-Access tokens
-Database identifiers unnecessarily
-Internal stack traces
-Secret configuration values
-```
+# 12. Reports (`/reports`)
 
-Sensitive actions must rely on backend authorization.
+**API:** `GET /reports/leave-summary` (`scope`, `year`, `employee_id`, `department_id`, `leave_type_id`, `page`, `page_size`); `GET /leave/applications` for application-level reports. Content by role (requirements §8.15, §10):
 
----
+| Role | Tabs |
+|---|---|
+| EMPLOYEE | **My Leave Summary** (own balances + utilization), **My Leave History** (embeds §9.6 table) |
+| MANAGER | **Team Leave Summary**, **Team Leave Applications**, **Pending Approvals** (link to `/approvals`) |
+| ADMINISTRATOR | **Leave Balances**, **Utilization**, **Leave Application Status**, **Holidays** |
 
-# 134. Frontend Business Logic Rule
+All roles use /reports/leave-summary with server scope: own for employee, team for manager, organization for administrator. Show backend pagination and do not fetch all rows to paginate locally.
 
-The frontend may perform UI-level calculations for previews.
+**Report definitions**
 
-It must not be authoritative for:
+| Report | Columns | Filters | Source |
+|---|---|---|---|
+| Leave Balance / Team Summary | Employee, Leave Type, Allocated, Carried Forward, Used, Pending, Available | Year, Employee, Department (admin), Leave Type | `/reports/leave-summary` |
+| Utilization | Employee, Leave Type, Allocated, Used, Pending, Available, **Utilization %** | same | `/reports/leave-summary` |
+| Leave Application | Application ID, Employee, Leave Type, From, To, Days, Status, Applied Date, Manager | Date range, Employee, Department, Leave Type, Status | `/leave/applications` |
+| Status summary | Counts of Pending / Approved / Rejected for the filters | Year | three `…&page_size=1` calls reading `total` |
+| Holidays (admin) | Date, Holiday, Type, Status | Year | `/holidays` |
 
-```text
-Available leave balance
-Final leave day calculation
-Approval authorization
-Status transitions
-Employee eligibility
-```
+**Utilization %** = `used / allocated × 100`, rounded to 1 decimal. If `allocated` is `0` (or missing) show `—`; never render `NaN`/`Infinity`. This is presentation of backend numbers, kept in `lib/format.ts` and unit-tested. Use a thin progress bar plus the text value (not colour-only).
 
-The backend response always wins.
+**Export:** Deferred beyond v1. Do not render CSV/Excel/PDF export controls.
 
 ---
 
-# 135. Recommended Dashboard API Usage
+# 13. Notifications
 
-Prefer:
-
-```text
-GET /api/v1/dashboard
-```
+**APIs:** `GET /notifications` (`is_read`, `page`, `page_size`), `POST /notifications/{id}/read`.
 
-for initial dashboard composition when available.
+## 13.1 Bell (top bar)
 
-Avoid unnecessarily making many API requests if the dashboard endpoint already provides needed summary data.
+- Badge shows `unread_notification_count` from `GET /dashboard`, falling back to `GET /notifications?is_read=false&page_size=1` → `total`. Show `9+` above 9. Badge has an `aria-label` ("3 unread notifications").
+- Click opens a dropdown with the latest 5 (fetched with `page_size=5`; unread first visually), each: type icon, title, message (2-line clamp), relative time, unread dot. Footer link **View all** → `/notifications`.
+- Poll notifications/unread filtered total every 60 s while the tab is visible and on window focus; do not poll the entire dashboard merely for the bell. (No push channel exists in v1.)
 
-Additional detailed data may still be loaded independently.
+## 13.2 Notifications page (`/notifications`)
 
----
+Filter tabs **All | Unread**, paginated list. Each item shows icon by `notification_type` (`LEAVE_SUBMITTED`, `LEAVE_APPROVED`, `LEAVE_REJECTED`, `LEAVE_CANCELLED`, `SYSTEM`; unknown types use a generic bell), title, message, timestamp, and a **Mark as read** control for unread items.
 
-# 136. Recommended UI Development Order
-
-Codex should implement frontend screens in this sequence:
-
-```text
-1. Global layout
-2. Shared UI components
-3. Login
-4. Employee dashboard
-5. Leave balance
-6. Apply leave
-7. My leave
-8. Leave application details
-9. Holiday calendar
-10. Notifications
-11. Manager dashboard
-12. Pending approvals
-13. Approval details
-14. Team leave
-15. Admin dashboard
-16. Employee management
-17. Leave type management
-18. Leave allocation
-19. Holiday administration
-20. Reports
-21. Audit screen
-22. Responsive polishing
-23. Accessibility polishing
-24. Integration tests
-```
+**Behaviour**
+- Clicking an item marks it read (`POST …/read`) and navigates: `reference_type = "leave_appln"` → `/leave/applications/{reference_id}`; otherwise stay on the page.
+- Mark-as-read failure is non-blocking (toast) and does not prevent navigation.
+- There is no "mark all as read" endpoint; do not fake one by looping calls.
+- Empty → "You're all caught up."
+- Notification text is rendered as plain text. Message content follows the pattern in requirements §9.3 (employee, type, dates, days, status) and is generated by the backend.
 
 ---
-
-# 137. UI Acceptance Criteria
-
-The UI is complete when:
-
-1. All implemented screens work against REST APIs.
-
-2. No frontend component accesses PostgreSQL directly.
-
-3. All major asynchronous views support loading, success, empty, and error states.
-
-4. Leave statuses use consistent reusable badges.
-
-5. Forms have field-level validation.
-
-6. Backend errors are translated into useful user messages.
-
-7. Employee, manager, and administrator navigation changes correctly by role.
-
-8. Unauthorized backend operations are handled gracefully.
-
-9. Major tables support pagination.
-
-10. Mobile screens remain fully usable.
-
-11. Tables do not overflow unusably on mobile.
-
-12. Every important action provides feedback.
-
-13. Destructive actions require confirmation.
-
-14. Leave balances refresh after leave workflow changes.
-
-15. Manager approval lists refresh after approval or rejection.
-
-16. Pages use TypeScript types aligned with API contracts.
-
-17. API calls are isolated inside the services layer.
-
-18. Reusable components are used instead of duplicated implementations.
-
-19. Application is keyboard usable.
-
-20. UI is visually consistent across employee, manager, and admin areas.
 
----
+# 14. Responsive Design and Accessibility
 
-# 138. Primary Employee User Journey
-
-```text
-Login
-   |
-   v
-Dashboard
-   |
-   +---- View Balance
-   |
-   +---- Apply Leave
-              |
-              v
-        Select Leave Type
-              |
-              v
-        Choose Dates
-              |
-              v
-        Review Leave Days
-              |
-              v
-        Enter Reason
-              |
-              v
-        Submit
-              |
-              v
-          PENDING
-              |
-              v
-        My Leave / Details
-```
+## 14.1 Breakpoints and layout behaviour
 
----
+| Breakpoint | Behaviour |
+|---|---|
+| `< sm (640)` | Single column; sticky bottom action bars for primary actions; modals full-screen; tables → card lists |
+| `sm–md (640–768)` | Single column forms, wider cards |
+| `md–lg (768–1024)` | Two-column forms and definition lists; tables visible; sidebar as drawer |
+| `≥ lg (1024)` | Fixed sidebar; two-column Apply Leave layout; full tables |
 
-# 139. Manager User Journey
-
-```text
-Login
-   |
-   v
-Manager Dashboard
-   |
-   v
-Pending Approvals
-   |
-   v
-Review Application
-   |
-   +----------------+
-   |                |
-   v                v
-Approve           Reject
-   |                |
-   v                v
-APPROVED         REJECTED
-```
+- Tables never cause horizontal page scroll. On ≥ `md`, wide tables may scroll within their own container with a visible scroll hint; < `md` use stacked cards.
+- Touch targets ≥ 44×44 px on touch layouts. Inputs ≥ 16px font size (prevents iOS zoom).
+- Support current Chrome, Edge, Safari and Firefox. Test viewport widths 360, 768, 1024, 1440.
 
----
+## 14.2 Accessibility checklist (WCAG 2.1 AA target)
 
-# 140. Administrator User Journey
-
-```text
-Login
-   |
-   v
-Admin Dashboard
-   |
-   +---- Employees
-   |
-   +---- Leave Types
-   |
-   +---- Leave Allocation
-   |
-   +---- Holidays
-   |
-   +---- Reports
-   |
-   +---- Audit Logs
-```
+- Every control has a programmatic label; icon-only buttons have `aria-label` and a tooltip.
+- Errors: `aria-invalid`, `aria-describedby` to the message, message text is specific (not "Invalid"). Form-level errors and toasts use `role="alert"` / `aria-live`.
+- Full keyboard operation: logical tab order, visible focus, `Esc` closes dialogs/menus, focus trap in modals and focus return on close, arrow-key navigation in calendars and menus.
+- Provide a **Skip to main content** link; use landmarks (`header`, `nav`, `main`); one `h1` per page; headings in order.
+- Data tables use `<th scope>`; the mobile card layout keeps label/value association (`dl`).
+- Status and calendar markers are never conveyed by colour alone (text label, icon or pattern).
+- Respect `prefers-reduced-motion` (no non-essential animation).
+- Set `document.title` per page ("Apply Leave · Employee Leave Management").
 
 ---
-
-# 141. Core Employee Screens
-
-Required:
 
-```text
-/login
+# 15. Frontend Testing
 
-/dashboard
+Tooling: Vitest + React Testing Library + MSW for unit/component tests; Playwright for the required approve, reject and cancel end-to-end flows. Add `data-testid` only where role/label queries are not enough; required test ids: `login-username`, `login-password`, `login-submit`, `leave-type-select`, `leave-from-date`, `leave-to-date`, `leave-reason`, `leave-submit`, `approve-btn`, `reject-btn`, `reject-reason`, `confirm-btn`.
 
-/leave/apply
+| Area (from requirements §I) | Must test |
+|---|---|
+| Login | validation messages; success redirect by `returnTo`; `INVALID_CREDENTIALS`, `USER_INACTIVE`, `USER_LOCKED` banners; already-authenticated redirect |
+| Protected routes | unauthenticated → `/login?returnTo=`; employee on `/admin/*` → forbidden; `401` clears session; logout clears cache |
+| Dashboard | employee/manager/admin variants render the right blocks; one failing section does not break the page |
+| Apply leave | `calculate-days` called (debounced) and summary shown; zero-day message; insufficient-balance submission prevention; field errors from `422`; `OVERLAPPING_LEAVE_APPLICATION` banner with link; success navigates to details; double-submit prevented |
+| Leave history | filters sync to URL; Cancel only on `PENDING`; cancel dialog flow; empty/error/loading states |
+| Manager approval | approve with/without comment; reject requires non-empty reason; `LEAVE_ALREADY_PROCESSED` handling; self-application shows no approve/reject |
+| Admin screens | employee create (duplicate code/email field errors); activate/deactivate confirm; leave type create/edit; holiday add/edit/deactivate; balance allocate/adjust validation |
+| Validation messages | every message in §6.4 maps correctly; network error and 500 messages |
+| Utilities | `formatDays`, `formatDate` (no UTC off-by-one), `utilization(used, 0)`, date-only formatting and numeric precision |
+| Accessibility | axe-core smoke test on Login, Dashboard, Apply Leave, Approvals |
 
-/leave/my
+**End-to-end (Playwright), against seeded backend:** Employee `EMP001` logs in → applies leave → manager `MGR001` logs in → approves → employee sees status **Approved** and updated balance (requirements §I).
 
-/leave/[application_id]
-
-/leave/balance
-
-/holidays
-
-/notifications
-
-/profile
-```
-
 ---
-
-# 142. Core Manager Screens
-
-Required:
 
-```text
-/manager/dashboard
+# 16. Recommended Build Order
 
-/manager/approvals
+1. **Scaffold:** Next.js + TS + Tailwind, tokens, lint/format, test tooling, `.env.example`.
+2. **Foundation:** types, api-client and error mapping in Phase 1. AuthProvider/AuthGate, login and protected shell belong to Phase 3 after database foundation.
+3. **Shared components:** `ui/`, `DataTable`, `Pagination`, `FilterBar`, `StatusBadge`, states, `Toast`, dialogs.
+4. **Employee flows:** profile/balance/dashboard; then holidays/calculation; then apply; then history/cancellation, following IMPLEMENTATION_PLAN.md.
+5. **Notifications:** bell, page.
+6. **Manager flows:** approvals (approve/reject), team, team calendar, manager dashboard.
+7. **Admin flows:** employees (list/create/edit/detail), leave types, holidays, leave balances, all applications, admin dashboard.
+8. **Reports (export deferred).**
+9. **Hardening:** accessibility pass, responsive pass at four widths, empty/error/loading audit, test completion, README frontend section.
 
-/manager/approvals/[application_id]
-
-/manager/team
-
-/manager/team-leave
-```
-
 ---
-
-# 143. Core Administrator Screens
-
-Required:
-
-```text
-/admin/dashboard
-
-/admin/employees
 
-/admin/employees/new
+# 17. Acceptance Traceability (UI-visible behaviour)
 
-/admin/employees/[employee_id]
+| AC | Where satisfied |
+|---|---|
+| AC-AUTH-001/002/003 | §9.1 login success, invalid-credentials and inactive-user messages |
+| AC-AUTH-004 | §6.2 / §6.3 — `401` triggers session-expired flow |
+| AC-EMP-001/002 | §11.2 create employee; duplicate code shown on field |
+| AC-BAL-001/002 | §9.4 shows Allocated, Used, Pending, Available exactly as returned |
+| AC-LEAVE-001 | §9.5 submit → `PENDING`, appears in history (§9.6) and manager list (§10.1) |
+| AC-LEAVE-002/003/005 | §9.5 error banners for balance, date range, overlap |
+| AC-LEAVE-004 / AC-HOL-003 | §9.5 summary shows holiday and weekend days excluded by backend calculation |
+| AC-APPROVAL-001/003/004 | §10.1, §9.7 approve/reject flows and already-processed handling |
+| AC-APPROVAL-002 / AC-SEC-002 | `403 NOT_AUTHORIZED_MANAGER` shown; no approve controls for non-reports |
+| AC-CANCEL-001/002 | §9.6/§9.7 cancel only for `PENDING` |
+| AC-HOL-001/002 | §9.8, §11.7 |
+| AC-SEC-001/003 | §5.2 guards plus backend `403`; UI never sends other employees' ids for self views |
 
-/admin/employees/[employee_id]/edit
-
-/admin/leave-types
-
-/admin/leave-balances
-
-/admin/holidays
-
-/admin/audit
-```
-
 ---
-
-# 144. Final Employee Dashboard Layout
-
-Recommended structure:
-
-```text
-+--------------------------------------------------------------+
-| Dashboard                                      + Apply Leave |
-| Good morning, Basha                                         |
-+--------------------------------------------------------------+
-
-+-------------+ +-------------+ +-------------+ +-------------+
-| Earned      | | Privileged  | | Sick        | | LOP         |
-| 12 days     | | 5 days      | | 8 days      | | 2 days used |
-| available   | | available   | | available   | |             |
-+-------------+ +-------------+ +-------------+ +-------------+
-
-Quick Actions
-[Apply Leave] [My Leave] [Holiday Calendar] [Leave Balance]
-
-+-----------------------------------------+--------------------+
-| Recent Leave Applications               | Upcoming Holidays  |
-|                                         |                    |
-| Application | Type | Dates | Status     | 02 Oct             |
-| ...                                     | Gandhi Jayanti     |
-|                                         |                    |
-| View All                                | View Calendar      |
-+-----------------------------------------+--------------------+
-```
 
----
+# 18. Out of Scope for v1
 
-# 145. Final Apply Leave Layout
-
-```text
-Apply Leave
-
-Submit a new leave request.
-
-+---------------------------------------+----------------------+
-| Leave Type *                          | Balance Summary      |
-| [Earned Leave ▼]                      |                      |
-|                                       | Earned Leave         |
-| From Date *                           | Available: 12        |
-| [10 Oct 2026]                         | Requested: 2         |
-|                                       | Remaining: 10        |
-| To Date *                             |                      |
-| [12 Oct 2026]                         | Leave Breakdown      |
-|                                       | Calendar: 3          |
-| Reason *                              | Weekend: 1           |
-| [                                  ]  | Holiday: 0           |
-| [                                  ]  | Leave Days: 2        |
-|                                       |                      |
-|                    [Cancel] [Apply]   |                      |
-+---------------------------------------+----------------------+
-```
+Dark mode, internationalization, change/forgot-password, SSO, profile editing by employees, half-day UI (pending API), multi-level approvals, email/WhatsApp/push, attendance, payroll, calendar sync (Outlook/Google), Excel/PDF export, AI assistant, advanced analytics dashboards, audit-log viewer, bulk operations. (See `REQUIREMENTS.md` §15–§16.)
 
 ---
-
-# 146. Final Manager Approval Layout
-
-```text
-Review Leave Request
 
-Ananya Rao                                 PENDING
-E003 • Engineering
+# Appendix A — Audit Resolutions
 
-+---------------------------------------+----------------------+
-| Leave Request                         | Leave Balance        |
-|                                       |                      |
-| Earned Leave                          | Allocated: 20        |
-| 10 Oct → 12 Oct                       | Used: 8              |
-| 2 days                                | Pending: 2           |
-|                                       | Available: 10        |
-| Reason                                |                      |
-| Personal work                         |                      |
-+---------------------------------------+----------------------+
+The previous G-1..G-11 fallback proposals are superseded by complete API/database
+contracts. Do not implement disabled placeholder fields or TODO-based fabricated APIs.
 
-Timeline
+| Former gap | Current contract |
+|---|---|
+| G-1 | POST /auth/logout, auth_session, atomic employee/account provisioning |
+| G-2 | GET /departments; Employee list includes department/manager |
+| G-2b | balance_id on all balance schemas; paginated admin balance read |
+| G-3 | approval_comment persisted/returned; cancellation_reason also persisted |
+| G-4 | Dashboard personal/manager/admin aggregates in API_SPEC.md §14 |
+| G-5 | Half-day false/hidden in v1; new contract required for later release |
+| G-6 | Full name and optional phone; split names deferred |
+| G-7 | Explicit ACTIVE/INACTIVE/ALL status enum and role restrictions |
+| G-8 | Inclusive leave-period overlap filters and calendar-year semantics |
+| G-9 | API whitelist and UUID pagination tiebreaker |
+| G-10 | Administrator approve/reject override, excluding self |
+| G-11 | Single required reason; separate application remarks deferred |
 
-✓ Submitted on 7 Oct 2026
-● Awaiting your approval
+No department CRUD, audit viewer, Settings or export navigation in v1. Implementation
+phase availability is distinct from specification completeness; hide unfinished
+navigation until the corresponding backend/frontend slice is delivered.
 
-[Reject]                                      [Approve]
-```
-
 ---
-
-# 147. Final Admin Employee Layout
-
-```text
-Employees                                      + Add Employee
 
-[Search employees...] [Department ▼] [Status ▼]
+# Appendix B — TypeScript Contract Rules
 
-----------------------------------------------------------------
-Employee       Code    Department   Manager        Status Action
-----------------------------------------------------------------
-S M Basha      E001    Engineering  CEO            ACTIVE  ...
-Ananya Rao     E003    Engineering  S M Basha      ACTIVE  ...
-----------------------------------------------------------------
+Generate or hand-maintain TypeScript types from the complete schemas in API_SPEC.md
+§3 and endpoint sections. Do not reuse the archived V2 sample types. Keep snake_case,
+required balance_id/year fields, nullable terminal fields, department/manager objects,
+phone, account visibility, list pagination and opaque-session Identity/Login response.
+Types cannot erase required fields to make an incomplete backend response compile.
+Contract tests compare runtime OpenAPI, frontend types and the canonical API spec.
 
-Showing 1–20 of 84
-
-< Previous     1 2 3 4 5     Next >
-```
-
 ---
-
-# 148. Codex Implementation Rules
-
-When Codex builds the Next.js UI, it must:
-
-1. Read `REQUIREMENTS.md`.
-
-2. Read `AGENTS.md`.
-
-3. Read `ARCHITECTURE.md`.
 
-4. Read `DATABASE.md`.
+# Appendix C — Endpoint Usage Index
 
-5. Read `API_SPEC.md`.
+Every endpoint in `API_SPEC.md` and the screen that consumes it.
 
-6. Read `UI_SPEC.md`.
+| Endpoint | Screen(s) |
+|---|---|
+| `POST /auth/login`, `POST /auth/logout` | Login / user menu |
+| `GET /auth/me` | Session restore, Profile, Apply Leave |
+| `GET /dashboard` | Dashboard, notification bell |
+| `GET /employees` | Admin Employees, `AsyncEmployeeSelect`, dashboard admin counts |
+| `GET /employees/{id}` | Profile, Team member, Admin detail/edit |
+| `GET /employees/by-code/{code}` | Optional deep-link/search by employee code |
+| `GET /employees/{id}/leave-balance` | Balance, Apply Leave, Dashboard, Team, Admin balances, details context |
+| `GET /employees/{id}/leave-applications` | My history, Team member history, Admin detail history |
+| `GET /managers/me/direct-reports` | My Team, Approvals filter, manager dashboard |
+| `GET /leave-types` | Apply Leave, filters, Admin Leave Types |
+| `POST /leave/calculate-days` | Apply Leave |
+| `POST /leave/applications` | Apply Leave |
+| `GET /leave/applications` | History (date range), Approvals tabs, Team Calendar, Admin applications, reports, dashboard counts |
+| `GET /leave/applications/{id}` | Leave Application Details |
+| `POST /leave/applications/{id}/cancel` | History, Details |
+| `GET /leave/approvals/pending` | Approvals (Pending tab), Admin applications (Pending tab) |
+| `POST /leave/applications/{id}/approve` | Approvals, Details |
+| `POST /leave/applications/{id}/reject` | Approvals, Details |
+| `GET /holidays`, `GET /holidays/{id}` | Holiday Calendar, Team Calendar, Dashboard, Admin Holidays |
+| `GET /notifications`, `POST /notifications/{id}/read` | Bell, Notifications page |
+| `GET /reports/leave-summary` | Reports |
+| `POST /admin/employees`, `PUT /admin/employees/{id}`, `PUT /admin/employees/{id}/account` | Admin employee/account forms |
+| `GET /departments` | Department filters/selects |
+| `GET /admin/leave-balances` | Organization balance administration |
+| `POST /admin/leave-types`, `PUT /admin/leave-types/{id}` | Admin Leave Types |
+| `POST /admin/leave-balances`, `PUT …/{id}`, `POST …/{id}/adjust` | Admin Leave Balances |
+| `POST /admin/holidays`, `PUT …/{id}`, `DELETE …/{id}` | Admin Holidays |
 
-7. Build reusable components before duplicating UI.
-
-8. Use TypeScript everywhere.
-
-9. Keep API calls inside the services layer.
-
-10. Keep authoritative business logic in FastAPI.
-
-11. Handle loading, empty, success, and error states.
-
-12. Build responsive screens.
-
-13. Follow role-based navigation.
-
-14. Do not invent new backend endpoints without documenting them.
-
-15. Do not modify API contracts silently.
-
-16. Do not hardcode employee or leave data.
-
-17. Do not hardcode authentication tokens.
-
-18. Do not expose secrets.
-
-19. Preserve architectural boundaries.
-
-20. Add tests for important components and workflows.
-
 ---
 
-# 149. Documents Governing Implementation
-
-The project documentation hierarchy is:
-
-```text
-docs\REQUIREMENTS.md
-        |
-        v
-AGENTS.md
-        |
-        v
-docs\ARCHITECTURE.md
-        |
-        v
-docs\DATABASE.md
-        |
-        v
-docs\API_SPEC.md
-        |
-        v
-docs\UI_SPEC.md
-        |
-        v
-docs\IMPLEMENTATION_PLAN.md
-        |
-        v
-docs\TEST_PLAN.md
-```
 
-`UI_SPEC.md` defines how the application should appear and behave from the user's perspective.
+## Runtime business date configuration
 
-If the UI requires a capability not present in `API_SPEC.md`, the API specification must be updated before implementing an undocumented backend contract.
-
----
+Backend owns ORG_TIMEZONE. GET /auth/me and login Identity additionally include
+organization_timezone: IANA string and business_today: date. The UI uses these values
+for date-picker defaults and labels, never browser local midnight as business authority.
+Refresh /auth/me on window focus and at organizational midnight while visible. Backend
+submission validation always wins if the preview became stale across midnight.
 
 # End of UI_SPEC.md

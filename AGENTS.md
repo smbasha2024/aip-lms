@@ -933,7 +933,7 @@ Examples:
 
 ```env
 DATABASE_URL=
-SECRET_KEY=
+ORG_TIMEZONE=
 ACCESS_TOKEN_EXPIRE_MINUTES=
 CORS_ALLOWED_ORIGINS=
 NEXT_PUBLIC_API_URL=
@@ -1913,7 +1913,7 @@ Backend:
 - employee create
 - employee update
 - department list
-- department writes only if API_SPEC.md includes them
+- department lookup only; no department writes in v1
 
 Frontend:
 - employee list
@@ -1955,7 +1955,7 @@ Implement:
 - admin UI
 - validation and tests
 
-Do not implement half-day leave application UI unless its API contract has been added.
+Keep allow_half_day=false and requires_approval=true in v1; do not implement half-day/automatic approval workflows.
 ```
 
 ---
@@ -1966,7 +1966,7 @@ Do not implement half-day leave application UI unless its API contract has been 
 Implement Leave Balance Administration only.
 
 Prerequisite:
-API must return balance_id where required.
+Balance reads must implement required balance_id and paginated admin listing from API_SPEC.md.
 
 Backend:
 - allocate
@@ -2478,5 +2478,24 @@ The correct behavior is:
 ```text
 Implement only what the current prompt explicitly requests.
 ```
+
+
+# 66. Current Specification Baseline (7 October 2026)
+
+Use docs/UI_SPEC.md as the canonical UI specification. docs/UI_SPEC_V2.md and
+AGENTS_V01.md are archived references and cannot authorize fallbacks or behavior.
+Use subject-specific ownership in §7; no universal precedence chain. The canonical
+contracts were reconciled in docs/READINESS_CORRECTIONS.md. If future drift is found,
+fix the owning document before implementation; do not create fake fields/endpoints.
+
+Phase 1 remains infrastructure only. Use synchronous SQLAlchemy/Psycopg, one Alembic
+location under database/, npm package-lock and pinned backend requirements. Phase 2
+creates domain models plus auth_session and hashes development seed passwords;
+Phase 3 creates server-revocable opaque bearer login/logout. Exact package versions
+must be checked and locked in Phase 1 before installing.
+
+Do not call documentation findings fixed at runtime without executing the matching
+test gate. The current docs/configuration pass leaves B3 and F24 for Phase 1 implementation.
+Do not overwrite root .env or frontend .env.local. Backend loads root .env explicitly.
 
 # End of AGENTS.md

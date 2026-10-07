@@ -75,19 +75,10 @@ If Figma, HTML prototypes, screenshots or other UI references are listed in `UI_
 
 `AGENTS.md` defines implementation discipline.
 
-Subject-specific source-of-truth order:
-
-```text
-API_SPEC.md
-    ↓
-ARCHITECTURE.md
-    ↓
-DATABASE.md
-    ↓
-REQUIREMENTS.md
-    ↓
-UI_SPEC.md
-```
+Use the subject-specific ownership in AGENTS.md §7: Requirements owns product
+behavior; API owns wire contracts; Architecture owns structure; Database owns
+persistence; UI owns presentation; this plan owns sequence; Test Plan owns gates.
+UI_SPEC.md is canonical; UI_SPEC_V2.md and AGENTS_V01.md are archived references.
 
 Codex must not silently resolve cross-document contradictions.
 
@@ -272,44 +263,29 @@ Do not move forward until:
 
 ---
 
-# 6. Phase 0.1 — Resolve Contract Gaps Before Coding
+# 6. Phase 0.1 — Contract Baseline
 
-The finalized `UI_SPEC.md` identifies required API contract resolutions.
+The 7 October 2026 correction pass defines the target contracts in API_SPEC.md,
+DATABASE.md and UI_SPEC.md. See READINESS_CORRECTIONS.md for B1-B5/F1-F24 traceability.
+Contracts are specified, not implemented. No fallback endpoints or disabled fake
+forms may substitute for implementing the approved slice.
 
-Resolve these before implementing screens that depend on them.
+Resolved: server logout and session persistence; employee/account provisioning;
+department reads; balance identifiers/admin listing; approval/cancellation comments;
+dashboard aggregates; scopes/filter semantics; administrator override; cross-year
+policy; calendar rules; transaction/lock ordering and duplicate-action handling.
 
-Priority contract items include:
-
-```text
-GET /api/v1/departments
-
-balance_id in leave-balance response
-
-department and manager objects in employee-list response
-
-admin approval override rule
-
-leave application date-filter semantics
-
-sort_by whitelist
-
-authentication/logout behavior
-
-approval_comment if required
-```
-
-Half-day leave remains disabled in v1 unless its API contract is added.
-
-Audit-log UI remains Phase 2 unless an audit-read API exists.
+Half-day/automatic approval, regional calendars, department writes, audit viewer,
+Settings and exports are later-release work. "Later release" never means Phase 2,
+which is strictly the core database implementation phase.
 
 ## Exit Criteria
 
-Before coding affected features:
-
-- `API_SPEC.md` is updated;
-- `DATABASE.md` is updated where necessary;
-- `UI_SPEC.md` no longer depends on an undefined contract;
-- implementation can proceed without fake fields or endpoints.
+- Current documents agree on the scoped contract and source ownership.
+- `.gitignore` permits backend/app/models.
+- Phase 1 remains foundation only; runtime verification happens during implementation.
+- Exact runtime/dependency versions must be selected from official compatibility
+  documentation and pinned before Phase 1 package installation.
 
 ---
 
@@ -326,7 +302,7 @@ Create/verify:
 ```text
 frontend/
 backend/
-database/ or migrations/
+database/ (one Alembic authority)
 ```
 
 Recommended backend:
@@ -368,12 +344,13 @@ Configure:
 - FastAPI;
 - SQLAlchemy;
 - Pydantic;
-- PostgreSQL driver;
+- Psycopg 3 PostgreSQL driver with synchronous SQLAlchemy Sessions;
 - Alembic;
 - pytest;
-- application configuration;
+- Pydantic Settings and python-dotenv configuration;
 - database session;
-- structured error handling foundation.
+- structured error handling foundation;
+- Argon2id support available for Phase 2 seeded hashes. No login/token implementation in Phase 1.
 
 ## Frontend Setup
 
@@ -408,23 +385,27 @@ Example variables:
 
 ```env
 DATABASE_URL=
-SECRET_KEY=
+ORG_TIMEZONE=Asia/Kolkata
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 APP_ENV=development
-CORS_ALLOWED_ORIGINS=http://localhost:3000
+CORS_ALLOWED_ORIGINS=["http://localhost:3000"]
 
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_APP_NAME=Employee Leave Management
 ```
 
+CORS_ALLOWED_ORIGINS must be a JSON array of explicit allowed origins, matching
+the root and backend environment examples. A plain comma-separated string is invalid.
+
 Never commit real secrets.
 
 ## Minimal Health Endpoints
 
-Implement only infrastructure-level health endpoint if useful:
+Implement infrastructure liveness and database readiness endpoints:
 
 ```http
 GET /health
+GET /health/ready
 ```
 
 No business endpoints yet.
@@ -455,7 +436,7 @@ production build succeeds
 - backend starts;
 - frontend starts;
 - PostgreSQL connection can be established;
-- environment examples exist;
+- environment examples exist and explicit missing-variable validation works;
 - test runners execute;
 - no business logic implemented.
 
@@ -506,6 +487,7 @@ Create according to `DATABASE.md`:
 department
 employee
 app_user
+auth_session
 leave_type
 leave_balance
 leave_appln
@@ -618,7 +600,7 @@ Current-year leave balances
 Current-year holidays
 ```
 
-Use clearly documented development passwords.
+Use documented development-only passwords supplied locally, hash them with Argon2id, and never return or audit initial passwords. Seeds refuse APP_ENV=production and do not overwrite changed existing records.
 
 Never use seed credentials in production.
 
@@ -701,13 +683,14 @@ POST /api/v1/auth/login
 GET  /api/v1/auth/me
 ```
 
-Logout behavior must follow resolved API contract.
+Implement POST /api/v1/auth/logout exactly as API_SPEC.md §5 defines; browser clearing alone is not logout completion.
 
 Implement:
 
 - password hashing;
-- token issuance;
-- token expiration;
+- opaque bearer session creation (auth_session stores token hashes);
+- session expiration/revocation;
+- POST /api/v1/auth/logout;
 - current-user dependency;
 - active/locked user validation;
 - role resolution.
@@ -740,7 +723,7 @@ Backend:
 - valid login;
 - invalid credentials;
 - inactive user;
-- locked user if supported;
+- locked user;
 - token expiry;
 - `/auth/me`;
 - unauthenticated request.
@@ -854,7 +837,7 @@ allocated + carried_forward - used - pending
 
 Backend is authoritative.
 
-Include `balance_id` if resolved contract requires admin balance editing later.
+Every balance item must include balance_id, as required by API_SPEC.md.
 
 ## Frontend
 
@@ -988,7 +971,7 @@ Implement and test:
 - weekend exclusion according to requirements;
 - holiday exclusion;
 - active holiday handling;
-- fractional handling only if supported;
+- whole-day handling; half-day policy rejected in v1;
 - no authoritative calculation in frontend.
 
 ## Frontend
@@ -1090,8 +1073,10 @@ Validate:
 Apply Leave should atomically:
 
 ```text
+Lock employee
+Revalidate identity/manager/type
 Lock leave balance
-Validate current balance
+Validate current balance and cross-type overlap
 Create leave_appln
 Increase pending balance
 Create audit log
@@ -1219,6 +1204,8 @@ Only PENDING applications can be cancelled.
 Transaction:
 
 ```text
+Lock employee
+Revalidate actor/session
 Lock application
 Validate owner
 Validate PENDING
@@ -1395,6 +1382,8 @@ POST /api/v1/leave/applications/{application_id}/reject
 ## Approval Transaction
 
 ```text
+Lock employee
+Revalidate actor/session
 Lock application
 Validate PENDING
 Validate authorized manager/admin
@@ -1411,6 +1400,8 @@ Commit
 ## Rejection Transaction
 
 ```text
+Lock employee
+Revalidate actor/session
 Lock application
 Validate PENDING
 Validate authorized manager/admin
@@ -1543,7 +1534,7 @@ No push infrastructure in v1.
 
 ## Prerequisite
 
-Required contract gaps for departments and employee list must be resolved.
+Department/employee/account contracts are defined in API_SPEC.md; implement them together in this slice.
 
 ## Goal
 
@@ -1577,7 +1568,7 @@ Implement:
 /admin/employees/new
 /admin/employees/[id]
 /admin/employees/[id]/edit
-/admin/departments   // if API exists
+Department lookup only; no department management route
 ```
 
 ## Rules
@@ -1633,7 +1624,7 @@ Requires Approval
 Status
 ```
 
-Half-day may be configurable at leave type level even though half-day application UI remains disabled until its API is supported.
+Half-day remains false and requires_approval remains true in v1. API and database reject unsupported true/false values respectively. Display these as read-only; employee application eligibility remains configurable.
 
 ## Tests
 
@@ -1649,13 +1640,15 @@ Half-day may be configurable at leave type level even though half-day applicatio
 
 ## Prerequisite
 
-`balance_id` must exist in employee leave-balance response.
+Balance read responses must already include balance_id. Implement GET /api/v1/admin/leave-balances for organization browsing.
 
 ## Backend
 
 Implement/complete:
 
 ```http
+GET /api/v1/admin/leave-balances
+
 POST /api/v1/admin/leave-balances
 
 PUT /api/v1/admin/leave-balances/{balance_id}
@@ -1744,9 +1737,9 @@ Activate/Deactivate
 
 ## Backend
 
-Use existing application-list and holiday endpoints if contract supports leave-period overlap filtering.
+Use the application-list scope=team (scope=organization for admins) and holiday endpoints with inclusive leave-period overlap filtering defined in API_SPEC.md.
 
-If date-filter semantics are not resolved, fix `API_SPEC.md` first.
+Date-filter semantics are fixed in API_SPEC.md; implementation must conform.
 
 ## Frontend
 
@@ -1824,9 +1817,9 @@ Application Status
 Holidays
 ```
 
-## Optional CSV
+## Export scope
 
-Implement only after report APIs are stable.
+CSV/Excel/PDF export is deferred beyond v1; no export control in this phase.
 
 ## Tests
 
@@ -1835,7 +1828,7 @@ Implement only after report APIs are stable.
 - admin scope;
 - utilization zero division;
 - pagination;
-- export escaping if CSV exists.
+- no export controls in v1.
 
 ---
 
@@ -1874,13 +1867,13 @@ Prefer a well-designed dashboard API over many permanent aggregate workaround ca
 
 ---
 
-# 24. Phase 18 — Audit Log Viewer (Phase 2 Unless API Exists)
+# 24. Phase 18 — Audit Log Viewer (Deferred Beyond v1)
 
 Database audit logging must already exist for critical actions.
 
-Only build UI if backend provides an audit-read contract.
+Skip this phase in v1. A later release must approve an audit-read contract and access/retention rules before implementing the viewer.
 
-Potential route:
+Later-release route (not implemented in v1):
 
 ```text
 /admin/audit
@@ -2071,7 +2064,7 @@ Reports
     ↓
 Dashboard Completion
     ↓
-Audit UI (optional Phase 2)
+Audit UI (later release, skipped in v1)
     ↓
 Hardening
     ↓
@@ -2621,5 +2614,31 @@ Move to next slice
 ```
 
 ---
+
+
+# 41. Phase 1 Concrete Scope and Remaining Gates
+
+Configure root .env examples, frontend .env.local example, backend reference example,
+PostgreSQL dev/test Compose services, request-scoped database Session, /health and
+/health/ready, consistent errors and safe logging. Root .env is loaded explicitly;
+never overwrite a real environment file. Production configuration must fail clearly
+for missing database connection or permissive CORS, and seeds must refuse production.
+
+Create the single Alembic configuration under database/, empty versions directory,
+backend/frontend runner configurations, MSW setup and infrastructure smoke tests.
+Use TEST_PLAN.md §120 for the exact gate. Root tests/e2e contains Playwright smoke tests;
+backend/tests contains unit/api/integration; frontend/tests contains component tests.
+Git tracks meaningful files or .gitkeep for otherwise empty intended directories.
+
+Phase 1 does not create business models, migrations, seeds, login UI/API or domain
+fixtures. Phase 2 creates ten tables including auth_session and the full constraints
+in DATABASE.md. Phase 3 implements login/logout/current user. Existing empty folders
+and the documentation correction pass are not evidence that Phase 1 has passed.
+
+CI is included in Phase 1: PostgreSQL service, isolated disposable test database,
+backend pytest and frontend typecheck/lint/unit/build. Playwright uses an explicit test
+backend URL; full domain E2E begins after supporting slices. Concurrency tests use
+independent PostgreSQL sessions and a synchronization barrier, not shared rollback-only
+fixtures that cannot observe commits. Verify CI instructions before marking complete.
 
 # End of IMPLEMENTATION_PLAN.md

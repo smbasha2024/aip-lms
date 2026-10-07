@@ -148,29 +148,25 @@ DATABASE.md
 
 # 4. Repository Structure
 
-The project must use the following top-level structure:
+The canonical repository structure is:
 
 ```text
-employee-leave-management/
-│
-├── frontend/
-│
-├── backend/
-│
-├── database/
-│
-├── REQUIREMENTS.md
+aip-lms/
 ├── AGENTS.md
-├── ARCHITECTURE.md
-├── DATABASE.md
-├── API_SPEC.md
-├── UI_SPEC.md
-├── IMPLEMENTATION_PLAN.md
-├── TEST_PLAN.md
-│
+├── docs/                 # REQUIREMENTS, ARCHITECTURE, DATABASE, API_SPEC,
+│                        # UI_SPEC, IMPLEMENTATION_PLAN, TEST_PLAN
+├── frontend/
+├── backend/
+├── database/             # alembic.ini, migrations/, later seed.py
+├── tests/                # shared E2E
+├── .env.example
+├── docker-compose.yml
 ├── .gitignore
 └── README.md
 ```
+
+Specifications remain under docs/. UI_SPEC.md is canonical; UI_SPEC_V2.md and
+AGENTS_V01.md are archived references, not alternative instructions.
 
 ---
 
@@ -294,9 +290,9 @@ Routers expose REST APIs.
 Example:
 
 ```text
-POST /api/v1/leave-applications
-GET  /api/v1/leave-applications
-POST /api/v1/leave-applications/{id}/approve
+POST /api/v1/leave/applications
+GET  /api/v1/leave/applications
+POST /api/v1/leave/applications/{id}/approve
 ```
 
 Router responsibilities:
@@ -813,7 +809,7 @@ leaveService.applyLeave(request)
 instead of:
 
 ```typescript
-fetch("/api/leave-applications", ...)
+fetch("/api/v1/leave/applications", ...)
 ```
 
 inside many different UI components.
@@ -876,17 +872,17 @@ Location:
 frontend/types/
 ```
 
-TypeScript interfaces and types must be defined for API objects.
+TypeScript interfaces and types must be defined for API objects. Keep API snake_case and the exact schemas in API_SPEC.md; illustrative layer examples are not wire contracts.
 
 Example:
 
 ```typescript
 export interface LeaveApplication {
-  id: string;
-  employeeId: string;
-  leaveTypeId: string;
-  startDate: string;
-  endDate: string;
+  application_id: string;
+  employee_id: string;
+  leave_type_id: string;
+  from_date: string;
+  to_date: string;
   status: LeaveStatus;
 }
 ```
@@ -917,7 +913,7 @@ Browser
    v
 Next.js
    |
-   | POST /api/v1/leave-applications
+   | POST /api/v1/leave/applications
    | Content-Type: application/json
    v
 FastAPI
@@ -928,8 +924,8 @@ Example request:
 ```json
 {
   "leave_type_id": "uuid",
-  "start_date": "2026-10-10",
-  "end_date": "2026-10-12",
+  "from_date": "2026-10-10",
+  "to_date": "2026-10-12",
   "reason": "Personal work"
 }
 ```
@@ -938,11 +934,11 @@ Example response:
 
 ```json
 {
-  "id": "uuid",
+  "application_id": "uuid",
   "status": "PENDING",
-  "start_date": "2026-10-10",
-  "end_date": "2026-10-12",
-  "number_of_days": 2
+  "from_date": "2026-10-10",
+  "to_date": "2026-10-12",
+  "number_of_days": 1
 }
 ```
 
@@ -1028,7 +1024,7 @@ Employee
 Leave Application Form
    |
    v
-POST /leave-applications
+POST /leave/applications
    |
    v
 Leave Router
@@ -1085,7 +1081,7 @@ Manager
 Pending Approvals Page
    |
    v
-POST /leave-applications/{id}/approve
+POST /leave/applications/{id}/approve
    |
    v
 Leave Router
@@ -1095,7 +1091,7 @@ Leave Service
    |
    +--> Verify Manager
    |
-   +--> Verify Direct Report
+   +--> Verify Assigned Manager Snapshot
    |
    +--> Verify Current Status = PENDING
    |
@@ -1123,7 +1119,7 @@ Rejection flow:
 Manager
    |
    v
-POST /leave-applications/{id}/reject
+POST /leave/applications/{id}/reject
    |
    v
 Leave Service
@@ -1156,7 +1152,7 @@ Cancellation flow:
 Employee
    |
    v
-POST /leave-applications/{id}/cancel
+POST /leave/applications/{id}/cancel
    |
    v
 Leave Service
@@ -1169,7 +1165,7 @@ Leave Service
    |
    +--> Release Pending Balance
    |
-   +--> Update Used Balance if policy permits approved leave cancellation
+   +--> Keep used unchanged; approved cancellation is deferred
    |
    +--> Create Audit Entry
    |
@@ -1197,7 +1193,7 @@ Available
 Recommended calculation:
 
 ```text
-Available = Allocated - Used - Pending
+Available = Allocated + Carried Forward - Used - Pending
 ```
 
 The backend owns this calculation.
@@ -1210,6 +1206,7 @@ Example:
 Annual Leave
 
 Allocated : 20
+Carried   : 0
 Used      : 5
 Pending   : 2
 Available : 13
@@ -1297,7 +1294,7 @@ Requested Service
 
 Passwords must never be stored in plaintext.
 
-Authentication details will be finalized during implementation.
+Authentication uses server-revocable opaque bearer sessions stored as hashes in auth_session. Passwords use Argon2id. API_SPEC.md §2/§5 defines login, logout, current-user resolution and session lifecycle; DATABASE.md defines persistence. No JWT, refresh token or cookie authentication in v1.
 
 ---
 
@@ -1334,7 +1331,7 @@ View holidays
 Can additionally:
 
 ```text
-View leave requests from direct reports
+View current team requests and requests assigned at submission
 Approve leave requests
 Reject leave requests
 ```
@@ -1396,7 +1393,7 @@ Examples:
 ```text
 DATABASE_URL
 APP_ENV
-SECRET_KEY
+ORG_TIMEZONE
 ACCESS_TOKEN_EXPIRE_MINUTES
 CORS_ALLOWED_ORIGINS
 ```
@@ -1607,7 +1604,7 @@ DATABASE.md
 
 # 36. Notification Architecture
 
-Notifications should be initiated by the service layer after successful business operations.
+In-app notifications are inserted by the service within the business transaction and become visible after commit. Required notification/audit insertion failure rolls back that transaction.
 
 Examples:
 
@@ -1632,7 +1629,7 @@ Manager rejects leave
 Employee notification
 ```
 
-Initial implementation may store notifications inside the application.
+Initial implementation stores notifications in PostgreSQL; external delivery is deferred.
 
 The architecture should allow future channels such as:
 
@@ -1656,7 +1653,7 @@ Examples:
 ```text
 GET /employees
 
-GET /leave-applications
+GET /leave/applications
 
 GET /audit-logs
 ```
@@ -1755,7 +1752,7 @@ Apply Migration
 PostgreSQL
 ```
 
-The project may use Alembic for SQLAlchemy migrations.
+The project uses Alembic, with database/alembic.ini and database/migrations/. There is one migration authority; Phase 1 configures it and Phase 2 creates schema migrations.
 
 Migration scripts should be version-controlled.
 
@@ -1926,7 +1923,7 @@ Examples:
 
 /api/v1/leave-balances
 
-/api/v1/leave-applications
+/api/v1/leave/applications
 
 /api/v1/holidays
 ```
@@ -2305,3 +2302,28 @@ Architectural changes must be explained before implementation.
 ---
 
 # End of ARCHITECTURE.md
+# 55. Foundation and Lifecycle Decisions
+
+Subject-specific authority is AGENTS.md §7; there is no universal hierarchy.
+The canonical frontend route map is UI_SPEC.md §5. Dedicated /manager/dashboard and
+/admin/dashboard routes are superseded by role-aware /dashboard.
+
+Use synchronous SQLAlchemy Sessions with Psycopg 3 and one metadata registry. Services
+own transactions; repositories flush without committing. READ COMMITTED plus the
+shared employee/account/session/application/balance lock ordering in API_SPEC.md §15
+prevents cross-type overlap and counter corruption. Current-report privacy and assigned
+manager approval scope are distinct; administrators may override excluding self.
+
+Central Pydantic settings load root .env explicitly from repository root; frontend
+loads its .env.local independently. Environment examples contain no working credentials.
+APP_ENV, DATABASE_URL, ACCESS_TOKEN_EXPIRE_MINUTES, CORS_ALLOWED_ORIGINS and ORG_TIMEZONE
+are backend settings. NEXT_PUBLIC_API_URL contains origin only. Separate dev/test
+PostgreSQL services/data; production credentials never reused. No database DDL at startup.
+
+Phase 1 configures strict TypeScript, frontend providers, backend settings/errors,
+health/readiness, Alembic and isolated test runners. Runtime/dependency exact versions
+are selected and locked during Phase 1 after checking official compatibility documentation.
+Use npm with package-lock; backend requirements.txt plus requirements-dev.txt with exact
+pins. Use pytest/httpx and frontend Vitest/Testing Library/MSW/Playwright. Auth support
+libraries (Argon2id) must be available in Phase 2 for seeded account hashes. No duplicate
+framework, ORM, form/state or migration stacks. Deployment platform is deferred.

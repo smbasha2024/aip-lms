@@ -1,3 +1,5 @@
+> ARCHIVED REFERENCE — superseded on 7 October 2026. Use docs/UI_SPEC.md. Historical fallbacks and instructions below are not current requirements.
+
 # UI_SPEC.md
 
 # Employee Leave Management System — Frontend / UI Specification

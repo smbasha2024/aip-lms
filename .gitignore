@@ -54,10 +54,16 @@ generated/
 
 # AI local data
 chroma/
-models/
+/models/
 
 # Secrets / certificates
 *.pem
 *.key
 *.p12
 *.pfx
+# Test and build reports
+coverage/
+playwright-report/
+test-results/
+*.tsbuildinfo
+.ruff_cache/

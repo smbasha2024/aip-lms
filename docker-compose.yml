@@ -1,0 +1,37 @@
+# PostgreSQL infrastructure only. Application scaffolding remains Phase 1 work.
+# Set passwords in root .env; no usable credentials are committed here.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aip_lms_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-aip_lms_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in root .env}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  postgres_test:
+    image: postgres:17
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: ${TEST_POSTGRES_DB:-aip_lms_test}
+      POSTGRES_USER: ${TEST_POSTGRES_USER:-aip_lms_test}
+      POSTGRES_PASSWORD: ${TEST_POSTGRES_PASSWORD:?Set TEST_POSTGRES_PASSWORD in root .env}
+    ports:
+      - "127.0.0.1:${TEST_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  postgres_dev_data:
+  postgres_test_data:
