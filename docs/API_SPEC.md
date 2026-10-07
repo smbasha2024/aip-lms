@@ -2862,7 +2862,7 @@ Routers and UI code must never query PostgreSQL directly.
 Refer to:
 
 ```text
-REQUIREMENTS.md
+docs\REQUIREMENTS.md
 ```
 
 for functional and business requirements.
@@ -2874,31 +2874,31 @@ AGENTS.md
 for coding and development rules.
 
 ```text
-ARCHITECTURE.md
+docs\ARCHITECTURE.md
 ```
 
 for system structure and backend layering.
 
 ```text
-DATABASE.md
+docs\DATABASE.md
 ```
 
 for tables, relationships, constraints, and transactions.
 
 ```text
-UI_SPEC.md
+docs\UI_SPEC.md
 ```
 
 for screens and frontend behavior.
 
 ```text
-IMPLEMENTATION_PLAN.md
+docs\IMPLEMENTATION_PLAN.md
 ```
 
 for implementation sequence.
 
 ```text
-TEST_PLAN.md
+docs\TEST_PLAN.md
 ```
 
 for API, service, repository, and end-to-end test coverage.

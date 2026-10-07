@@ -4036,28 +4036,28 @@ When Codex builds the Next.js UI, it must:
 The project documentation hierarchy is:
 
 ```text
-REQUIREMENTS.md
+docs\REQUIREMENTS.md
         |
         v
 AGENTS.md
         |
         v
-ARCHITECTURE.md
+docs\ARCHITECTURE.md
         |
         v
-DATABASE.md
+docs\DATABASE.md
         |
         v
-API_SPEC.md
+docs\API_SPEC.md
         |
         v
-UI_SPEC.md
+docs\UI_SPEC.md
         |
         v
-IMPLEMENTATION_PLAN.md
+docs\IMPLEMENTATION_PLAN.md
         |
         v
-TEST_PLAN.md
+docs\TEST_PLAN.md
 ```
 
 `UI_SPEC.md` defines how the application should appear and behave from the user's perspective.

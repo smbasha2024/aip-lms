@@ -15,14 +15,7 @@ For a serious application, use this structure:
 ```text
 MyApp/
 │
-├── REQUIREMENTS.md
 ├── AGENTS.md
-├── ARCHITECTURE.md
-├── DATABASE.md
-├── API_SPEC.md
-├── UI_SPEC.md
-├── IMPLEMENTATION_PLAN.md
-├── TEST_PLAN.md
 │
 ├── frontend/
 │   └── Next.js application
@@ -34,6 +27,13 @@ MyApp/
 │   └── migrations / seed scripts
 │
 └── docs/
+    └── REQUIREMENTS.md
+    └── ARCHITECTURE.md
+    └── DATABASE.md
+    └── API_SPEC.md
+    └── UI_SPEC.md
+    └── IMPLEMENTATION_PLAN.md
+    └── TEST_PLAN.md
 ```
 
 Think of the documents this way:

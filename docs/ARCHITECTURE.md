@@ -2234,7 +2234,7 @@ This architecture must remain consistent throughout implementation.
 Detailed implementation specifications are intentionally separated into the following documents:
 
 ```text
-REQUIREMENTS.md
+docs\REQUIREMENTS.md
 ```
 
 Defines what the application must do.
@@ -2246,37 +2246,37 @@ AGENTS.md
 Defines development rules that Codex and developers must follow.
 
 ```text
-ARCHITECTURE.md
+docs\ARCHITECTURE.md
 ```
 
 Defines how the application is technically structured.
 
 ```text
-DATABASE.md
+docs\DATABASE.md
 ```
 
 Defines database tables, relationships, constraints and indexes.
 
 ```text
-API_SPEC.md
+docs\API_SPEC.md
 ```
 
 Defines REST endpoints, requests, responses and error contracts.
 
 ```text
-UI_SPEC.md
+docs\UI_SPEC.md
 ```
 
 Defines screens, layouts, components and user interactions.
 
 ```text
-IMPLEMENTATION_PLAN.md
+docs\IMPLEMENTATION_PLAN.md
 ```
 
 Defines implementation phases and task sequence.
 
 ```text
-TEST_PLAN.md
+docs\TEST_PLAN.md
 ```
 
 Defines automated and manual testing requirements.
@@ -2288,14 +2288,14 @@ Defines automated and manual testing requirements.
 Before generating or modifying application code, Codex must understand and follow:
 
 ```text
-REQUIREMENTS.md
+docs\REQUIREMENTS.md
 AGENTS.md
-ARCHITECTURE.md
-DATABASE.md
-API_SPEC.md
-UI_SPEC.md
-IMPLEMENTATION_PLAN.md
-TEST_PLAN.md
+docs\ARCHITECTURE.md
+docs\DATABASE.md
+docs\API_SPEC.md
+docs\UI_SPEC.md
+docs\IMPLEMENTATION_PLAN.md
+docs\TEST_PLAN.md
 ```
 
 When implementing code, Codex must preserve this architecture unless an architectural change has been explicitly approved.

@@ -2638,7 +2638,7 @@ This document defines persistence and data integrity.
 Refer to:
 
 ```text
-REQUIREMENTS.md
+docs\REQUIREMENTS.md
 ```
 
 for business requirements.
@@ -2650,31 +2650,31 @@ AGENTS.md
 for development rules.
 
 ```text
-ARCHITECTURE.md
+docs\ARCHITECTURE.md
 ```
 
 for system layering and component responsibilities.
 
 ```text
-API_SPEC.md
+docs\API_SPEC.md
 ```
 
 for API request and response contracts.
 
 ```text
-UI_SPEC.md
+docs\UI_SPEC.md
 ```
 
 for frontend screens and behavior.
 
 ```text
-IMPLEMENTATION_PLAN.md
+docs\IMPLEMENTATION_PLAN.md
 ```
 
 for implementation order.
 
 ```text
-TEST_PLAN.md
+docs\TEST_PLAN.md
 ```
 
 for database, API, service, and integration testing requirements.

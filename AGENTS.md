@@ -43,14 +43,14 @@ REQUIREMENTS.md
 The project will be developed using the following documentation files:
 
 ```text
-├── REQUIREMENTS.md
+├── docs\REQUIREMENTS.md
 ├── AGENTS.md
-├── ARCHITECTURE.md
-├── DATABASE.md
-├── API_SPEC.md
-├── UI_SPEC.md
-├── IMPLEMENTATION_PLAN.md
-├── TEST_PLAN.md
+├── docs\ARCHITECTURE.md
+├── docs\DATABASE.md
+├── docs\API_SPEC.md
+├── docs\UI_SPEC.md
+├── docs\IMPLEMENTATION_PLAN.md
+├── docs\TEST_PLAN.md
 ```
 
 These files will be created **one by one**.
@@ -1182,4 +1182,19 @@ The following rules are mandatory:
 19. Prefer simple, readable, maintainable implementations.
 20. Keep the system extensible without introducing unnecessary complexity.
 
+## Definition of Done
+
+A feature is complete only when:
+
+- Requirements are implemented.
+- API contract matches API_SPEC.md.
+- Database changes are implemented through migrations.
+- Validation is implemented.
+- Error handling is implemented.
+- Backend tests pass.
+- Frontend type checking passes.
+- Frontend build passes.
+- No existing tests are broken.
+- No unrelated files are modified.
+- Documentation is updated where necessary.
 # End of AGENTS.md
