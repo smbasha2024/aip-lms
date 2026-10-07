@@ -143,6 +143,25 @@ backend tests live in backend/tests and frontend component/service tests in fron
 CI (`.github/workflows/ci.yml`) executes the same gates with disposable PostgreSQL 17,
 including Alembic connection and Chromium. CI itself must execute before merge.
 
+## Optional Docker browser for restricted hosts
+
+When a host sandbox prevents native Chromium launch, use the matching official
+Playwright server (the existing runner still owns frontend/backend startup):
+
+```sh
+docker run -d --rm --init --shm-size=1g --name aip-lms-phase1-browser -p 127.0.0.1:33000:33000 mcr.microsoft.com/playwright:v1.63.0-noble /bin/sh -c 'npx -y playwright@1.63.0 run-server --port 33000 --host 0.0.0.0'
+```
+
+With the same isolated database and E2E settings described above, run from frontend/:
+
+```sh
+E2E_BROWSER_WS_ENDPOINT=ws://127.0.0.1:33000/ npm run test:e2e
+docker stop aip-lms-phase1-browser
+```
+
+The browser version must match @playwright/test. Only loopback networking is exposed
+through the client. This option does not change application runtime or CI defaults.
+
 ## Next phases
 
 Phase 2: ten tables, constraints, reviewed migrations and idempotent development seeds.

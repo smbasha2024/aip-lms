@@ -30,9 +30,7 @@ htmlcov/
 logs/
 
 # Local databases
-*.sqlite
-*.sqlite3
-*.db
+
 
 # IDE
 .vscode/
@@ -53,17 +51,5 @@ storage/
 generated/
 
 # AI local data
-chroma/
-/models/
 
 # Secrets / certificates
-*.pem
-*.key
-*.p12
-*.pfx
-# Test and build reports
-coverage/
-playwright-report/
-test-results/
-*.tsbuildinfo
-.ruff_cache/
