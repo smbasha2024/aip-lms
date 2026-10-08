@@ -161,3 +161,11 @@ warning. Ruff lint/format and Git whitespace checks passed. Frontend and browser
 results above remain from the completed implementation gate; no frontend source
 changed during review. Only the Phase 2 manifest is included in the commit. Hosted CI
 remains unobserved and must run before merge.
+
+## Hosted CI follow-up (8 October 2026)
+
+The first push of `5a1763c` triggered run 37810877881. It stopped at Ruff import
+ordering before tests: from backend/, the repository-root database package was
+classified as third-party. Explicitly declaring app and database as first-party
+packages in backend/pyproject.toml makes local and hosted lint classification agree.
+The correction was checked from both repository root and backend/.
