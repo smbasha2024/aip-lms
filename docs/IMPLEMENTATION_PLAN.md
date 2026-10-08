@@ -895,6 +895,13 @@ Open profile
 Open detailed leave balance
 ```
 
+## Implementation status (8 October 2026)
+
+Phase 4 is implemented and locally verified. See PHASE_4_REPORT.md for endpoint,
+authorization, UI and test evidence. Pre-commit review passed; observe hosted CI for
+the pushed Phase 4 commit.
+Manager/admin dashboard summaries remain unavailable until Phase 17.
+
 ## Codex Prompt
 
 ```text

@@ -14,7 +14,7 @@ export function safeReturnTo(value: string | null, role: Role): string {
     if (decoded.startsWith("//") || decoded.includes(String.fromCharCode(92))) return "/dashboard";
     const url = new URL(value, "https://local.invalid");
     // Only implemented, protected screens can be a login destination in this slice.
-    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile"].includes(url.pathname)
+    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile", "/leave/balance"].includes(url.pathname)
         || !canAccess(url.pathname, role)) return "/dashboard";
     return url.pathname + url.search + url.hash;
   } catch { return "/dashboard"; }
@@ -23,7 +23,7 @@ export const navigation = [
   { label: "Dashboard", href: "/dashboard", ready: true },
   { label: "My Profile", href: "/profile", ready: true },
   { label: "Apply Leave", href: "/leave/apply" },
-  { label: "Leave Balance", href: "/leave/balance" },
+  { label: "Leave Balance", href: "/leave/balance", ready: true },
   { label: "My Leave Applications", href: "/leave/history" },
   { label: "Holidays", href: "/holidays" },
   { label: "Pending Approvals", href: "/approvals" },

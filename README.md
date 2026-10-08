@@ -1,11 +1,11 @@
 # aip-lms — Employee Leave Management System
 
-Phases 1–3 are implemented and locally verified: infrastructure, database foundation,
-and authentication with a protected application shell. Phase 2 supplies ten mapped
+Phases 1–4 are implemented and locally verified: infrastructure, database foundation,
+authentication, and employee profile/balance/dashboard reads. Phase 2 supplies ten mapped
 tables, Alembic revision `0001`, database tests and idempotent development seeds.
 Phase 3 adds email/employee-code login, current user and server sign-out. Leave and
 administrator functionality belong to later phases. See `docs/PHASE_1_REPORT.md`,
-`docs/PHASE_2_REPORT.md` and `docs/PHASE_3_REPORT.md` for evidence.
+`docs/PHASE_2_REPORT.md`, `docs/PHASE_3_REPORT.md` and `docs/PHASE_4_REPORT.md` for evidence.
 
 ## Project documents
 
@@ -114,9 +114,27 @@ uses dynamic document rendering. Inter is fetched at build time by next/font and
 locally; builds require access to the font source. Tokens remain accessible to same-origin
 scripts, so deployment must preserve CSP and avoid unsafe third-party scripts.
 
-The protected shell provides /dashboard and /profile identity screens, role-aware
-navigation and an accessible mobile drawer. Later leave/team/admin navigation is disabled;
-no business APIs or fabricated data are used. UI role guards supplement backend checks.
+The protected shell provides role-aware navigation and an accessible mobile drawer.
+UI role guards supplement backend checks. Phase 4 expands /dashboard and /profile and
+enables /leave/balance with authenticated reads of real PostgreSQL data.
+
+## Employee profile, balances and dashboard
+
+Phase 4 implements GET /api/v1/employees/{employee_id}, GET /api/v1/employees/by-code/{employee_code},
+GET /api/v1/employees/{employee_id}/leave-balance, GET /api/v1/leave-types and GET /api/v1/dashboard.
+Employees read their own data, managers read self/current direct reports, administrators
+read organization data. Account metadata is returned only to administrators. A manager
+may also read the single type/year balance for a pending request assigned to them; this
+exception grants no profile access. Status and session validity are checked on every request.
+
+Balances include inactive historical types and use Decimal arithmetic on the server.
+Missing allocations return an empty list and are never created by reads. Default years
+and upcoming dates use ORG_TIMEZONE. /leave/balance supports URL year selection and
+responsive table/cards; available is displayed exactly as returned by the API. The
+dashboard provides personal totals, the last five own applications, all own pending
+requests for the selected year, upcoming active holidays and own unread count. Role
+summaries remain null until Phase 17. Application/history/holiday/notification screens
+and writes belong to later phases; their navigation/actions remain disabled.
 
 ## Check the foundation
 
@@ -217,9 +235,9 @@ through the client. This option does not change application runtime or CI defaul
 
 ## Next phases
 
-Phase 2 hosted CI passed on commit 488f73c. Phase 3 authentication and the protected
-shell pass local gates; hosted CI for Phase 3 remains to be run before merge.
-Phase 4 adds employee profile reads, balances and the employee dashboard. Subsequent
+Phase 2 hosted CI passed on commit 488f73c and Phase 3 on 8ba3ad8. Phase 4 passes
+local gates and pre-commit review; observe hosted CI for the pushed Phase 4 commit.
+Phase 5 adds holiday reads and authoritative leave-day calculation. Subsequent
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 4 is the next implementation milestone.
+later work. Phase 5 is the next implementation milestone.

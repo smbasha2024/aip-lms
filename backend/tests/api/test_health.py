@@ -19,6 +19,11 @@ def test_startup_and_liveness(settings):
         "/api/v1/auth/login",
         "/api/v1/auth/me",
         "/api/v1/auth/logout",
+        "/api/v1/employees/{employee_id}",
+        "/api/v1/employees/by-code/{employee_code}",
+        "/api/v1/employees/{employee_id}/leave-balance",
+        "/api/v1/leave-types",
+        "/api/v1/dashboard",
     }
 
 

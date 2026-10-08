@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.employees import router as employee_router
 from app.api.health import router
 from app.config import Settings, load_settings
 from app.database import create_session_factory
@@ -44,12 +45,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     install_error_handlers(app)
 
     @app.middleware("http")
-    async def private_auth_responses(request: Request, call_next):
+    async def private_api_responses(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith("/api/v1/auth/"):
+        if request.url.path.startswith("/api/v1/"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
     app.include_router(router)
     app.include_router(auth_router)
+    app.include_router(employee_router)
     return app

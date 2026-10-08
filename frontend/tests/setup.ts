@@ -6,7 +6,7 @@ import { setAuthTransport } from "@/lib/auth-transport";
 import { navigationMock } from "./navigation-mock";
 vi.mock("next/navigation", async () => {
   const { navigationMock } = await import("./navigation-mock");
-  return { useRouter: () => navigationMock, usePathname: () => navigationMock.pathname };
+  return { useRouter: () => navigationMock, usePathname: () => navigationMock.pathname, useSearchParams: () => new URLSearchParams(window.location.search) };
 });
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));

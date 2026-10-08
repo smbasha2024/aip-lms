@@ -2,7 +2,7 @@
 
 Date: 8 October 2026. Local test gate: complete.
 This implements only IMPLEMENTATION_PLAN.md Phase 3 and TEST_PLAN.md §122.
-Pre-commit review is complete; no blocking findings were identified. Hosted CI remains pending.
+Pre-commit review is complete; no blocking findings were identified. Hosted CI passed for commit 8ba3ad8.
 
 ## Delivered behavior and API contracts
 
@@ -143,8 +143,9 @@ is per process and does not claim to satisfy the distributed production limit.
 Same-origin script compromise remains a risk for bearer credentials in browser storage.
 Account-management session revocation and leave mutation revalidation/concurrency belong
 to their later endpoint slices. This milestone is not production-release readiness.
-Hosted CI passed for Phase 2 on 488f73c; Phase 3 hosted CI remains pending until
-the reviewed commit is pushed. Ordinary local CLI startup requires your root .env to
+Hosted CI passed for Phase 2 on 488f73c and Phase 3 on 8ba3ad8. The Phase 3 push
+run passed 115 backend, 39 frontend and 7 Chromium tests, plus lint/typecheck/build
+and Alembic checks: https://github.com/smbasha2024/aip-lms/actions/runs/37816594286. Ordinary local CLI startup requires your root .env to
 be configured for the development service; ignored validation settings do not replace it.
 
 ## Files created
@@ -208,6 +209,5 @@ be configured for the development service; ignored validation settings do not re
 
 ## Recommended next action
 
-Push the reviewed Phase 3 commit and observe hosted CI. After that, explicitly
-start Phase 4: employee profile/balance reads and employee dashboard. Stop here; no
-Phase 4 functionality was implemented.
+Phase 3 is committed, pushed and verified by hosted CI. Phase 4 was subsequently
+authorized; its implementation evidence is recorded separately in PHASE_4_REPORT.md.

@@ -8,6 +8,7 @@ const messages: Record<string, string> = {
   NETWORK_ERROR: "Unable to connect to the server. Please try again.",
   SERVER_ERROR: "Something went wrong. Please try again later.",
   VALIDATION_ERROR: "Check the form values and try again.",
+  EMPLOYEE_NOT_FOUND: "Employee could not be found.",
   FORBIDDEN: "You don't have permission to view this page.",
 };
 export function errorMessage(code: string): string {
