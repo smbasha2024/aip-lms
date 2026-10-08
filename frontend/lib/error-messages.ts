@@ -9,6 +9,13 @@ const messages: Record<string, string> = {
   SERVER_ERROR: "Something went wrong. Please try again later.",
   VALIDATION_ERROR: "Check the form values and try again.",
   EMPLOYEE_NOT_FOUND: "Employee could not be found.",
+  HOLIDAY_NOT_FOUND: "Holiday could not be found.",
+  LEAVE_TYPE_NOT_FOUND: "Leave type could not be found.",
+  LEAVE_DATE_IN_PAST: "Leave cannot start in the past.",
+  INVALID_DATE_RANGE: "From date must be on or before To date.",
+  CROSS_YEAR_LEAVE_NOT_ALLOWED: "Select dates in one calendar year.",
+  LEAVE_TYPE_INACTIVE: "This leave type is inactive.",
+  LEAVE_TYPE_NOT_ELIGIBLE: "This leave type is not available for applications.",
   FORBIDDEN: "You don't have permission to view this page.",
 };
 export function errorMessage(code: string): string {

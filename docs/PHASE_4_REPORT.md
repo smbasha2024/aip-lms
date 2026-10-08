@@ -131,8 +131,9 @@ checks passed in implementation validation; hosted CI repeats those gates.
 ## Remaining work
 
 No unresolved Phase 4 blocker or contract ambiguity was identified. This report records
-pre-commit local evidence; hosted CI results are available in GitHub Actions for the
-pushed Phase 4 commit. Phase 3 CI passed on 8ba3ad8; its report
+local evidence. Commit f8ae746 was reviewed, pushed and passed hosted CI: 141 backend,
+60 frontend and 11 Chromium tests, plus lint/typecheck/build and migration checks.
+Run: https://github.com/smbasha2024/aip-lms/actions/runs/37821014593. Phase 3 CI passed on 8ba3ad8; its report
 now records that evidence. Production prerequisites remain as documented for Phase 3.
 No leave submission, leave mutation, admin CRUD, notification workflow or role summary
 implementation was added. Phase 5 adds holiday reads and authoritative day calculation.
@@ -176,5 +177,5 @@ implementation was added. Phase 5 adds holiday reads and authoritative day calcu
 
 ## Recommended next action
 
-Complete the authorized commit/push and observe GitHub CI. Proceed to Phase 5 only
-with explicit authorization after those checks.
+Phase 4 is committed, pushed and verified by GitHub CI. Phase 5 was subsequently
+authorized; its evidence is recorded separately in PHASE_5_REPORT.md.

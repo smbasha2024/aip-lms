@@ -675,7 +675,7 @@ Approve/Reject open the dialogs in §8.3.1. After success: toast, refetch the ap
 
 **Calendar view (`HolidayCalendar`)**
 - Month grid (Mon–Sun or Sun–Sat per a single constant), previous/next month buttons, "Today" button, month/year heading.
-- Fetch the whole year once (`GET /holidays?year=&status=ALL`) and filter by month on the client for instant navigation.
+- Fetch the selected whole year once (`GET /holidays?year=&status=ACTIVE`) and filter by month on the client for instant navigation. The common holiday screen uses active records for all roles; administrator inactive/all lookup belongs to holiday administration. Non-admin requests must never use status=ALL.
 - Holiday cells show a dot and the holiday name (truncate with tooltip/`title`); optional holidays use a different marker (outline) and legend "Mandatory / Optional". Weekends have a subtle background. Today has a ring.
 - Each day cell is a button with `aria-label` like "Friday, 02 October 2026, Gandhi Jayanti". Selecting a holiday day shows a popover/panel with name, date, description, type.
 - Arrow keys move between days; `Enter` opens details.

@@ -1017,6 +1017,12 @@ Frontend:
 - responsive list view;
 - accessibility.
 
+## Implementation status (8 October 2026)
+
+Phase 5 is implemented and locally verified. See PHASE_5_REPORT.md for holiday reads,
+calculation policy, calendar UI and test evidence. Pre-commit review found no blockers;
+hosted CI remains pending until push. Apply Leave remains Phase 6.
+
 ## Exit Criteria
 
 - holiday calendar works;

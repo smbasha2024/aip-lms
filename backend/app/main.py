@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.auth import router as auth_router
+from app.api.calendar import router as calendar_router
 from app.api.employees import router as employee_router
 from app.api.health import router
 from app.config import Settings, load_settings
@@ -54,4 +55,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(router)
     app.include_router(auth_router)
     app.include_router(employee_router)
+    app.include_router(calendar_router)
     return app

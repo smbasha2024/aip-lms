@@ -24,6 +24,9 @@ def test_startup_and_liveness(settings):
         "/api/v1/employees/{employee_id}/leave-balance",
         "/api/v1/leave-types",
         "/api/v1/dashboard",
+        "/api/v1/holidays",
+        "/api/v1/holidays/{holiday_id}",
+        "/api/v1/leave/calculate-days",
     }
 
 

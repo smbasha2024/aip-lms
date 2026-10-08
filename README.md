@@ -1,11 +1,12 @@
 # aip-lms — Employee Leave Management System
 
-Phases 1–4 are implemented and locally verified: infrastructure, database foundation,
-authentication, and employee profile/balance/dashboard reads. Phase 2 supplies ten mapped
+Phases 1–5 are implemented and locally verified: infrastructure, database foundation,
+authentication, employee reads, holiday calendar and advisory leave-day calculation. Phase 2 supplies ten mapped
 tables, Alembic revision `0001`, database tests and idempotent development seeds.
-Phase 3 adds email/employee-code login, current user and server sign-out. Leave and
-administrator functionality belong to later phases. See `docs/PHASE_1_REPORT.md`,
-`docs/PHASE_2_REPORT.md`, `docs/PHASE_3_REPORT.md` and `docs/PHASE_4_REPORT.md` for evidence.
+Phase 3 adds email/employee-code login, current user and server sign-out. Leave submission and
+administrator writes belong to later phases. See `docs/PHASE_1_REPORT.md`,
+`docs/PHASE_2_REPORT.md`, `docs/PHASE_3_REPORT.md`, `docs/PHASE_4_REPORT.md` and
+`docs/PHASE_5_REPORT.md` for evidence.
 
 ## Project documents
 
@@ -133,8 +134,25 @@ and upcoming dates use ORG_TIMEZONE. /leave/balance supports URL year selection 
 responsive table/cards; available is displayed exactly as returned by the API. The
 dashboard provides personal totals, the last five own applications, all own pending
 requests for the selected year, upcoming active holidays and own unread count. Role
-summaries remain null until Phase 17. Application/history/holiday/notification screens
+summaries remain null until Phase 17. Application/history/notification screens
 and writes belong to later phases; their navigation/actions remain disabled.
+
+## Holidays and leave-day preview
+
+Phase 5 implements GET /api/v1/holidays (organization year, optional month and status),
+GET /api/v1/holidays/{holiday_id}, and POST /api/v1/leave/calculate-days. Holiday reads
+require authentication; non-administrators may read active holidays only. /holidays
+provides calendar/list views, URL year/month navigation, keyboard day navigation and
+responsive list cards. The common screen fetches the active selected year and filters
+months for display; administrator inactive/all reads remain available through the API.
+
+Calculation takes employee_id, leave_type_id, from_date and to_date. All roles calculate
+only for themselves with an active eligible type and a future/today, ordered, same-year
+range. Inclusive Monday–Friday days exclude ACTIVE mandatory weekday holidays; optional
+and inactive holidays do not reduce days. Weekend holidays are not deducted twice.
+A valid weekend-only preview returns zero. The advisory API makes no allocation, manager
+or overlap checks and does not reserve balances or create applications. The reusable
+LeaveSummaryPanel displays server counts; Apply Leave belongs to Phase 6.
 
 ## Check the foundation
 
@@ -235,9 +253,9 @@ through the client. This option does not change application runtime or CI defaul
 
 ## Next phases
 
-Phase 2 hosted CI passed on commit 488f73c and Phase 3 on 8ba3ad8. Phase 4 passes
-local gates and pre-commit review; observe hosted CI for the pushed Phase 4 commit.
-Phase 5 adds holiday reads and authoritative leave-day calculation. Subsequent
+Hosted CI passed for Phase 2 on 488f73c, Phase 3 on 8ba3ad8 and Phase 4 on f8ae746.
+Phase 5 passes local gates and pre-commit review; hosted CI remains pending until push.
+Phase 6 adds Apply Leave with authoritative recalculation, locking and reservations. Subsequent
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 5 is the next implementation milestone.
+later work. Phase 6 is the next implementation milestone.
