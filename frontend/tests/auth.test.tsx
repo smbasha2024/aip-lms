@@ -111,7 +111,7 @@ describe("Authentication UI", () => {
     expect(navigation.textContent?.includes("Pending Approvals")).toBe(role !== "EMPLOYEE");
     expect(navigation.textContent?.includes("Holiday Management")).toBe(role === "ADMINISTRATOR");
     expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
-    expect(screen.queryByRole("link", { name: "Apply Leave" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Apply Leave" })).toHaveAttribute("href", "/leave/apply");
   });
   it("blocks a direct administrator route without a protected content flash", async () => {
     saved(); me(); navigationMock.pathname = "/admin/employees";

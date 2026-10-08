@@ -591,7 +591,7 @@ Example matching requirements §8.7: Available Balance 10 · Requested Days 3 ·
    - `409 OVERLAPPING_LEAVE_APPLICATION` → banner with a "View existing application" link (`details.application_id`).
    - `400 INSUFFICIENT_LEAVE_BALANCE`, `LEAVE_DATE_IN_PAST`, `INVALID_DATE_RANGE`, `EMPLOYEE_INACTIVE`, `LEAVE_TYPE_INACTIVE`, `MANAGER_NOT_FOUND` → banner (§6.4), keep input.
 8. If the employee has no eligible manager and the API rejects with `MANAGER_NOT_FOUND` or `MANAGER_UNAVAILABLE`, show: "No reporting manager is assigned to you. Please contact your administrator."
-9. Cancel button → `/leave/history` (with dirty-form confirmation).
+9. Cancel button → `/leave/history` (with dirty-form confirmation). During Phase 6, before history is implemented in Phase 7, return to `/dashboard` instead. Detail mutation actions arrive in their cancellation/approval phases.
 
 **Acceptance:** AC-LEAVE-001, 002, 003, 004 (holiday days shown in summary), 005.
 

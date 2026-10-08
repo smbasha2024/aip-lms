@@ -9,8 +9,9 @@ logger = logging.getLogger("aip_lms")
 
 
 class DomainError(Exception):
-    def __init__(self, status: int, code: str, message: str, *, headers=None):
+    def __init__(self, status: int, code: str, message: str, *, headers=None, details=None):
         self.status, self.code, self.message = status, code, message
+        self.details = details
         self.headers = headers or ({"WWW-Authenticate": "Bearer"} if status == 401 else {})
         super().__init__(code)
 
@@ -28,7 +29,9 @@ def error_response(
 def install_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(DomainError)
     async def domain_error(request: Request, exc: DomainError):
-        return error_response(exc.status, exc.code, exc.message, headers=exc.headers)
+        return error_response(
+            exc.status, exc.code, exc.message, details=exc.details, headers=exc.headers
+        )
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError):

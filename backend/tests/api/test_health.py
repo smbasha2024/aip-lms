@@ -27,6 +27,8 @@ def test_startup_and_liveness(settings):
         "/api/v1/holidays",
         "/api/v1/holidays/{holiday_id}",
         "/api/v1/leave/calculate-days",
+        "/api/v1/leave/applications",
+        "/api/v1/leave/applications/{application_id}",
     }
 
 

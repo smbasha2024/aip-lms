@@ -1,12 +1,12 @@
 # aip-lms — Employee Leave Management System
 
-Phases 1–5 are implemented and locally verified: infrastructure, database foundation,
-authentication, employee reads, holiday calendar and advisory leave-day calculation. Phase 2 supplies ten mapped
+Phases 1–6 are implemented and locally verified: infrastructure, database foundation,
+authentication, employee reads, holiday calendar, advisory calculation and transactional
+Apply Leave. Phase 2 supplies ten mapped
 tables, Alembic revision `0001`, database tests and idempotent development seeds.
-Phase 3 adds email/employee-code login, current user and server sign-out. Leave submission and
-administrator writes belong to later phases. See `docs/PHASE_1_REPORT.md`,
+Phase 3 adds email/employee-code login, current user and server sign-out. Administrator writes and leave status transitions belong to later phases. See `docs/PHASE_1_REPORT.md`,
 `docs/PHASE_2_REPORT.md`, `docs/PHASE_3_REPORT.md`, `docs/PHASE_4_REPORT.md` and
-`docs/PHASE_5_REPORT.md` for evidence.
+`docs/PHASE_5_REPORT.md` and `docs/PHASE_6_REPORT.md` for evidence.
 
 ## Project documents
 
@@ -134,8 +134,8 @@ and upcoming dates use ORG_TIMEZONE. /leave/balance supports URL year selection 
 responsive table/cards; available is displayed exactly as returned by the API. The
 dashboard provides personal totals, the last five own applications, all own pending
 requests for the selected year, upcoming active holidays and own unread count. Role
-summaries remain null until Phase 17. Application/history/notification screens
-and writes belong to later phases; their navigation/actions remain disabled.
+summaries remain null until Phase 17. History/notification screens and status actions belong to later phases; their
+navigation/actions remain disabled. Apply Leave and recent application detail links are enabled.
 
 ## Holidays and leave-day preview
 
@@ -152,7 +152,24 @@ range. Inclusive Monday–Friday days exclude ACTIVE mandatory weekday holidays;
 and inactive holidays do not reduce days. Weekend holidays are not deducted twice.
 A valid weekend-only preview returns zero. The advisory API makes no allocation, manager
 or overlap checks and does not reserve balances or create applications. The reusable
-LeaveSummaryPanel displays server counts; Apply Leave belongs to Phase 6.
+LeaveSummaryPanel displays server counts and is consumed by Phase 6 Apply Leave.
+
+## Apply Leave
+
+Phase 6 adds POST /api/v1/leave/applications and GET /api/v1/leave/applications/{id}.
+/leave/apply loads active eligible types and balances for the selected From Date year,
+uses a debounced, cancellable server preview and displays estimated remaining balance.
+Submitting recalculates days, validates active employee/type/manager and serializes
+cross-type overlap/balance checks under PostgreSQL employee/account/session/balance locks.
+Application, pending reservation, audit and distinct owner/manager notifications commit
+atomically. Every role submits for self only; unpaid LOP still requires allocation.
+
+Successful submission opens a PENDING detail with authoritative days and manager snapshot.
+Managers may read own/current-report/snapshot-assigned details; administrators read all.
+Reason is plain text. Dirty forms require confirmation; ambiguous network/server failures
+are not automatically retried. Inspect recent Dashboard applications and contact an
+administrator if the outcome cannot be confirmed before an explicit retry. Full history,
+cancellation and approval arrive in subsequent phases. Cancel currently returns to Dashboard.
 
 ## Check the foundation
 
@@ -254,8 +271,9 @@ through the client. This option does not change application runtime or CI defaul
 ## Next phases
 
 Hosted CI passed for Phase 2 on 488f73c, Phase 3 on 8ba3ad8 and Phase 4 on f8ae746.
-Phase 5 passes local gates and pre-commit review; hosted CI remains pending until push.
-Phase 6 adds Apply Leave with authoritative recalculation, locking and reservations. Subsequent
+Phase 5 hosted CI passed on 5f7a238. Phase 6 local evidence is in PHASE_6_REPORT.md;
+pre-commit review found no blockers; commit/push and hosted CI remain pending.
+Phase 7 adds My Leave History and cancellation. Subsequent
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 6 is the next implementation milestone.
+later work. Phase 7 is the next implementation milestone.

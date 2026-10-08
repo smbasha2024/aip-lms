@@ -2,7 +2,7 @@
 
 Date: 8 October 2026. Local Phase 5 gate: complete.
 Scope: IMPLEMENTATION_PLAN.md Phase 5 and TEST_PLAN.md §124 only.
-Pre-commit review completed with no blocking findings. Hosted CI will verify the pushed commit.
+Review, commit and push completed on 5f7a238. Hosted CI passed.
 
 ## Delivered endpoints
 
@@ -127,7 +127,8 @@ the corrected tests. Existing Starlette/httpx and NO_COLOR warnings remain non-f
 
 No unresolved Phase 5 blocker was identified. The holiday UI/API conflict was corrected
 in its owning document. Pre-commit review found no blocking defects in contracts, authorization, day counting,
-UI states or test coverage. Phase 5 hosted CI remains pending until push.
+UI states or test coverage. Commit 5f7a238 passed hosted CI:
+https://github.com/smbasha2024/aip-lms/actions/runs/37824311716.
 Phase 4 CI passed on f8ae746; its report now records the run evidence. Production
 prerequisites remain as documented in earlier phases. Holiday writes, Apply Leave and
 transactional reservation/recalculation are deliberately assigned to later slices.
@@ -166,5 +167,5 @@ transactional reservation/recalculation are deliberately assigned to later slice
 
 ## Recommended next action
 
-Complete the authorized commit/push and observe GitHub CI, then explicitly authorize
-Phase 6: Apply Leave with server-side recalculation, locking and balance reservation.
+Phase 5 is committed, pushed and verified by GitHub CI. Phase 6 was subsequently
+authorized; its implementation evidence is recorded in PHASE_6_REPORT.md.

@@ -1020,8 +1020,8 @@ Frontend:
 ## Implementation status (8 October 2026)
 
 Phase 5 is implemented and locally verified. See PHASE_5_REPORT.md for holiday reads,
-calculation policy, calendar UI and test evidence. Pre-commit review found no blockers;
-hosted CI remains pending until push. Apply Leave remains Phase 6.
+calculation policy, calendar UI and test evidence. Commit 5f7a238 passed review and
+hosted CI. Apply Leave is delivered separately in Phase 6.
 
 ## Exit Criteria
 
@@ -1167,6 +1167,12 @@ Frontend:
 - insufficient balance error;
 - success navigation;
 - double-submit prevention.
+
+## Implementation status (9 October 2026)
+
+Phase 6 submission and application details are implemented and locally verified. Evidence
+and the exact change manifest are recorded in PHASE_6_REPORT.md. Pre-commit review found
+no blockers; commit/push and hosted CI remain pending. History/cancellation remain Phase 7; pending approval reads are Phase 8 and actions Phase 9.
 
 ## Exit Criteria
 

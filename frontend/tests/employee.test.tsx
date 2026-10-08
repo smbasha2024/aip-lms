@@ -96,7 +96,7 @@ describe("Phase 4 employee screens",()=> {
     server.use(http.get(`${origin}/dashboard`,({request})=>{expect(new URL(request.url).searchParams.get("year")).toBe("2026");return HttpResponse.json(dashboard);}));mount(<EmployeeDashboard/>);
     expect(await screen.findByText("Research Leave")).toBeVisible();expect(screen.getByText(/Pending applications in 2026/)).toHaveTextContent("8");expect(screen.getByText(/Unread notifications:/)).toHaveTextContent("3");
     expect(screen.getByText("No leave applications yet.")).toBeVisible();expect(screen.getByText("No upcoming holidays have been published.")).toBeVisible();
-    expect(screen.getByRole("button",{name:"Apply Leave — Coming soon"})).toBeDisabled();expect(screen.getByRole("link",{name:"View detailed balances"})).toHaveAttribute("href","/leave/balance?year=2026");
+    expect(screen.getByRole("link",{name:"Apply Leave"})).toHaveAttribute("href","/leave/apply");expect(screen.getByRole("link",{name:"View detailed balances"})).toHaveAttribute("href","/leave/balance?year=2026");
   });
   it("renders recent applications and optional holidays",async()=> {
     server.use(http.get(`${origin}/dashboard`,()=>HttpResponse.json({...dashboard,

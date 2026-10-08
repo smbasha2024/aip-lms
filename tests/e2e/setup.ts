@@ -22,6 +22,10 @@ from alembic import command
 from alembic.config import Config
 from database.seed import SeedPasswords, seed_records
 from sqlalchemy.orm import Session
+from sqlalchemy import select
+from app.models import Employee, LeaveType, LeaveBalance
+from datetime import datetime
+from zoneinfo import ZoneInfo
 with engine.connect() as connection:
     connection.execute(CreateSchema(name)); connection.commit()
     config = Config('database/alembic.ini'); config.attributes['connection'] = connection
@@ -30,6 +34,12 @@ with engine.connect() as connection:
     with Session(connection) as session, session.begin():
         seed_records(session, settings, SeedPasswords(_env_file=None, employee_password=password,
             manager_password=password, administrator_password=password))
+        # Phase 6 mutations use a future-year allocation, isolating read regressions.
+        employee = session.scalar(select(Employee).where(Employee.employee_code == 'EMP001'))
+        leave_type = session.scalar(select(LeaveType).where(LeaveType.code == 'EARNED'))
+        year = datetime.now(ZoneInfo(settings.org_timezone)).year + 1
+        session.add(LeaveBalance(employee_id=employee.employee_id,
+            leave_type_id=leave_type.leave_type_id, leave_year=year, allocated=20))
 engine.dispose()
 `);
   return async () => {
