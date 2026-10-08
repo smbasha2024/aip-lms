@@ -1,6 +1,8 @@
+import os
+
 import pytest
 
-from app.config import Settings
+from app.config import REPOSITORY_ROOT, Settings
 
 
 def pytest_addoption(parser):
@@ -22,6 +24,11 @@ def postgres_settings(request):
     if not request.config.getoption("--database"):
         pytest.skip("Use --database with TEST_DATABASE_URL to execute PostgreSQL gates")
     try:
-        return Settings(app_env="test")
+        env_file = (
+            None
+            if os.environ.get("DATABASE_URL") and os.environ.get("TEST_DATABASE_URL")
+            else REPOSITORY_ROOT / ".env"
+        )
+        return Settings(_env_file=env_file, app_env="test")
     except ValueError:
         pytest.fail("Invalid isolated database configuration; check root .env", pytrace=False)

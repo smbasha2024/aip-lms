@@ -11,7 +11,7 @@ pytestmark = pytest.mark.integration
 def test_postgres_connection_readiness_and_no_ddl(postgres_settings):
     app = create_app(postgres_settings)
     engine = app.state.session_factory.kw["bind"]
-    assert not Base.metadata.tables
+    assert len(Base.metadata.tables) == 10
     before = inspect(engine).get_table_names()
     with TestClient(app) as client:
         assert client.get("/health/ready").json() == {"status": "ready"}

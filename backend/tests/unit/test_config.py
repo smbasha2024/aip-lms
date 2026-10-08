@@ -37,6 +37,7 @@ def test_root_env_location():
 
 
 def test_safe_configuration_error(monkeypatch):
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
     monkeypatch.setenv("DATABASE_URL", "sensitive-invalid-password")
     with pytest.raises(RuntimeError) as error:
         load_settings()
@@ -45,6 +46,7 @@ def test_safe_configuration_error(monkeypatch):
 
 
 def test_malformed_cors_is_safe(monkeypatch):
+    monkeypatch.setitem(Settings.model_config, "env_file", None)
     monkeypatch.setenv("DATABASE_URL", URL)
     monkeypatch.setenv("CORS_ALLOWED_ORIGINS", "http://localhost:3000")
     with pytest.raises(RuntimeError):

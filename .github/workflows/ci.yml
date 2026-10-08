@@ -1,4 +1,4 @@
-name: Phase 1 foundation
+name: Foundation and database
 on:
   push:
   pull_request:
@@ -48,11 +48,14 @@ jobs:
       - name: Backend lint, formatting and tests
         working-directory: backend
         run: |
-          .venv/bin/ruff check --config pyproject.toml . ../database/migrations/env.py
-          .venv/bin/ruff format --config pyproject.toml --check . ../database/migrations/env.py
-          .venv/bin/pytest --database
+          .venv/bin/ruff check --config pyproject.toml . ../database
+          .venv/bin/ruff format --config pyproject.toml --check . ../database
+          .venv/bin/pytest --database --tb=short
       - name: Alembic registry connection
-        run: backend/.venv/bin/alembic -c database/alembic.ini current
+        run: |
+          backend/.venv/bin/alembic -c database/alembic.ini upgrade head
+          backend/.venv/bin/alembic -c database/alembic.ini check
+          backend/.venv/bin/alembic -c database/alembic.ini current
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci

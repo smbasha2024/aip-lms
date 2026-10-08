@@ -11,8 +11,8 @@ The changes are a target contract baseline, not evidence of runtime readiness.
 | B1 | Scoped root /models/ ignore; backend/app/models is trackable. |
 | B2 | UI_SPEC.md canonical, based on the detailed V2 screen design with corrected contracts; V2 and AGENTS_V01 archived. Routes now match implementation plan. |
 | B3 | Phase 1 scaffold, settings, health, Alembic and runner files implemented; local foundation gates passed. See PHASE_1_REPORT.md. GitHub-hosted CI remains to be observed. |
-| B4 | Opaque server-revocable auth_session plus POST /auth/logout; database/API/UI lifecycle explicit. Implement/test in Phase 2/3. |
-| B5 | Atomic employee + account creation with initial password/role; account role/status update and session revocation specified. Implement in employee administration slice; seeds create accounts in Phase 2. |
+| B4 | Opaque server-revocable auth_session plus POST /auth/logout; database/API/UI lifecycle explicit. The auth_session table and integrity tests exist in Phase 2; login/logout enforcement remains Phase 3. |
+| B5 | Atomic employee + account creation with initial password/role; account role/status update and session revocation specified. Implement in employee administration slice; Phase 2 seeds now create linked, hashed accounts atomically. |
 | F1 | Subject-specific ownership used consistently; docs remain under docs/. |
 | F2 | ADMINISTRATOR and four employee states aligned. |
 | F3 | Direct success resources, one error shape; exact schemas replace competing examples. |
@@ -35,8 +35,8 @@ The changes are a target contract baseline, not evidence of runtime readiness.
 | F20 | Exact recipient matrix; audit/in-app notifications atomic and mandatory. |
 | F21 | Employee row serializes cross-type overlap; balance lock alone explicitly insufficient. |
 | F22 | Global lock order, hierarchy advisory lock, service commit ownership, safe retry/lost-response policy and allocation locking. |
-| F23 | One Alembic location/metadata registry, ten tables, UUID/timestamps/FKs/checks/index/seed/upgrade policies. Implement migrations in Phase 2. |
-| F24 | Phase 1 runners, isolated PostgreSQL checks, smoke tests and CI configuration implemented; local foundation gates passed. Domain/race fixtures belong to their later slices; GitHub-hosted CI remains to be observed. |
+| F23 | One Alembic location/metadata registry, ten tables, UUID/timestamps/FKs/checks/index/seed/upgrade policies. Implemented and tested in Phase 2; see PHASE_2_REPORT.md. |
+| F24 | Phase 1 runners, isolated PostgreSQL checks, smoke tests and CI configuration implemented; local foundation gates passed. Phase 2 migration/integrity/seed concurrency fixtures now exist; domain workflow races belong to later slices; GitHub-hosted CI remains to be observed. |
 
 ## Other corrections
 
@@ -59,9 +59,9 @@ Friday calendar; optional holidays are display-only; full name/optional phone; e
 audit viewer and department writes deferred. These replace ambiguous alternatives in
 the former documents. Changes to these policies must update their owning specs first.
 
-## Remaining work and next action
+## Phase 0 remaining work (historical)
 
-Phase 1 is now specified coherently but not implemented. Select compatible exact runtime
+At the end of Phase 0, Phase 1 was specified coherently but not implemented. Select compatible exact runtime
 and package versions from official docs and commit locks; scaffold Next.js/FastAPI;
 configure settings/session/error/health, Alembic, pytest/Vitest/MSW/Playwright and CI;
 run every TEST_PLAN.md §120 gate. No domain models, schema migrations, login or business
@@ -83,5 +83,15 @@ The scaffold, dependency locks, settings/errors/health, Alembic registry, test r
 and CI described by B3/F24 now exist. The local Phase 1 execution gates passed on
 7 October 2026: backend 25 tests, frontend 9 tests, browser 2 smoke tests, lint,
 typecheck, build, PostgreSQL and Alembic. GitHub-hosted CI remains to be observed. See
-PHASE_1_REPORT.md for current results. Phase 2/3 and domain implementations are still
+PHASE_1_REPORT.md for current results. At that milestone, Phase 2/3 and domain implementations were still
 pending; no runtime claim is made for the earlier resolved business contracts.
+
+## Phase 2 implementation update (8 October 2026)
+
+Revision `0001` was applied from empty local development PostgreSQL and checked
+against the single ten-table metadata registry. Development seeds loaded and a second
+run created nothing. Backend tests cover schema integrity, upgrade/downgrade, seed
+preservation, rollback, production refusal and concurrent seeding. See
+PHASE_2_REPORT.md for executed checks. Authentication and business workflow enforcement
+remain assigned to their documented future slices; the earlier audit does not imply
+those features are already implemented.

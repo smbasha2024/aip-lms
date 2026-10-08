@@ -1,10 +1,9 @@
 # aip-lms — Employee Leave Management System
 
-Phase 1 infrastructure is implemented: Next.js frontend, FastAPI backend, settings,
-health/readiness endpoints, one Alembic registry, test runners and CI. Domain models,
-migrations, seed accounts, authentication and leave features belong to later phases.
-Phase 1 completion requires every gate in TEST_PLAN.md §120; see
-`docs/PHASE_1_REPORT.md` for executed checks and remaining environment restrictions.
+Phase 1 infrastructure and Phase 2 database foundation are implemented and locally
+verified. Phase 2 adds ten mapped tables, Alembic revision `0001`, database integrity
+tests and idempotent development seeds. Authentication and business APIs/UI start in
+later phases. See `docs/PHASE_1_REPORT.md` and `docs/PHASE_2_REPORT.md` for evidence.
 
 ## Project documents
 
@@ -87,13 +86,13 @@ GET /health returns process liveness; GET /health/ready executes SELECT 1 and re
 schema or run migrations. Swagger/OpenAPI are enabled in development/test and disabled
 in production. A database connection is not required for liveness.
 
-## Check Phase 1
+## Check the foundation
 
 From the repository root:
 
 ```sh
-backend/.venv/bin/ruff check --config backend/pyproject.toml backend database/migrations/env.py
-backend/.venv/bin/ruff format --config backend/pyproject.toml --check backend database/migrations/env.py
+backend/.venv/bin/ruff check --config backend/pyproject.toml backend database
+backend/.venv/bin/ruff format --config backend/pyproject.toml --check backend database
 ```
 
 From backend/, configured for separate dev/test PostgreSQL:
@@ -115,8 +114,28 @@ backend/.venv/bin/alembic -c database/alembic.ini current
 backend/.venv/bin/alembic -c database/alembic.ini history
 ```
 
-Versions and metadata are intentionally empty in Phase 1. No upgrade/migration or
-business table is created. Phase 2 adds reviewed migrations and development-only seeds.
+Phase 2 maps all ten tables in one registry. Apply the reviewed schema explicitly;
+application startup never creates it:
+
+```sh
+backend/.venv/bin/alembic -c database/alembic.ini upgrade head
+backend/.venv/bin/alembic -c database/alembic.ini check
+```
+
+For development seeds, use APP_ENV=development and supply SEED_EMPLOYEE_PASSWORD,
+SEED_MANAGER_PASSWORD and SEED_ADMINISTRATOR_PASSWORD locally (12..128 characters).
+There are no default passwords. From the repository root:
+
+```sh
+PYTHONPATH=backend backend/.venv/bin/python -m database.seed
+```
+
+Seeding refuses production and creates only missing business keys in one transaction.
+Existing names, roles, statuses, password hashes and balances remain intact. Samples
+include EMP001, MGR001, ADM001, six leave types, current-year allocations and one
+example holiday. These values demonstrate the schema and are not production policy.
+See database/README.md for details. PostgreSQL tests migrate generated schemas inside
+the isolated test database and remove only those schemas after each test.
 
 From frontend/:
 
@@ -164,8 +183,8 @@ through the client. This option does not change application runtime or CI defaul
 
 ## Next phases
 
-Phase 2: ten tables, constraints, reviewed migrations and idempotent development seeds.
+Phase 2 is complete locally; hosted CI must still execute before merge.
 Phase 3: opaque bearer login/logout/current user and protected UI shell. Subsequent
 phases add approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. No credentials, seed users or domain functionality are provided by Phase 1.
+later work. Phase 3 is the next implementation milestone.

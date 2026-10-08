@@ -4,7 +4,8 @@
 
 Updated 7 October 2026 after the Phase 0 audit. This document owns PostgreSQL
 persistence. API_SPEC.md owns wire names; REQUIREMENTS.md owns business behavior.
-This is a target schema, not an applied migration. Phase 2 implements it with Alembic.
+This contract is implemented by Phase 2 Alembic revision `0001`. Local development
+application and test evidence are recorded in PHASE_2_REPORT.md.
 
 ## 1. Foundation decisions
 
@@ -322,7 +323,8 @@ destructive downgrade is tested only on disposable databases, never automated in
 Verify upgrade from empty PostgreSQL and representative prior schema; inspect named
 FKs, checks, indexes and head. Do not create duplicate indexes via ORM+migration.
 For future required columns: add nullable, backfill, validate, constrain; do not discard data.
-Existing repository has no migrations or application data migration to perform.
+Revision `0001` starts from the empty Phase 1 schema; no legacy application-data
+migration was required. Subsequent revisions must preserve existing records.
 
 Development-only seed script: database/seed.py (Phase 2). APP_ENV must be development
 or test; refuse production. Hash passwords with the chosen password library before
