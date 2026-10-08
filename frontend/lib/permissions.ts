@@ -1,0 +1,38 @@
+import type { Role } from "@/types/auth";
+export function canAccess(path: string, role: Role): boolean {
+  if (path === "/admin" || path.startsWith("/admin/")) return role === "ADMINISTRATOR";
+  if (path === "/approvals" || path.startsWith("/approvals/") || path === "/team" || path.startsWith("/team/")) {
+    return role === "MANAGER" || role === "ADMINISTRATOR";
+  }
+  return true;
+}
+export function safeReturnTo(value: string | null, role: Role): string {
+  if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes(String.fromCharCode(92)) ||
+      Array.from(value).some(char => char.charCodeAt(0) < 32)) return "/dashboard";
+  try {
+    const decoded = decodeURIComponent(value);
+    if (decoded.startsWith("//") || decoded.includes(String.fromCharCode(92))) return "/dashboard";
+    const url = new URL(value, "https://local.invalid");
+    // Only implemented, protected screens can be a login destination in this slice.
+    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile"].includes(url.pathname)
+        || !canAccess(url.pathname, role)) return "/dashboard";
+    return url.pathname + url.search + url.hash;
+  } catch { return "/dashboard"; }
+}
+export const navigation = [
+  { label: "Dashboard", href: "/dashboard", ready: true },
+  { label: "My Profile", href: "/profile", ready: true },
+  { label: "Apply Leave", href: "/leave/apply" },
+  { label: "Leave Balance", href: "/leave/balance" },
+  { label: "My Leave Applications", href: "/leave/history" },
+  { label: "Holidays", href: "/holidays" },
+  { label: "Pending Approvals", href: "/approvals" },
+  { label: "My Team", href: "/team" },
+  { label: "Team Calendar", href: "/team/calendar" },
+  { label: "Reports", href: "/reports" },
+  { label: "Employees", href: "/admin/employees" },
+  { label: "Leave Types", href: "/admin/leave-types" },
+  { label: "Leave Balances", href: "/admin/leave-balances" },
+  { label: "All Applications", href: "/admin/leave-applications" },
+  { label: "Holiday Management", href: "/admin/holidays" },
+];

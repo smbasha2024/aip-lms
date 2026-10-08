@@ -11,7 +11,7 @@ The changes are a target contract baseline, not evidence of runtime readiness.
 | B1 | Scoped root /models/ ignore; backend/app/models is trackable. |
 | B2 | UI_SPEC.md canonical, based on the detailed V2 screen design with corrected contracts; V2 and AGENTS_V01 archived. Routes now match implementation plan. |
 | B3 | Phase 1 scaffold, settings, health, Alembic and runner files implemented; local foundation gates passed. See PHASE_1_REPORT.md. GitHub-hosted CI remains to be observed. |
-| B4 | Opaque server-revocable auth_session plus POST /auth/logout; database/API/UI lifecycle explicit. The auth_session table and integrity tests exist in Phase 2; login/logout enforcement remains Phase 3. |
+| B4 | Opaque server-revocable auth_session plus POST /auth/logout; database/API/UI lifecycle explicit. The auth_session table and integrity tests exist in Phase 2; Phase 3 now implements login/logout/current-user enforcement and the protected shell; see PHASE_3_REPORT.md. |
 | B5 | Atomic employee + account creation with initial password/role; account role/status update and session revocation specified. Implement in employee administration slice; Phase 2 seeds now create linked, hashed accounts atomically. |
 | F1 | Subject-specific ownership used consistently; docs remain under docs/. |
 | F2 | ADMINISTRATOR and four employee states aligned. |
@@ -95,3 +95,12 @@ preservation, rollback, production refusal and concurrent seeding. See
 PHASE_2_REPORT.md for executed checks. Authentication and business workflow enforcement
 remain assigned to their documented future slices; the earlier audit does not imply
 those features are already implemented.
+
+## Phase 3 implementation update (8 October 2026)
+
+The authentication slice now implements opaque bearer login, current user, server
+revocation, status/expiry checks, role authorization dependencies and the protected
+client shell. The Phase 3 report records local regression/browser evidence. Account
+management and leave mutations remain assigned to later slices; their session
+revocation and transaction tests will be implemented with those endpoints. Production
+shared proxy rate limiting remains a deployment prerequisite.

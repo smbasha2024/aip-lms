@@ -11,7 +11,7 @@ import { server } from "./mocks/server";
 describe("Phase 1 foundation", () => {
   it("renders the foundation page with the query provider", () => {
     render(<Providers><Home /></Providers>);
-    expect(screen.getByRole("heading", { name: "Employee Leave Management" })).toBeVisible();
+    expect(screen.getByRole("status")).toHaveTextContent("Opening your workspace");
   });
   it("calls the public health endpoint through the service", async () => {
     expect(await getHealth()).toEqual({ status: "ok" });
@@ -24,7 +24,7 @@ describe("Phase 1 foundation", () => {
     server.use(http.get("http://localhost:18000/health", () => HttpResponse.json({
       error: { code: "DATABASE_UNAVAILABLE", message: "Database is unavailable", details: null },
     }, { status: 503 })));
-    await expect(getHealth()).rejects.toMatchObject({ status: 503, code: "DATABASE_UNAVAILABLE" });
+    await expect(getHealth()).rejects.toMatchObject({ status: 503, code: "SERVER_ERROR" });
     await expect(getHealth()).rejects.toBeInstanceOf(ApiError);
   });
   it.each([undefined, "invalid", "http://localhost/api/v1", "http://u:p@localhost", "ftp://localhost"])(

@@ -169,3 +169,8 @@ ordering before tests: from backend/, the repository-root database package was
 classified as third-party. Explicitly declaring app and database as first-party
 packages in backend/pyproject.toml makes local and hosted lint classification agree.
 The correction was checked from both repository root and backend/.
+
+Subsequent hosted run [37811082062](https://github.com/smbasha2024/aip-lms/actions/runs/37811082062)
+passed on commit `488f73c`, including 92 backend, 9 frontend and 2 browser tests,
+migration checks, lint, formatting, typecheck and build. This was observed before
+starting Phase 3.

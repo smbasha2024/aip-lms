@@ -6,7 +6,8 @@ This is the canonical REST contract. Updated 7 October 2026 after the Phase 0 au
 `REQUIREMENTS.md` owns behavior; `DATABASE.md` owns persistence; `ARCHITECTURE.md`
 owns layering; `UI_SPEC.md` owns presentation. Resolve disagreements in the owning
 specification before implementation. Examples are illustrative; the schemas below
-are complete contracts. No application endpoints have been implemented yet.
+are complete contracts. Phase 3 implements the authentication endpoints; subsequent
+phases implement the remaining business endpoints. See PHASE_3_REPORT.md for evidence.
 
 ## 1. Common conventions
 

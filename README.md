@@ -1,9 +1,11 @@
 # aip-lms — Employee Leave Management System
 
-Phase 1 infrastructure and Phase 2 database foundation are implemented and locally
-verified. Phase 2 adds ten mapped tables, Alembic revision `0001`, database integrity
-tests and idempotent development seeds. Authentication and business APIs/UI start in
-later phases. See `docs/PHASE_1_REPORT.md` and `docs/PHASE_2_REPORT.md` for evidence.
+Phases 1–3 are implemented and locally verified: infrastructure, database foundation,
+and authentication with a protected application shell. Phase 2 supplies ten mapped
+tables, Alembic revision `0001`, database tests and idempotent development seeds.
+Phase 3 adds email/employee-code login, current user and server sign-out. Leave and
+administrator functionality belong to later phases. See `docs/PHASE_1_REPORT.md`,
+`docs/PHASE_2_REPORT.md` and `docs/PHASE_3_REPORT.md` for evidence.
 
 ## Project documents
 
@@ -86,6 +88,36 @@ GET /health returns process liveness; GET /health/ready executes SELECT 1 and re
 schema or run migrations. Swagger/OpenAPI are enabled in development/test and disabled
 in production. A database connection is not required for liveness.
 
+## Authentication
+
+Open /login and use a linked employee email or employee code with the locally supplied
+seed password. No default passwords are available. POST /api/v1/auth/login returns an
+opaque bearer token and Identity; GET /api/v1/auth/me revalidates the session, account,
+employee and current role. POST /api/v1/auth/logout commits revocation of the presented
+session, including recognized expired/already-revoked tokens. Other sessions stay active.
+The three development passwords generated during Phase 2 are retained locally in the
+ignored .cache/phase2-seed.env; keep them private. Root .env and frontend/.env.local
+were not replaced. Configure the development connections/origins before starting locally.
+
+Tokens are generated with 32 random bytes and only SHA-256 digests are stored in the
+database. Passwords use Argon2id. Authentication responses are not cacheable. The client
+uses memory and sessionStorage, restores identity through /auth/me, and clears credentials
+and all query caches on expiry, status denial or sign-out. Logout failure is reported
+without claiming that server revocation succeeded. No cookie, JWT or refresh-token flow.
+
+Login has a controllable ten-attempt/IP/minute limiter in this single-process foundation.
+**Production requires the shared deployment proxy limit** of ten attempts/IP/minute across
+all workers, trusted proxy configuration, HTTPS and deployment verification. No production
+proxy platform has been selected or configured by this phase. The frontend applies a fresh
+nonce CSP through proxy.ts, permits only its configured API origin for connections, and
+uses dynamic document rendering. Inter is fetched at build time by next/font and served
+locally; builds require access to the font source. Tokens remain accessible to same-origin
+scripts, so deployment must preserve CSP and avoid unsafe third-party scripts.
+
+The protected shell provides /dashboard and /profile identity screens, role-aware
+navigation and an accessible mobile drawer. Later leave/team/admin navigation is disabled;
+no business APIs or fabricated data are used. UI role guards supplement backend checks.
+
 ## Check the foundation
 
 From the repository root:
@@ -160,7 +192,9 @@ The runner owns backend/frontend processes on ports 18000/13000, refuses existin
 servers and forces APP_ENV=test for the backend. Smoke specs live in tests/e2e;
 backend tests live in backend/tests and frontend component/service tests in frontend/tests.
 CI (`.github/workflows/ci.yml`) executes the same gates with disposable PostgreSQL 17,
-including Alembic connection and Chromium. CI itself must execute before merge.
+including Alembic upgrade/drift checks and Chromium. Browser runs create a generated
+phase3_e2e_* schema inside the isolated test database, migrate it and seed random test
+credentials, then drop only that schema. Traces/screenshots are stored under ignored .cache/. CI itself must execute before merge.
 
 ## Optional Docker browser for restricted hosts
 
@@ -183,8 +217,9 @@ through the client. This option does not change application runtime or CI defaul
 
 ## Next phases
 
-Phase 2 is complete locally; hosted CI must still execute before merge.
-Phase 3: opaque bearer login/logout/current user and protected UI shell. Subsequent
-phases add approved leave, manager and administrator slices. Production deployment
+Phase 2 hosted CI passed on commit 488f73c. Phase 3 authentication and the protected
+shell pass local gates; hosted CI for Phase 3 remains to be run before merge.
+Phase 4 adds employee profile reads, balances and the employee dashboard. Subsequent
+phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 3 is the next implementation milestone.
+later work. Phase 4 is the next implementation milestone.

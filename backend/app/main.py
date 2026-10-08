@@ -1,12 +1,15 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.auth import router as auth_router
 from app.api.health import router
 from app.config import Settings, load_settings
 from app.database import create_session_factory
+from app.services.auth_service import utc_now
 from app.utils.errors import install_error_handlers
+from app.utils.rate_limit import LoginLimiter
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -27,6 +30,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None if settings.app_env == "production" else "/redoc",
         openapi_url=None if settings.app_env == "production" else "/openapi.json",
     )
+    app.state.login_limiter = LoginLimiter()
+    app.state.auth_clock = utc_now
     app.state.settings = settings
     app.state.session_factory = factory
     app.add_middleware(
@@ -37,5 +42,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         allow_headers=["Authorization", "Content-Type"],
     )
     install_error_handlers(app)
+
+    @app.middleware("http")
+    async def private_auth_responses(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/api/v1/auth/"):
+            response.headers["Cache-Control"] = "no-store"
+        return response
+
     app.include_router(router)
+    app.include_router(auth_router)
     return app

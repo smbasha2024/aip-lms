@@ -48,8 +48,8 @@ jobs:
       - name: Backend lint, formatting and tests
         working-directory: backend
         run: |
-          .venv/bin/ruff check --config pyproject.toml . ../database
-          .venv/bin/ruff format --config pyproject.toml --check . ../database
+          .venv/bin/ruff check --config pyproject.toml . ../database ../tests/e2e/backend_server.py
+          .venv/bin/ruff format --config pyproject.toml --check . ../database ../tests/e2e/backend_server.py
           .venv/bin/pytest --database --tb=short
       - name: Alembic registry connection
         run: |

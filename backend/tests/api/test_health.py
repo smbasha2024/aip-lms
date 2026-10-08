@@ -12,8 +12,14 @@ def test_startup_and_liveness(settings):
     app = create_app(settings)
     with TestClient(app) as client:
         assert client.get("/health").json() == {"status": "ok"}
-        assert client.get("/api/v1/auth/me").status_code == 404
-    assert set(app.openapi()["paths"]) == {"/health", "/health/ready"}
+        assert client.get("/api/v1/auth/me").status_code == 401
+    assert set(app.openapi()["paths"]) == {
+        "/health",
+        "/health/ready",
+        "/api/v1/auth/login",
+        "/api/v1/auth/me",
+        "/api/v1/auth/logout",
+    }
 
 
 def test_ready_failure_safe(settings):

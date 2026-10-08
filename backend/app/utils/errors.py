@@ -8,14 +8,28 @@ from starlette.exceptions import HTTPException
 logger = logging.getLogger("aip_lms")
 
 
-def error_response(status: int, code: str, message: str, details=None) -> JSONResponse:
+class DomainError(Exception):
+    def __init__(self, status: int, code: str, message: str, *, headers=None):
+        self.status, self.code, self.message = status, code, message
+        self.headers = headers or ({"WWW-Authenticate": "Bearer"} if status == 401 else {})
+        super().__init__(code)
+
+
+def error_response(
+    status: int, code: str, message: str, details=None, headers=None
+) -> JSONResponse:
     return JSONResponse(
         status_code=status,
+        headers=headers,
         content={"error": {"code": code, "message": message, "details": details}},
     )
 
 
 def install_error_handlers(app: FastAPI) -> None:
+    @app.exception_handler(DomainError)
+    async def domain_error(request: Request, exc: DomainError):
+        return error_response(exc.status, exc.code, exc.message, headers=exc.headers)
+
     @app.exception_handler(RequestValidationError)
     async def validation_error(request: Request, exc: RequestValidationError):
         details = [
