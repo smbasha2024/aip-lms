@@ -1,3 +1,4 @@
+import { approvalFlow, adminApprovalFlow } from "./approval-flow";
 import { teamFlow } from "./team-flow";
 import { test, expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page } from "../../frontend/node_modules/@playwright/test";
@@ -40,21 +41,29 @@ test("employee sees database balances, full profile and year selection after rel
   await page.getByLabel("Year").selectOption(String(balance.year));await expect(table).toBeVisible();
   await page.screenshot({path:"../.cache/phase4-balance.png",fullPage:true});expect(errors).toEqual([]);
 });
-test("mobile balances use cards without horizontal overflow",async({page})=> {
-  await page.setViewportSize({width:390,height:844});await login(page);
-  await page.getByRole("link",{name:"View detailed balances"}).click();
-  await expect(page.getByRole("heading",{name:"Leave Balance",exact:true})).toBeVisible();
-  await expect(page.getByRole("heading",{name:"Earned Leave",exact:true})).toBeVisible();
-  await expect(page.getByRole("table")).toHaveCount(0);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-  await page.screenshot({path:"../.cache/phase4-balance-mobile.png",fullPage:true});
-});
 for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
-  test(`${code} retains personal dashboard with unavailable role summary`,async({page,request})=> {
+  test(`${code} retains personal dashboard, team review and approval workflow`,async({page,request,browser})=> {
+    const employeeContext = code === "MGR001" ? await browser.newContext({ baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:13000", viewport: { width: 390, height: 844 } }) : null;
+    const employeePage = employeeContext ? await employeeContext.newPage() : null;
+    try {
+      if (employeePage) {
+        await login(employeePage);
+        await employeePage.getByRole("link", { name: "View detailed balances" }).click();
+        await expect(employeePage.getByRole("heading", { name: "Leave Balance", exact: true })).toBeVisible();
+        await expect(employeePage.getByRole("heading", { name: "Earned Leave", exact: true })).toBeVisible();
+        await expect(employeePage.getByRole("table")).toHaveCount(0);
+        expect(await employeePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        await employeePage.screenshot({ path: "../.cache/phase4-balance-mobile.png", fullPage: true });
+      }
     const pendingResponse = page.waitForResponse(response => { const url = new URL(response.url()); return url.pathname === "/api/v1/leave/approvals/pending" && url.searchParams.get("page_size") === "1" && response.ok(); });
     await login(page,code);await expect(page.getByText(`${summary} summary is not available yet.`)).toBeVisible();
     await expect(page.getByRole("heading",{name:"Your leave balances"})).toBeVisible();
     const pending = await (await pendingResponse).json();
     await teamFlow(page,request,code,pending.total);
+      if (employeePage) await approvalFlow(employeePage, page, request);
+      else await adminApprovalFlow(page, request);
+    } finally {
+      await employeeContext?.close();
+    }
   });
 }

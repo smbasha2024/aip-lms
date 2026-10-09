@@ -298,7 +298,9 @@ Use one counter update for the pending/used transfer so CHECKs remain valid at f
 Allocation/create/edit/adjust also locks employee then balance; account/hierarchy changes
 use the common advisory lock before sorted employee/account/session row locks. Revalidate
 a preliminary lookup after locking. Never lock an application then try to acquire its
-employee row; all operations use the same order. Duplicate status actions update nothing.
+employee row; all operations use the same order. Include notification recipients in
+the initial employee locks so foreign-key checks cannot invert another action's
+employee locks. Duplicate status actions update nothing.
 
 In-app notification/audit failure rolls back the entire transaction. No post-commit
 in-app insertion that could silently lose the required event. Authentication/session

@@ -297,7 +297,8 @@ Phase 7 adds My Leave History and cancellation. Phase 8 implements manager team/
 reads and read-only review; its local test gate passed. See docs/PHASE_8_REPORT.md. Subsequent
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 8 review/commit/hosted CI are the next milestone.
+later work. Phase 8 commits 89158a8 and 2bd3546 passed hosted CI. Phase 9
+approval/rejection passes its local test and review gates; commit/push/hosted CI are next.
 
 ## Phase 8 — manager team and pending review
 
@@ -312,9 +313,31 @@ later work. Phase 8 review/commit/hosted CI are the next milestone.
 - `/approvals` provides status tabs, leave type, employee and inclusive overlap dates,
   URL filters, pagination, responsive cards/tables, loading/empty/error recovery and
   View links. Manager nonpending tabs retain the manager snapshot filter.
-- Approve/reject remains Phase 9. Organization employee and department pickers await
+- Approve/reject is added by Phase 9 below. Organization employee and department pickers await
   their lookup slice; administrator employee search currently uses direct reports.
 
 Phase 8 passed 366 backend, 161 frontend and 12 browser tests, plus TypeScript, lint,
-production build and Alembic schema checks. Review/commit/hosted CI remain pending.
+production build and Alembic schema checks. Commits 89158a8 and 2bd3546 were pushed;
+hosted run 37872982264 passed all gates.
 No schema, dependencies, environment files or production data changes are required.
+
+## Phase 9 — approval and rejection
+
+- `POST /api/v1/leave/applications/{application_id}/approve`: optional comment;
+  transfers the stored pending reservation to used leave exactly once.
+- `POST /api/v1/leave/applications/{application_id}/reject`: required trimmed reason;
+  releases pending leave without changing used leave, including inactive applicants.
+- Assigned snapshot managers and administrators may process pending requests,
+  excluding their own. Account/session authorization is revalidated under locks.
+- Status, balance, action metadata, audit and owner notification commit together.
+- `/approvals` and application details provide confirmation dialogs, detail balance
+  context and refreshed lists/counts. Ambiguous failures require a reload before retry.
+- An inactive applicant's approval error leaves the manager signed in.
+
+Phase 9 passes 463 backend, 201 frontend and 11 Chromium browser scenarios, plus
+lint/typecheck/build and Alembic drift/head checks. Cancellation locks now include
+the manager notification recipient, fixing the real approval/cancellation race.
+The browser mobile employee balance scenario is preserved inside the manager flow;
+10 login attempts and the production limiter are unchanged.
+See docs/PHASE_9_REPORT.md. No new migrations, dependencies or environment changes.
+Pre-commit review passed with no blockers. Commit/push and hosted CI are next.

@@ -40,6 +40,10 @@ with engine.connect() as connection:
         year = datetime.now(ZoneInfo(settings.org_timezone)).year + 1
         session.add(LeaveBalance(employee_id=employee.employee_id,
             leave_type_id=leave_type.leave_type_id, leave_year=year, allocated=20))
+        # Phase 9 uses another type and June dates so existing apply/cancel flows stay isolated.
+        sick = session.scalar(select(LeaveType).where(LeaveType.code == 'SICK'))
+        session.add(LeaveBalance(employee_id=employee.employee_id, leave_type_id=sick.leave_type_id,
+            leave_year=year, allocated=2))
         # Phase 8 read fixtures use the current year, leaving future apply/cancel flows isolated.
         current_year = year - 1
         manager = session.scalar(select(Employee).where(Employee.employee_code == 'MGR001'))
@@ -54,6 +58,19 @@ with engine.connect() as connection:
             session.add(LeaveBalance(employee_id=subject.employee_id, leave_type_id=leave_type.leave_type_id,
                 leave_year=current_year, allocated=20, pending=1))
             subjects.append((subject, snapshot))
+        # Administrator actions have independent subjects; no parallel flow processes these rows.
+        for code, label, inactive in [('E2EOVERRIDE', 'Override Subject', False),
+                                       ('E2EINACTIVE', 'Inactive Subject', True)]:
+            subject = Employee(employee_code=code, name=label, email=code.lower()+'@example.invalid',
+                manager_id=admin.employee_id, department_id=employee.department_id,
+                joining_date=date(current_year, 1, 1), status='INACTIVE' if inactive else 'ACTIVE')
+            session.add(subject); session.flush()
+            session.add(LeaveBalance(employee_id=subject.employee_id, leave_type_id=leave_type.leave_type_id,
+                leave_year=current_year, allocated=1, pending=1))
+            session.add(LeaveApplication(employee_id=subject.employee_id, manager_id=manager.employee_id,
+                leave_type_id=leave_type.leave_type_id, leave_year=current_year,
+                from_date=date(current_year, 11, 9), to_date=date(current_year, 11, 9), number_of_days=1,
+                reason='Phase 9 administrator action fixture'))
         own_balance = session.scalar(select(LeaveBalance).where(LeaveBalance.employee_id == employee.employee_id,
             LeaveBalance.leave_type_id == leave_type.leave_type_id, LeaveBalance.leave_year == current_year))
         own_balance.pending += 2

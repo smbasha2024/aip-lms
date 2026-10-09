@@ -45,7 +45,8 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
     const applicationRow = applications.getByRole("row").filter({ has: page.locator(`a[href="/leave/applications/${item.application_id}"]`) });
     await expect(applicationRow.getByRole("rowheader", { name: `${item.employee_name} ${item.employee_code}`, exact: true })).toBeVisible();
   }
-  await expect(page.getByRole("button", { name: /^(Approve|Reject|Cancel)$/i })).toHaveCount(0);
+  await expect(applications.getByRole("button", { name: /^Approve / }).first()).toBeVisible();
+  await expect(applications.getByRole("button", { name: /^Reject / }).first()).toBeVisible();
   await page.screenshot({ path: `../.cache/phase8-${code}-approvals.png`, fullPage: true });
   if (code === "MGR001") {
     const former = queue.items.find(item => item.employee_code === "E2EFORMER")!;
@@ -55,7 +56,9 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
     await applications.getByRole("link", { name: `View ${former.employee_name} application ${former.application_id.slice(0,8)}`, exact: true }).click();
     await expect(page.getByRole("heading", { name: "Leave Application", exact: true })).toBeVisible();
     await expect(page.getByText(former.reason, { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: /^(Approve|Reject|Cancel)$/i })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Approve", exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Reject", exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Approval balance context" })).toContainText("Available 19 · Requested 1");
     await page.goto(`/team/${former.employee_id}?tab=history`);
     await expect(page.getByText("You don't have permission to view this page.")).toBeVisible();
     await page.goto(`/approvals?from_date=${leaveYear}-01-01&to_date=${leaveYear}-12-31`);

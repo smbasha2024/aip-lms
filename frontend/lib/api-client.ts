@@ -32,7 +32,7 @@ async function send<T>(method: string, path: string, options: RequestOptions = {
   if (!response.ok) {
     const body: ApiErrorBody | null = await response.json().catch(() => null);
     const code = response.status >= 500 || typeof body?.error?.code !== "string" ? "SERVER_ERROR" : body.error.code;
-    if (token && (response.status === 401 || ["USER_INACTIVE", "USER_LOCKED", "EMPLOYEE_INACTIVE"].includes(code))) {
+    if (token && (response.status === 401 || response.status === 403 && ["USER_INACTIVE", "USER_LOCKED", "EMPLOYEE_INACTIVE"].includes(code))) {
       authenticationFailed(token, response.status === 401 ? "UNAUTHENTICATED" : code);
     }
     throw new ApiError(response.status, code, errorMessage(code), body?.error?.details ?? null,

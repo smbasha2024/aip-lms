@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from datetime import datetime
 from decimal import Decimal
+from typing import Literal
 from uuid import UUID
 
 from sqlalchemy.exc import DBAPIError
@@ -15,11 +16,13 @@ from app.schemas.leave import (
     ApplicationPage,
     ApplicationQuery,
     ApplyLeaveRequest,
+    ApproveRequest,
     CancelRequest,
     EmployeeApplicationPage,
     HistoryQuery,
     LeaveTypeRef,
     PendingQuery,
+    RejectRequest,
 )
 from app.services.auth_service import AuthService, utc_now
 from app.services.calendar_service import CalendarService
@@ -281,8 +284,10 @@ class LeaveService:
                     raise DomainError(
                         404, "LEAVE_APPLICATION_NOT_FOUND", "Application could not be found."
                     )
-                subject_id = preliminary.employee_id
-                self.repo.lock_employees({actor_employee_id, subject_id})
+                subject_id, manager_id = preliminary.employee_id, preliminary.manager_id
+                # The manager notification inserts an employee foreign key. Lock its
+                # recipient up front so that FK checks cannot invert another action's locks.
+                self.repo.lock_employees({actor_employee_id, subject_id, manager_id})
                 self.repo.lock_accounts({actor_id})
                 session = self.auth_repo.session_for_digest(token_digest(token))
                 if session is None:
@@ -301,6 +306,10 @@ class LeaveService:
                 ):
                     raise DomainError(
                         403, "NOT_APPLICATION_OWNER", "Only the owner can cancel this application."
+                    )
+                if row.employee_id != subject_id or row.manager_id != manager_id:
+                    raise DomainError(
+                        409, "CONCURRENT_UPDATE", "Application changed. Please refresh."
                     )
                 if row.status != "PENDING":
                     raise DomainError(
@@ -367,6 +376,156 @@ class LeaveService:
         except Exception:
             raise DomainError(
                 500, "TRANSACTION_FAILED", "Cancellation could not be completed."
+            ) from None
+
+    def approve(
+        self, actor: AppUser, token: str, application_id: UUID, body: ApproveRequest, ip: str | None
+    ):
+        return self.decide(actor, token, application_id, "APPROVED", body.comment, ip)
+
+    def reject(
+        self, actor: AppUser, token: str, application_id: UUID, body: RejectRequest, ip: str | None
+    ):
+        if not body.reason:
+            raise DomainError(400, "REJECTION_REASON_REQUIRED", "Enter a rejection reason.")
+        return self.decide(actor, token, application_id, "REJECTED", body.reason, ip)
+
+    def decide(
+        self,
+        actor: AppUser,
+        token: str,
+        application_id: UUID,
+        status: Literal["APPROVED", "REJECTED"],
+        text: str | None,
+        ip: str | None,
+    ):
+        actor_id, actor_employee_id = actor.user_id, actor.employee_id
+        self.db.rollback()
+        try:
+            with self.db.begin():
+                preliminary = self.repo.application(application_id)
+                if preliminary is None:
+                    raise DomainError(
+                        404, "LEAVE_APPLICATION_NOT_FOUND", "Application could not be found."
+                    )
+                subject_id = preliminary.employee_id
+                self.repo.lock_employees({actor_employee_id, subject_id})
+                self.repo.lock_accounts({actor_id})
+                session = self.auth_repo.session_for_digest(token_digest(token))
+                if session is None:
+                    raise DomainError(401, "UNAUTHENTICATED", "Please sign in again.")
+                self.auth_repo.lock_session(session.session_id)
+                current = self.auth.current_account(token)
+                row = self.repo.lock_application(application_id)
+                if row is None:
+                    raise DomainError(
+                        404, "LEAVE_APPLICATION_NOT_FOUND", "Application could not be found."
+                    )
+                # Check authorization before exposing the current application state.
+                if current.user_id != actor_id or current.employee_id != actor_employee_id:
+                    raise DomainError(
+                        403, "NOT_AUTHORIZED_MANAGER", "You cannot process this request."
+                    )
+                if row.employee_id == current.employee_id:
+                    raise DomainError(
+                        403, "SELF_APPROVAL_NOT_ALLOWED", "You cannot process your own request."
+                    )
+                if not (
+                    current.role == "ADMINISTRATOR"
+                    or (current.role == "MANAGER" and row.manager_id == current.employee_id)
+                ):
+                    raise DomainError(
+                        403, "NOT_AUTHORIZED_MANAGER", "You cannot process this request."
+                    )
+                if row.employee_id != subject_id:
+                    raise DomainError(
+                        409,
+                        "CONCURRENT_UPDATE",
+                        "Application changed. Refresh before trying again.",
+                    )
+                if row.status != "PENDING":
+                    raise DomainError(
+                        409, "INVALID_LEAVE_STATUS", "This application has already been processed."
+                    )
+                if status == "APPROVED" and self.repo.employee(subject_id).status != "ACTIVE":
+                    raise DomainError(400, "EMPLOYEE_INACTIVE", "The employee is inactive.")
+                balance = self.repo.lock_balance(row.employee_id, row.leave_type_id, row.leave_year)
+                if (
+                    balance is None
+                    or balance.pending < row.number_of_days
+                    or balance.allocated + balance.carried_forward - balance.used - balance.pending
+                    < 0
+                ):
+                    raise DomainError(
+                        400,
+                        "BALANCE_INVARIANT_VIOLATION",
+                        "Leave balance needs administrator attention.",
+                    )
+                now = self.clock()
+                row.status, row.updated_at = status, now
+                balance.pending -= row.number_of_days
+                balance.updated_at = now
+                if status == "APPROVED":
+                    balance.used += row.number_of_days
+                    row.approved_by, row.approved_at, row.approval_comment = (
+                        current.employee_id,
+                        now,
+                        text,
+                    )
+                    metadata = {
+                        "approved_by": str(current.employee_id),
+                        "approved_at": now.isoformat(),
+                        "approval_comment": text,
+                    }
+                else:
+                    row.rejected_by, row.rejected_at, row.rejection_reason = (
+                        current.employee_id,
+                        now,
+                        text,
+                    )
+                    metadata = {
+                        "rejected_by": str(current.employee_id),
+                        "rejected_at": now.isoformat(),
+                        "rejection_reason": text,
+                    }
+                # Flush both counters together; the request already reserved these days.
+                self.db.flush()
+                self.repo.insert(
+                    AuditLog(
+                        entity_type="leave_appln",
+                        entity_id=row.id,
+                        action="UPDATE",
+                        performed_by=current.employee_id,
+                        ip_address=ip,
+                        old_values={"status": "PENDING"},
+                        new_values={"status": status, **metadata},
+                    )
+                )
+                self.repo.insert(
+                    Notification(
+                        employee_id=row.employee_id,
+                        notification_type=f"LEAVE_{status}",
+                        title=f"Leave application {status.lower()}",
+                        message=(
+                            f"Your leave application was {status.lower()} "
+                            f"by {current.employee.name}."
+                        ),
+                        reference_type="leave_appln",
+                        reference_id=row.id,
+                    )
+                )
+                result = application_detail(row)
+            return result
+        except DomainError:
+            raise
+        except DBAPIError as exc:
+            AuthService.concurrent_error(exc)
+            raise DomainError(
+                500, "TRANSACTION_FAILED", "The decision could not be completed."
+            ) from None
+        except Exception:
+            raise DomainError(
+                500, "TRANSACTION_FAILED", "The decision could not be completed."
             ) from None
 
     def pending(self, actor: AppUser, query: PendingQuery):

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.models import AuditLog, Employee, LeaveApplication, LeaveBalance, Notification
 from app.repositories.leave_repository import LeaveRepository
-from app.schemas.leave import ApplyLeaveRequest, CancelRequest
+from app.schemas.leave import ApplyLeaveRequest, ApproveRequest, CancelRequest
 from app.services.auth_service import AuthService
 from app.services.leave_service import LeaveService
 from app.utils.errors import DomainError
@@ -537,6 +537,9 @@ def test_independent_postgres_transition_races(leave_context, monkeypatch, compe
     first = send(leave_context).json()
     context, token, body = leave_context
     _, connection, app, _ = context
+    manager_token = (
+        sign_in(context, "MGR001").json()["access_token"] if competitor == "approve" else None
+    )
     schema = connection.scalar(text("SELECT current_schema()"))
     connection.commit()
     before_counts = state(connection)[0]
@@ -561,24 +564,10 @@ def test_independent_postgres_transition_races(leave_context, monkeypatch, compe
                 if competitor == "submit":
                     actor = service.auth.current_account(token)
                     return service.apply(actor, token, ApplyLeaveRequest(**body), None).status
-                # Test-only competing approval writer: no future approval endpoint is added.
-                with db.begin():
-                    service.repo.lock_employees({UUID(body["employee_id"])})
-                    row = service.repo.lock_application(UUID(first["application_id"]))
-                    if row.status != "PENDING":
-                        return "INVALID_LEAVE_STATUS"
-                    b = service.repo.lock_balance(
-                        row.employee_id, row.leave_type_id, row.leave_year
-                    )
-                    b.pending -= row.number_of_days
-                    b.used += row.number_of_days
-                    row.status, row.approved_by, row.approved_at = (
-                        "APPROVED",
-                        row.manager_id,
-                        app.state.auth_clock(),
-                    )
-                    db.flush()
-                return "APPROVED"
+                actor = service.auth.current_account(manager_token)
+                return service.approve(
+                    actor, manager_token, UUID(first["application_id"]), ApproveRequest(), None
+                ).status
             except DomainError as error:
                 return error.code
 

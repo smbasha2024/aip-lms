@@ -24,6 +24,8 @@ def test_startup_and_liveness(settings):
         "/api/v1/employees/{employee_id}/leave-balance",
         "/api/v1/employees/{employee_id}/leave-applications",
         "/api/v1/leave/applications/{application_id}/cancel",
+        "/api/v1/leave/applications/{application_id}/approve",
+        "/api/v1/leave/applications/{application_id}/reject",
         "/api/v1/managers/me/direct-reports",
         "/api/v1/leave/approvals/pending",
         "/api/v1/leave-types",

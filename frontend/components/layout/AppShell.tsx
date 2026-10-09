@@ -6,13 +6,15 @@ import { usePathname } from "next/navigation";
 import { Bell, Menu, X } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { canAccess, navigation } from "@/lib/permissions";
+import { useApprovals } from "@/hooks/use-team";
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut, signingOut } = useAuth(); const path = usePathname();
+  const pending = useApprovals({ status: "PENDING", page: 1, page_size: 1 });
   const drawer = useRef<HTMLDialogElement>(null); const trigger = useRef<HTMLButtonElement>(null);
   if (!user) return null;
   const nav = <nav aria-label="Main navigation" className="space-y-1">{navigation.filter(item => canAccess(item.href, user.role)).map(item =>
-    item.ready ? <Link key={item.href} href={item.href} aria-current={path === item.href ? "page" : undefined}
-      onClick={() => drawer.current?.close()} className={`block rounded-md px-3 py-2 text-sm ${path === item.href ? "bg-blue-50 font-semibold text-blue-800" : "text-slate-700 hover:bg-slate-100"}`}>{item.label}</Link>
+    item.ready ? <Link key={item.href} href={item.href} aria-label={item.label} aria-current={path === item.href ? "page" : undefined}
+      onClick={() => drawer.current?.close()} className={`block rounded-md px-3 py-2 text-sm ${path === item.href ? "bg-blue-50 font-semibold text-blue-800" : "text-slate-700 hover:bg-slate-100"}`}>{item.label}{item.href === "/approvals" && <span role="status" aria-label="Pending approval count" className="ml-2 rounded bg-slate-100 px-2 py-1">{pending.isError ? "Unavailable" : pending.data?.total ?? "…"}</span>}</Link>
       : <span key={item.href} aria-disabled="true" title="Coming soon" className="block px-3 py-2 text-sm text-slate-500">{item.label}<span className="sr-only"> — Coming soon</span></span>)}</nav>;
   return <div className="min-h-screen bg-slate-50 text-slate-900">
     <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-white focus:p-3">Skip to content</a>

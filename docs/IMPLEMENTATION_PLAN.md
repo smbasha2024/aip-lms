@@ -1384,8 +1384,8 @@ includes 53 backend and 40 frontend cases; existing browser flows cover team rev
 without adding logins. Authorization, reassignment privacy, filters, pagination,
 read-only controls, keyboard selection and responsive layouts are verified.
 See PHASE_8_REPORT.md for evidence and the exact manifest. No migrations,
-dependencies or environment changes were required. Review/commit/push and hosted
-CI remain pending. Phase 9 is not authorized.
+dependencies or environment changes were required. Commits 89158a8 and 2bd3546
+were pushed; hosted CI run 37872982264 passed all gates. Phase 9 is now authorized.
 
 ## Exit Criteria
 
@@ -1510,6 +1510,19 @@ Balance is correct
 ```
 
 This is the first major business milestone.
+
+## Implementation status (9 October 2026)
+
+Phase 9 is implemented and locally verified. Approval/rejection APIs and dialogs,
+snapshot authorization/self-action protection, atomic balance/audit/notification
+updates, scoped detail balance context and post-action count/list refresh pass
+463 backend, 201 frontend and 11 Chromium browser tests. New coverage includes
+97 backend and 40 frontend cases. A cancellation notification-recipient lock
+inversion found by the real action races was fixed and has a deterministic
+regression test. Ruff (72 Python files), typecheck, ESLint, production build,
+Alembic drift/head checks and cleanup pass. No new migrations, dependencies or
+environment changes. See PHASE_9_REPORT.md for commands, failures corrected and
+exact manifest. Pre-commit review passed with no blockers; commit/push/hosted CI are next. Phase 10 is not authorized.
 
 ---
 

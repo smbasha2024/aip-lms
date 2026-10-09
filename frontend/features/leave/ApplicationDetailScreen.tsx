@@ -8,19 +8,28 @@ import { ApiError } from "@/lib/api-client";
 import { calendarDay, eventTime, leaveDays } from "@/lib/format";
 import { CancelDialog } from "./CancelDialog";
 import { StatusBadge } from "./StatusBadge";
+import { canDecideLeave } from "@/lib/permissions";
+import { ApproveDialog, RejectDialog } from "@/features/approvals/DecisionDialog";
+import { ApprovalBalanceContext } from "@/features/approvals/ApprovalBalanceContext";
 function noticeSubscribe(callback: () => void) { window.addEventListener("leave-notice", callback); return () => window.removeEventListener("leave-notice", callback); }
 export function ApplicationDetailScreen({ id }: { id: string }) {
   const [cancelOpen, setCancelOpen] = useState(false); const [cancelled, setCancelled] = useState(false);
+  const [decision, setDecision] = useState<"approve" | "reject" | null>(null); const [decisionNotice, setDecisionNotice] = useState("");
   const { user } = useAuth(); const timezone = user?.organization_timezone ?? "UTC";
   const query = useApplication(id); const notice = useSyncExternalStore(noticeSubscribe, () => { try { return sessionStorage.getItem("aip-lms-leave-notice") === id; } catch { return false; } }, () => false);
   useEffect(() => { document.title = "Leave Application · Employee Leave Management"; }, [id]);
   if (query.isPending) return <QueryLoading/>;
   if (query.isError) return query.error instanceof ApiError && query.error.status === 404 ? <p role="alert">Application could not be found.</p> : <QueryError error={query.error} retry={() => void query.refetch()}/>;
   const item = query.data;
+  const actionable = canDecideLeave(user, item.employee.employee_id, item.manager.employee_id, item.status);
+  const Dialog = decision === "reject" ? RejectDialog : ApproveDialog;
   return <section className="max-w-4xl space-y-5"><h1 className="text-3xl font-semibold">Leave Application</h1>{cancelled && <p role="status">Leave application cancelled</p>}{notice && <p role="status" className="rounded border border-green-200 bg-green-50 p-4">Leave application submitted <button onClick={() => { sessionStorage.removeItem("aip-lms-leave-notice"); window.dispatchEvent(new Event("leave-notice")); }} className="ml-3 underline">Dismiss</button></p>}
     <div className="rounded-lg border bg-white p-5"><p className="break-all font-mono text-sm">{item.application_id}</p><button onClick={() => void navigator.clipboard?.writeText(item.application_id)} className="mt-2 rounded border px-3 py-2">Copy application ID</button>
       <dl className="mt-5 space-y-4">{[["Employee", `${item.employee.name} (${item.employee.employee_code})`], ["Leave Type", item.leave_type.name], ["Period", `${calendarDay(item.from_date)} – ${calendarDay(item.to_date)}`], ["Number of Days", leaveDays(item.number_of_days)], ["Status", item.status], ["Manager", item.manager.name], ["Applied Date", eventTime(item.created_at, timezone)], ["Reason", item.reason], ["Manager Comments", item.approval_comment], ["Rejection Reason", item.rejection_reason], ["Cancellation Reason", item.cancellation_reason]].filter(([, value]) => value !== null).map(([label, value]) => <div key={label}><dt className="text-sm font-medium text-slate-600">{label}</dt><dd className="whitespace-pre-wrap break-words">{label === "Status" ? <StatusBadge status={item.status}/> : value}</dd></div>)}</dl>
     </div><section aria-label="Leave timeline" className="rounded border bg-white p-5"><h2 className="text-xl font-semibold">Timeline</h2><ul className="mt-3 space-y-2"><li>Submitted · {eventTime(item.created_at, timezone)}</li>{([ ["Approved", item.approved_at, item.approved_by?.name], ["Rejected", item.rejected_at, item.rejected_by?.name], ["Cancelled", item.cancelled_at, item.cancelled_by?.name] ]).map(([label, at, name]) => at && <li key={label}>{label} by {name} · {eventTime(at, timezone)}</li>)}</ul></section>
+    {decisionNotice && <p role="status">{decisionNotice}</p>}
+    {actionable && <><ApprovalBalanceContext application={item}/><div className="flex gap-3"><button onClick={() => { setDecisionNotice(""); setDecision("approve"); }} className="rounded bg-blue-700 px-4 py-2 text-white">Approve</button><button onClick={() => { setDecisionNotice(""); setDecision("reject"); }} className="rounded border border-red-700 px-4 py-2 text-red-700">Reject</button></div></>}
+    {decision && <Dialog application={{ ...item, employee_name: item.employee.name, leave_type_name: item.leave_type.name }} onClose={() => setDecision(null)} onSuccess={() => { setDecisionNotice(`Leave application ${decision === "reject" ? "rejected" : "approved"}`); setDecision(null); }}/>}
     {item.status === "PENDING" && item.employee.employee_id === user?.employee_id && <button onClick={() => setCancelOpen(true)} className="rounded border border-red-700 px-4 py-2 text-red-700">Cancel</button>}
     {cancelOpen && <CancelDialog application={item} onClose={() => setCancelOpen(false)} onSuccess={() => { setCancelOpen(false); setCancelled(true); }}/>}
     <Link href="/leave/history" className="inline-block rounded border bg-white px-4 py-2">My Leave Applications</Link>

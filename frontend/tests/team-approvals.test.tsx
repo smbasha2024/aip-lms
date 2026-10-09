@@ -51,7 +51,7 @@ function url(path: string) { window.history.replaceState({}, "", path); navigati
 describe("Phase 8 team and pending review", () => {
   it.each(["MANAGER", "ADMINISTRATOR"] as const)("enables manager navigation and live counts for %s", async role => {
     defaults(); url("/dashboard"); mount(<AppShell><ManagerDashboardPanel/></AppShell>, { ...manager, role });
-    expect(await screen.findByText("7")).toBeVisible(); expect(screen.getByText("1 current direct reports")).toBeVisible();
+    expect(await within(await screen.findByRole("region", { name: "Team workspace" })).findByText("7")).toBeVisible(); expect(screen.getByText("1 current direct reports")).toBeVisible();
     const nav = screen.getAllByRole("navigation", { name: "Main navigation" })[0];
     expect(within(nav).getByRole("link", { name: "My Team" })).toHaveAttribute("href", "/team");
     expect(within(nav).getByRole("link", { name: "Pending Approvals" })).toHaveAttribute("href", "/approvals");
@@ -94,13 +94,15 @@ describe("Phase 8 team and pending review", () => {
     server.use(http.get(`${origin}/managers/me/direct-reports`, () => HttpResponse.json(page([employee])))); await userEvent.click(screen.getByRole("button", { name: "Retry" }));
     expect(await screen.findByRole("table")).toBeVisible();
   });
-  it("renders pending badge, text-safe reasons, detail links and no approval mutations", async () => {
+  it("renders pending badge, text-safe reasons, detail links and assigned approval controls", async () => {
     defaults(); url("/approvals"); mount(<ApprovalsScreen/>);
     const table = await screen.findByRole("table", { name: "Leave applications" });
     expect(within(table).getByText(row.reason)).toBeVisible(); expect(document.querySelector("main script")).toBeNull();
     expect(screen.getByRole("button", { name: "Pending (7)" })).toHaveAttribute("aria-current", "page");
     expect(screen.getAllByRole("link", { name: /View Current Report/ })[0]).toHaveAttribute("href", `/leave/applications/${row.application_id}`);
-    expect(screen.queryByRole("button", { name: /^(Approve|Reject|Cancel)$/i })).not.toBeInTheDocument();
+    expect(within(table).getByRole("button", { name: /^Approve Current Report application/ })).toBeVisible();
+    expect(within(table).getByRole("button", { name: /^Reject Current Report application/ })).toBeVisible();
+    expect(screen.queryByRole("button", { name: /^Cancel$/i })).not.toBeInTheDocument();
   });
   it("renders caught-up pending and filtered empty states", async () => {
     defaults(); server.use(http.get(`${origin}/leave/approvals/pending`, () => HttpResponse.json(page([])))); url("/approvals"); const result = mount(<ApprovalsScreen/>);

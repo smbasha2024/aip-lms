@@ -200,4 +200,7 @@ use the accessible visible link and verify the full detail URL, excluding the hi
 desktop copy. The initial correction run exposed that hidden-copy locator ambiguity;
 the final full browser regression passed all 12 cases in 17.6 seconds. Staged
 whitespace checks pass. No product, authorization, rate-limit or concurrency behavior
-changed. Push the follow-up and verify hosted CI before claiming hosted success.
+changed. Follow-up commit `2bd3546` was pushed and hosted CI run
+[37872982264](https://github.com/smbasha2024/aip-lms/actions/runs/37872982264)
+passed all backend, migration, frontend and browser gates. The branch was clean
+and synchronized with origin before Phase 9 began.

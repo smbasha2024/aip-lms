@@ -120,6 +120,16 @@ class CancelRequest(BaseModel):
     reason: str | None = Field(default=None, min_length=1, max_length=1000)
 
 
+class ApproveRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    comment: str | None = Field(default=None, min_length=1, max_length=1000)
+
+
+class RejectRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    reason: str = Field(min_length=1, max_length=1000)
+
+
 class PendingQuery(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     employee_id: UUID | None = None

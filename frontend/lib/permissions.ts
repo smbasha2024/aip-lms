@@ -1,4 +1,7 @@
 import type { Role } from "@/types/auth";
+export function canDecideLeave(user: { employee_id: string; role: Role } | null, ownerId: string, managerId: string, status: string): boolean {
+  return !!user && status === "PENDING" && user.employee_id !== ownerId && (user.role === "ADMINISTRATOR" || user.role === "MANAGER" && user.employee_id === managerId);
+}
 export function canAccess(path: string, role: Role): boolean {
   if (path === "/admin" || path.startsWith("/admin/")) return role === "ADMINISTRATOR";
   if (path === "/approvals" || path.startsWith("/approvals/") || path === "/team" || path.startsWith("/team/")) {

@@ -11,7 +11,8 @@ and dashboard reads, holiday reads, advisory leave-day calculation, submission a
 application detail, filtered history, owner cancellation, direct reports and pending
 approval reads. Subsequent phases implement the remaining endpoints. See
 PHASE_3_REPORT.md, PHASE_4_REPORT.md, PHASE_5_REPORT.md, PHASE_6_REPORT.md,
-PHASE_7_REPORT.md and PHASE_8_REPORT.md for evidence.
+PHASE_7_REPORT.md and PHASE_8_REPORT.md for evidence. Phase 9 adds the documented
+approve/reject endpoints and passes its local test gate (see PHASE_9_REPORT.md).
 
 ## 1. Common conventions
 
@@ -464,7 +465,7 @@ CSV/Excel/PDF export is deferred; no export control in v1. No audit-read endpoin
 
 Service owns begin/commit/rollback; repositories flush and never independently commit.
 Use PostgreSQL READ COMMITTED plus explicit locks. Consistent acquisition order:
-employee rows sorted UUID (including actors/targets and hierarchy validation as needed),
+employee rows sorted UUID (including actors/targets, notification recipients and hierarchy validation as needed),
 app_user rows sorted UUID, auth_session rows sorted UUID, application row, balance rows sorted UUID.
 Determine lock candidates with a preliminary read, then re-read/revalidate under locks;
 if relationships change, restart the bounded transaction rather than acquiring out of order.

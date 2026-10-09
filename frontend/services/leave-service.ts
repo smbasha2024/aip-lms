@@ -11,5 +11,7 @@ export const leaveService = {
     return apiRequest<ApplicationPage>("GET", path, { signal });
   },
   cancel: ({ id, reason }: { id: string; reason?: string }) => apiRequest<Application>("POST", `/leave/applications/${encodeURIComponent(id)}/cancel`, { body: reason ? { reason } : {} }),
+  approve: ({ id, comment }: { id: string; comment?: string }) => apiRequest<Application>("POST", `/leave/applications/${encodeURIComponent(id)}/approve`, { body: comment ? { comment } : {} }),
+  reject: ({ id, reason }: { id: string; reason: string }) => apiRequest<Application>("POST", `/leave/applications/${encodeURIComponent(id)}/reject`, { body: { reason } }),
   detail: (id: string, signal?: AbortSignal) => apiRequest<Application>("GET", `/leave/applications/${encodeURIComponent(id)}`, { signal }),
 };

@@ -4,7 +4,7 @@ import { useAuth } from "./use-auth";
 import { employeeService } from "@/services/employee-service";
 import { calendarService } from "@/services/calendar-service";
 import { leaveService } from "@/services/leave-service";
-import type { HistoryFilters } from "@/types/leave";
+import type { Application, HistoryFilters } from "@/types/leave";
 import type { CalculateDaysRequest } from "@/types/calendar";
 export function useLeaveTypes() {
   const { user } = useAuth();
@@ -46,4 +46,18 @@ export function useCancelLeave() {
   return useMutation({ mutationFn: leaveService.cancel, retry: false,
     onSuccess: application => client.setQueryData(["application", user?.employee_id, user?.role, application.application_id], application),
     onSettled: async () => { await Promise.all(["application", "applications", "balances", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
+}
+
+export function useDecideLeave(action: "approve" | "reject") {
+  const client = useQueryClient(); const { user } = useAuth();
+  return useMutation({ retry: false,
+    mutationFn: ({ id, text }: { id: string; text: string }) => action === "approve" ? leaveService.approve({ id, ...(text ? { comment: text } : {}) }) : leaveService.reject({ id, reason: text }),
+    onSuccess: application => client.setQueryData(["application", user?.employee_id, user?.role, application.application_id], application),
+    onSettled: async () => { await Promise.all(["application", "applications", "balances", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
+}
+
+export function useApprovalBalance(application: Application | undefined, enabled: boolean) {
+  const { user } = useAuth();
+  return useQuery({ queryKey: ["balances", "approval", user?.user_id, user?.role, application?.application_id],
+    queryFn: ({ signal }) => employeeService.approvalBalance(application!.employee.employee_id, Number(application!.from_date.slice(0,4)), application!.application_id, signal), enabled: !!user && !!application && enabled });
 }
