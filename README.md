@@ -298,7 +298,7 @@ reads and read-only review; its local test gate passed. See docs/PHASE_8_REPORT.
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
 later work. Phase 8 commits 89158a8 and 2bd3546 passed hosted CI. Phase 9
-approval/rejection passes its local test and review gates; commit/push/hosted CI are next.
+approval/rejection commit 656e3bf passed review and hosted CI run 37877957956.
 
 ## Phase 8 — manager team and pending review
 
@@ -340,4 +340,26 @@ the manager notification recipient, fixing the real approval/cancellation race.
 The browser mobile employee balance scenario is preserved inside the manager flow;
 10 login attempts and the production limiter are unchanged.
 See docs/PHASE_9_REPORT.md. No new migrations, dependencies or environment changes.
-Pre-commit review passed with no blockers. Commit/push and hosted CI are next.
+Commit 656e3bf passed review and hosted CI run 37877957956.
+
+
+## Phase 10 — notifications
+
+- `GET /api/v1/notifications` lists only the authenticated employee's notifications,
+  with `is_read`, page and page-size filters. Administrators also see only their own.
+- `POST /api/v1/notifications/{notification_id}/read` marks an owned notification
+  read atomically and retains the first read timestamp on repeated calls.
+- The top-bar bell displays the unread count (`9+` above nine), latest five
+  notifications, and a link to `/notifications` with All/Unread filters and pagination.
+- Notifications refresh every 60 seconds while visible and on window focus.
+  The bell can reuse a cached dashboard count without polling the entire dashboard.
+- Clicking a leave notification marks it read and navigates immediately. A failed
+  mark-read shows feedback without blocking navigation; referenced access is still
+  enforced by the application endpoint.
+- New leave-event messages snapshot employee, type, dates, days and status inside
+  the existing transaction. Stored older messages remain readable.
+
+Phase 10 passes 508 backend, 233 frontend and 11 Chromium browser scenarios, plus
+lint/format/typecheck/build and Alembic drift/head checks. Testing fixed a stale cached
+unread-count fallback. Pre-commit review passed with no blockers; commit/push/hosted CI are next.
+No migration, dependency or environment change. See `docs/PHASE_10_REPORT.md`.

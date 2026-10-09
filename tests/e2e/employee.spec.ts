@@ -1,4 +1,5 @@
 import { approvalFlow, adminApprovalFlow } from "./approval-flow";
+import { notificationFlow } from "./notification-flow";
 import { teamFlow } from "./team-flow";
 import { test, expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page } from "../../frontend/node_modules/@playwright/test";
@@ -20,6 +21,7 @@ test("employee sees database balances, full profile and year selection after rel
   const response=await request.get(`${process.env.E2E_API_URL}/api/v1/employees/${identity.employee_id}/leave-balance`,{headers});
   const balance: BalanceResponse=await response.json();expect(balance.balances).toHaveLength(6);
   for(const row of balance.balances) await expect(page.getByRole("heading",{name:row.leave_type_name,exact:true})).toBeVisible();
+  await notificationFlow(page, request);
   await page.screenshot({path:"../.cache/phase4-dashboard.png",fullPage:true});
   await page.getByRole("navigation").getByRole("link",{name:"My Profile"}).click();
   await expect(page.getByText("Example Manager (MGR001)",{exact:true})).toBeVisible();

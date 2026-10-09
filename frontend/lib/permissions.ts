@@ -17,7 +17,7 @@ export function safeReturnTo(value: string | null, role: Role): string {
     if (decoded.startsWith("//") || decoded.includes(String.fromCharCode(92))) return "/dashboard";
     const url = new URL(value, "https://local.invalid");
     // Only implemented, protected screens can be a login destination in this slice.
-    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile", "/leave/balance", "/holidays", "/leave/apply", "/leave/history", "/approvals", "/team"].includes(url.pathname) && !/^\/leave\/applications\/[0-9a-f-]{36}$/i.test(url.pathname)
+    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile", "/leave/balance", "/holidays", "/leave/apply", "/leave/history", "/approvals", "/team", "/notifications"].includes(url.pathname) && !/^\/leave\/applications\/[0-9a-f-]{36}$/i.test(url.pathname)
         && !/^\/team\/[0-9a-f-]{36}$/i.test(url.pathname)
         || !canAccess(url.pathname, role)) return "/dashboard";
     return url.pathname + url.search + url.hash;
@@ -25,6 +25,7 @@ export function safeReturnTo(value: string | null, role: Role): string {
 }
 export const navigation = [
   { label: "Dashboard", href: "/dashboard", ready: true },
+  { label: "Notifications", href: "/notifications", ready: true },
   { label: "My Profile", href: "/profile", ready: true },
   { label: "Apply Leave", href: "/leave/apply", ready: true },
   { label: "Leave Balance", href: "/leave/balance", ready: true },

@@ -26,6 +26,7 @@ const messages: Record<string, string> = {
   BALANCE_INVARIANT_VIOLATION: "The leave balance needs administrator attention.",
   TRANSACTION_FAILED: "The operation could not be completed. Refresh to confirm its outcome.",
   CONCURRENT_UPDATE: "A concurrent change occurred. Refresh before trying again.",
+  NOTIFICATION_NOT_FOUND: "Notification could not be found.",
   HOLIDAY_NOT_FOUND: "Holiday could not be found.",
   LEAVE_TYPE_NOT_FOUND: "Leave type could not be found.",
   LEAVE_DATE_IN_PAST: "Leave cannot start in the past.",

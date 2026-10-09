@@ -23,8 +23,8 @@ from alembic.config import Config
 from database.seed import SeedPasswords, seed_records
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from app.models import Employee, LeaveType, LeaveBalance, LeaveApplication
-from datetime import date, datetime
+from app.models import Employee, LeaveType, LeaveBalance, LeaveApplication, Notification
+from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 with engine.connect() as connection:
     connection.execute(CreateSchema(name)); connection.commit()
@@ -84,6 +84,19 @@ with engine.connect() as connection:
             leave_type_id=leave_type.leave_type_id, leave_year=current_year,
             from_date=date(current_year, 11, 3), to_date=date(current_year, 11, 3), number_of_days=1,
             reason='Phase 8 read fixture second request'))
+        session.flush()
+        own_request = session.scalar(select(LeaveApplication).where(LeaveApplication.employee_id == employee.employee_id,
+            LeaveApplication.reason == 'Phase 8 read fixture second request'))
+        foreign_request = session.scalar(select(LeaveApplication).where(LeaveApplication.employee_id != employee.employee_id,
+            LeaveApplication.reason == 'Phase 8 read fixture <img src=x onerror=alert(1)>'))
+        for index in range(12):
+            reference = own_request if index >= 10 else foreign_request if index == 9 else None
+            session.add(Notification(employee_id=employee.employee_id,
+                notification_type='LEAVE_SUBMITTED' if reference is not None else 'SYSTEM',
+                title=f'Phase 10 notice {index}', message='Phase 10 plain text <img src=x onerror=alert(1)>',
+                reference_type='leave_appln' if reference is not None else None,
+                reference_id=reference.id if reference is not None else None,
+                created_at=datetime.now(UTC) + timedelta(seconds=index)))
 engine.dispose()
 `);
   return async () => {

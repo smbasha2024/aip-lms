@@ -1522,7 +1522,8 @@ inversion found by the real action races was fixed and has a deterministic
 regression test. Ruff (72 Python files), typecheck, ESLint, production build,
 Alembic drift/head checks and cleanup pass. No new migrations, dependencies or
 environment changes. See PHASE_9_REPORT.md for commands, failures corrected and
-exact manifest. Pre-commit review passed with no blockers; commit/push/hosted CI are next. Phase 10 is not authorized.
+exact manifest. Commit 656e3bf was reviewed and pushed; hosted CI run
+37877957956 passed every gate. Phase 10 is now authorized.
 
 ---
 
@@ -1573,6 +1574,21 @@ approximately every 60 seconds while visible
 ```
 
 No push infrastructure in v1.
+
+## Implementation status (9 October 2026)
+
+The Phase 10 implementation adds authenticated owner-only notification listing,
+read/unread filters, atomic idempotent mark-read, fuller transactional leave-event
+messages, the top-bar bell, latest-five dropdown and paginated notifications page.
+Visible-tab polling runs every 60 seconds with focus refresh. Read failures show
+feedback without delaying leave navigation. No schema/dependency/environment change.
+The local test gate passes: 508 backend, 233 frontend and 11 Chromium scenarios,
+plus Ruff (77 Python files), typecheck, ESLint, production build and Alembic drift/head
+checks. New coverage includes 45 backend and 32 frontend cases. Testing fixed a stale
+invalidated-dashboard fallback count; the browser picker regression now waits for its
+filtered response before keyboard selection. Generated schemas/container cleanup pass.
+See PHASE_10_REPORT.md for commands, results and the exact manifest. Changes remain
+uncommitted; pre-commit review passed with no blockers. Commit/push/hosted CI are next. Phase 11 is not authorized.
 
 ## Tests
 

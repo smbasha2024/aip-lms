@@ -27,6 +27,7 @@ from app.schemas.leave import (
 from app.services.auth_service import AuthService, utc_now
 from app.services.calendar_service import CalendarService
 from app.services.employee_service import EmployeeService, application_row, employee_ref, forbidden
+from app.services.notification_service import leave_notification_message
 from app.utils.errors import DomainError
 from app.utils.security import token_digest
 
@@ -198,7 +199,7 @@ class LeaveService:
                     employee_id=recipient,
                     notification_type="LEAVE_SUBMITTED",
                     title="Leave application submitted",
-                    message=f"{employee.name} submitted a leave application.",
+                    message=leave_notification_message(row),
                     reference_type="leave_appln",
                     reference_id=row.id,
                 )
@@ -359,7 +360,7 @@ class LeaveService:
                             employee_id=recipient,
                             notification_type="LEAVE_CANCELLED",
                             title="Leave application cancelled",
-                            message=f"{row.employee.name} cancelled a leave application.",
+                            message=leave_notification_message(row),
                             reference_type="leave_appln",
                             reference_id=row.id,
                         )
@@ -506,10 +507,7 @@ class LeaveService:
                         employee_id=row.employee_id,
                         notification_type=f"LEAVE_{status}",
                         title=f"Leave application {status.lower()}",
-                        message=(
-                            f"Your leave application was {status.lower()} "
-                            f"by {current.employee.name}."
-                        ),
+                        message=leave_notification_message(row),
                         reference_type="leave_appln",
                         reference_id=row.id,
                     )

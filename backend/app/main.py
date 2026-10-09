@@ -9,6 +9,7 @@ from app.api.calendar import router as calendar_router
 from app.api.employees import router as employee_router
 from app.api.health import router
 from app.api.leave import router as leave_router
+from app.api.notifications import router as notification_router
 from app.config import Settings, load_settings
 from app.database import create_session_factory
 from app.services.auth_service import utc_now
@@ -60,4 +61,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(calendar_router)
     app.include_router(leave_router)
     app.include_router(approval_router)
+    app.include_router(notification_router)
     return app

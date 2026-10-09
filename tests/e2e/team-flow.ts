@@ -62,7 +62,12 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
     await page.goto(`/team/${former.employee_id}?tab=history`);
     await expect(page.getByText("You don't have permission to view this page.")).toBeVisible();
     await page.goto(`/approvals?from_date=${leaveYear}-01-01&to_date=${leaveYear}-12-31`);
+    const filteredReports = page.waitForResponse(response => {
+      const url = new URL(response.url());
+      return url.pathname === "/api/v1/managers/me/direct-reports" && url.searchParams.get("search") === "EMP001" && response.ok();
+    });
     const combo = page.getByRole("combobox", { name: "Employee", exact: true }); await combo.fill("EMP001");
+    await filteredReports;
     await expect(page.getByRole("option", { name: "Example Employee (EMP001)", exact: true })).toBeVisible();
     await combo.press("ArrowDown"); await combo.press("Enter"); await expect(page).toHaveURL(/employee_id=/);
     await expect(applications.getByRole("row")).toHaveCount(1 + fixtures.filter(item => item.employee_code === "EMP001").length);

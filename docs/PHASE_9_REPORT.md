@@ -4,8 +4,9 @@
 
 Phase 9 is implemented and passes its local test gate. Testing was explicitly
 authorized after implementation. All final backend/frontend/browser/static/schema
-checks pass. Changes remain uncommitted and have not been pushed. GitHub CI has
-not been run for Phase 9.
+checks pass. Commit 656e3bf was reviewed, pushed to feature/project-foundation
+and passed every hosted CI gate in run 37877957956.
+CI: https://github.com/smbasha2024/aip-lms/actions/runs/37877957956
 
 ## Summary
 
@@ -199,8 +200,7 @@ No unresolved Phase 9 blocker remains in the local gate.
 Pre-commit review completed with no blocking findings. Authorization, transaction
 rollback, concurrent decisions/cancellation, scoped balance access and UI refresh
 were reviewed against the documented contracts and passing test evidence.
-Next: commit, push and check hosted CI, as authorized. This report records the
-local review gate; hosted results will be reported after the push.
+Commit/push and hosted verification completed successfully as recorded above.
 The next feature phase is Phase 10 (notifications), following successful review.
 
 ## Files created
