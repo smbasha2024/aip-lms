@@ -32,6 +32,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       className="m-0 h-dvh max-h-none w-72 max-w-[85vw] border-0 bg-white p-4 backdrop:bg-slate-900/40 lg:hidden">
       <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Navigation</h2><button autoFocus aria-label="Close navigation" onClick={() => drawer.current?.close()} className="rounded p-2"><X aria-hidden size={20} /></button></div>{nav}
     </dialog>
-    <main id="main-content" className="px-4 pb-8 pt-24 md:px-6 lg:ml-60">{children}</main>
+    <main id="main-content" tabIndex={-1} className="px-4 pb-8 pt-24 md:px-6 lg:ml-60">{children}</main>
   </div>;
 }

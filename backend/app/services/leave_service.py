@@ -10,10 +10,19 @@ from app.config import Settings
 from app.models import AppUser, AuditLog, LeaveApplication, Notification
 from app.repositories.auth_repository import AuthRepository
 from app.repositories.leave_repository import LeaveRepository
-from app.schemas.leave import Application, ApplyLeaveRequest, LeaveTypeRef
+from app.schemas.leave import (
+    Application,
+    ApplicationPage,
+    ApplicationQuery,
+    ApplyLeaveRequest,
+    CancelRequest,
+    EmployeeApplicationPage,
+    HistoryQuery,
+    LeaveTypeRef,
+)
 from app.services.auth_service import AuthService, utc_now
 from app.services.calendar_service import CalendarService
-from app.services.employee_service import employee_ref, forbidden
+from app.services.employee_service import EmployeeService, application_row, employee_ref, forbidden
 from app.utils.errors import DomainError
 from app.utils.security import token_digest
 
@@ -191,3 +200,170 @@ class LeaveService:
                 )
             )
         return application_detail(row)
+
+    def history(self, actor: AppUser, query: ApplicationQuery):
+        scope = (
+            query.scope
+            or {"EMPLOYEE": "own", "MANAGER": "visible", "ADMINISTRATOR": "organization"}[
+                actor.role
+            ]
+        )
+        permitted = {
+            "EMPLOYEE": {"own"},
+            "MANAGER": {"own", "team", "visible"},
+            "ADMINISTRATOR": {"own", "team", "visible", "organization"},
+        }[actor.role]
+        if scope not in permitted:
+            forbidden()
+        self.validate_history_employee(actor, query, scope)
+        rows, total = self.repo.history(actor, query, scope)
+        return ApplicationPage(
+            items=[application_row(row) for row in rows],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def validate_history_employee(self, actor: AppUser, query: ApplicationQuery, scope: str):
+        if query.employee_id is None and query.employee_code is None:
+            return
+        code = query.employee_code.upper() if query.employee_code else None
+        if scope == "own" and (
+            query.employee_id not in {None, actor.employee_id}
+            or code not in {None, actor.employee.employee_code}
+        ):
+            forbidden()
+        employee = EmployeeService(self.db, self.settings, self.clock).repo.employee(
+            employee_id=query.employee_id, code=code
+        )
+        if employee is None:
+            if actor.role == "ADMINISTRATOR" and scope in {"organization", "visible"}:
+                raise DomainError(404, "EMPLOYEE_NOT_FOUND", "Employee could not be found.")
+            forbidden()
+        if scope == "team":
+            if (
+                employee.employee_id == actor.employee_id
+                or employee.manager_id != actor.employee_id
+            ):
+                forbidden()
+        elif scope == "visible" and actor.role == "MANAGER":
+            if not (
+                employee.employee_id == actor.employee_id
+                or employee.manager_id == actor.employee_id
+                or self.repo.assigned_history(employee.employee_id, actor.employee_id)
+            ):
+                forbidden()
+
+    def employee_history(self, actor: AppUser, employee_id: UUID, query: HistoryQuery):
+        employee = EmployeeService(self.db, self.settings, self.clock).target(
+            actor, employee_id=employee_id
+        )
+        rows, total = self.repo.history(actor, query, "organization", employee_id)
+        return EmployeeApplicationPage(
+            employee_id=employee.employee_id,
+            employee_code=employee.employee_code,
+            items=[application_row(row) for row in rows],
+            total=total,
+            page=query.page,
+            page_size=query.page_size,
+        )
+
+    def cancel(
+        self, actor: AppUser, token: str, application_id: UUID, body: CancelRequest, ip: str | None
+    ):
+        actor_id, actor_employee_id = actor.user_id, actor.employee_id
+        self.db.rollback()
+        try:
+            with self.db.begin():
+                preliminary = self.repo.application(application_id)
+                if preliminary is None:
+                    raise DomainError(
+                        404, "LEAVE_APPLICATION_NOT_FOUND", "Application could not be found."
+                    )
+                subject_id = preliminary.employee_id
+                self.repo.lock_employees({actor_employee_id, subject_id})
+                self.repo.lock_accounts({actor_id})
+                session = self.auth_repo.session_for_digest(token_digest(token))
+                if session is None:
+                    raise DomainError(401, "UNAUTHENTICATED", "Please sign in again.")
+                self.auth_repo.lock_session(session.session_id)
+                current = self.auth.current_account(token)
+                row = self.repo.lock_application(application_id)
+                if row is None:
+                    raise DomainError(
+                        404, "LEAVE_APPLICATION_NOT_FOUND", "Application could not be found."
+                    )
+                if (
+                    current.user_id != actor_id
+                    or current.employee_id != actor_employee_id
+                    or row.employee_id != current.employee_id
+                ):
+                    raise DomainError(
+                        403, "NOT_APPLICATION_OWNER", "Only the owner can cancel this application."
+                    )
+                if row.status != "PENDING":
+                    raise DomainError(
+                        409, "INVALID_LEAVE_STATUS", "Only pending applications can be cancelled."
+                    )
+                balance = self.repo.lock_balance(row.employee_id, row.leave_type_id, row.leave_year)
+                if (
+                    balance is None
+                    or balance.pending < row.number_of_days
+                    or balance.allocated + balance.carried_forward - balance.used - balance.pending
+                    < 0
+                ):
+                    raise DomainError(
+                        400,
+                        "BALANCE_INVARIANT_VIOLATION",
+                        "Leave balance needs administrator attention.",
+                    )
+                now = self.clock()
+                row.status, row.cancelled_by, row.cancelled_at = (
+                    "CANCELLED",
+                    current.employee_id,
+                    now,
+                )
+                row.cancellation_reason, row.updated_at = body.reason, now
+                balance.pending -= row.number_of_days
+                balance.updated_at = now
+                self.db.flush()
+                self.repo.insert(
+                    AuditLog(
+                        entity_type="leave_appln",
+                        entity_id=row.id,
+                        action="UPDATE",
+                        performed_by=current.employee_id,
+                        ip_address=ip,
+                        old_values={"status": "PENDING"},
+                        new_values={
+                            "status": "CANCELLED",
+                            "cancellation_reason": body.reason,
+                            "cancelled_by": str(current.employee_id),
+                            "cancelled_at": now.isoformat(),
+                        },
+                    )
+                )
+                for recipient in [row.employee_id, row.manager_id]:
+                    self.repo.insert(
+                        Notification(
+                            employee_id=recipient,
+                            notification_type="LEAVE_CANCELLED",
+                            title="Leave application cancelled",
+                            message=f"{row.employee.name} cancelled a leave application.",
+                            reference_type="leave_appln",
+                            reference_id=row.id,
+                        )
+                    )
+                result = application_detail(row)
+            return result
+        except DomainError:
+            raise
+        except DBAPIError as exc:
+            AuthService.concurrent_error(exc)
+            raise DomainError(
+                500, "TRANSACTION_FAILED", "Cancellation could not be completed."
+            ) from None
+        except Exception:
+            raise DomainError(
+                500, "TRANSACTION_FAILED", "Cancellation could not be completed."
+            ) from None

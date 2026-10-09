@@ -34,5 +34,6 @@ export async function applyLeaveFlow(page: Page, request: APIRequestContext, ide
   await page.getByLabel("Reason *").fill("Unsaved");page.once("dialog",dialog=>dialog.dismiss());await page.getByRole("button",{name:"Cancel",exact:true}).click();
   await expect(page).toHaveURL(/\/leave\/apply$/);await expect(page.getByLabel("Reason *")).toHaveValue("Unsaved");
   page.once("dialog",dialog=>dialog.dismiss());await page.evaluate(() => window.history.back());await expect(page).toHaveURL(/\/leave\/apply$/);await expect(page.getByLabel("Reason *")).toHaveValue("Unsaved");
-  page.once("dialog",dialog=>dialog.accept());await page.getByRole("button",{name:"Cancel",exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/);
+  page.once("dialog",dialog=>dialog.accept());await page.getByRole("button",{name:"Cancel",exact:true}).click();await expect(page).toHaveURL(/\/leave\/history$/);
+  return { id, year, day };
 }

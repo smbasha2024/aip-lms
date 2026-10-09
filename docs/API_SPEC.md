@@ -6,10 +6,10 @@ This is the canonical REST contract. Updated 7 October 2026 after the Phase 0 au
 `REQUIREMENTS.md` owns behavior; `DATABASE.md` owns persistence; `ARCHITECTURE.md`
 owns layering; `UI_SPEC.md` owns presentation. Resolve disagreements in the owning
 specification before implementation. Examples are illustrative; the schemas below
-are complete contracts. Phases 3–6 implement authentication, employee/profile/balance
+are complete contracts. Phases 3–7 implement authentication, employee/profile/balance
 and dashboard reads, holiday reads, advisory leave-day calculation, submission and
-application detail. Subsequent phases implement the remaining endpoints. See
-PHASE_3_REPORT.md, PHASE_4_REPORT.md, PHASE_5_REPORT.md and PHASE_6_REPORT.md for evidence.
+application detail, filtered history and owner cancellation. Subsequent phases implement the remaining endpoints. See
+PHASE_3_REPORT.md, PHASE_4_REPORT.md, PHASE_5_REPORT.md, PHASE_6_REPORT.md and PHASE_7_REPORT.md for evidence.
 
 ## 1. Common conventions
 

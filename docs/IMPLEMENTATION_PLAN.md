@@ -1172,7 +1172,7 @@ Frontend:
 
 Phase 6 submission and application details are implemented and locally verified. Evidence
 and the exact change manifest are recorded in PHASE_6_REPORT.md. Pre-commit review found
-no blockers; commit/push and hosted CI remain pending. History/cancellation remain Phase 7; pending approval reads are Phase 8 and actions Phase 9.
+no blockers. Commit 1163325 passed hosted CI. History/cancellation remain Phase 7; pending approval reads are Phase 8 and actions Phase 9.
 
 ## Exit Criteria
 
@@ -1282,6 +1282,17 @@ Frontend:
 - confirmation dialog;
 - success refresh;
 - conflict/already-processed response.
+
+## Implementation status (9 October 2026)
+
+Phase 7 is implemented and locally verified: history/filter/pagination, owner cancellation,
+atomic pending release/events and shared accessible dialog. The full gates passed: 313
+backend tests, 121 frontend tests, 12 browser tests, Ruff/typecheck/ESLint/build and Alembic
+check/current. Verification corrected explicit employee-filter authorization, dialog focus
+and centering, and rapid URL-filter edits. Screenshot and fixture cleanup checks passed.
+See PHASE_7_REPORT.md for evidence and the exact manifest. Changes remain uncommitted;
+pre-commit review found no blockers; commit/push and hosted CI are the next gate.
+Phase 8 is not authorized.
 
 ## Exit Criteria
 

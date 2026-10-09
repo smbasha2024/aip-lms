@@ -4,6 +4,7 @@ import { useAuth } from "./use-auth";
 import { employeeService } from "@/services/employee-service";
 import { calendarService } from "@/services/calendar-service";
 import { leaveService } from "@/services/leave-service";
+import type { HistoryFilters } from "@/types/leave";
 import type { CalculateDaysRequest } from "@/types/calendar";
 export function useLeaveTypes() {
   const { user } = useAuth();
@@ -33,4 +34,16 @@ export function useApplyLeave() {
 export function useApplication(id: string) {
   const { user } = useAuth();
   return useQuery({ queryKey: ["application", user?.employee_id, user?.role, id], queryFn: ({ signal }) => leaveService.detail(id, signal), enabled: !!user });
+}
+
+export function useLeaveHistory(filters: HistoryFilters | null) {
+  const { user } = useAuth();
+  return useQuery({ queryKey: ["applications", "employee", user?.employee_id, user?.role, filters],
+    queryFn: ({ signal }) => leaveService.history(user!.employee_id, filters!, signal), enabled: !!user && !!filters });
+}
+export function useCancelLeave() {
+  const client = useQueryClient(); const { user } = useAuth();
+  return useMutation({ mutationFn: leaveService.cancel, retry: false,
+    onSuccess: application => client.setQueryData(["application", user?.employee_id, user?.role, application.application_id], application),
+    onSettled: async () => { await Promise.all(["application", "applications", "balances", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
 }

@@ -45,7 +45,7 @@ export function ApplyLeaveScreen() {
       try { sessionStorage.setItem("aip-lms-leave-notice", result.application_id); } catch { /* Successful submission still navigates when storage is unavailable. */ }
       router.replace(`/leave/applications/${result.application_id}`);
     } catch (error) {
-      if (error instanceof ApiError && (error.status === 0 || error.status >= 500)) setUncertain(true);
+      if (error instanceof ApiError && (error.status === 0 || error.status >= 500 || error.code === "SERVER_ERROR")) setUncertain(true);
       if (error instanceof ApiError && error.code === "VALIDATION_ERROR" && Array.isArray(error.details)) {
         for (const detail of error.details) if (detail && typeof detail === "object" && "field" in detail && ["leave_type_id", "from_date", "to_date", "reason"].includes(String(detail.field).replace(/^body\./, ""))) form.setError(String(detail.field).replace(/^body\./, "") as keyof Values, { message: "Check this value." });
       }
@@ -55,7 +55,7 @@ export function ApplyLeaveScreen() {
   if (types.isPending || balances.isPending) return <QueryLoading/>;
   if (types.isError) return <QueryError error={types.error} retry={() => void types.refetch()}/>;
   return <section className="max-w-6xl space-y-5"><h1 className="text-3xl font-semibold">Apply Leave</h1>
-    {submission.error && <div role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800"><p>{submission.error.message}</p>{overlap && /^[0-9a-f-]{36}$/i.test(overlap) && <Link className="underline" href={`/leave/applications/${overlap}`}>View existing application</Link>}{uncertain && <p>Submission may have succeeded. Review recent applications on your Dashboard. Do not retry until the outcome is confirmed; contact your administrator if it is unclear. <Link className="underline" href="/dashboard">Review Dashboard</Link></p>}</div>}
+    {submission.error && <div role="alert" className="rounded border border-red-200 bg-red-50 p-4 text-red-800"><p>{submission.error.message}</p>{overlap && /^[0-9a-f-]{36}$/i.test(overlap) && <Link className="underline" href={`/leave/applications/${overlap}`}>View existing application</Link>}{uncertain && <p>Submission may have succeeded. Review your applications in History. Do not retry until the outcome is confirmed; contact your administrator if it is unclear. <Link className="underline" href="/leave/history">Review History</Link></p>}</div>}
     {balances.isError && <QueryError error={balances.error} retry={() => void balances.refetch()}/>}
     <form noValidate onSubmit={event => { void form.handleSubmit(submit)(event); }} className="grid gap-6 lg:grid-cols-3">
       <fieldset disabled={submission.isPending || submitted || uncertain} className="space-y-5 lg:col-span-2"><legend className="sr-only">Leave application</legend>
@@ -68,6 +68,6 @@ export function ApplyLeaveScreen() {
       <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start"><LeaveSummaryPanel calculation={calculation} loading={!!body && preview.isFetching} error={body && preview.isError ? preview.error.message : null} retry={() => void preview.refetch()}/>
         {selected && <div className="rounded border bg-white p-5"><h2 className="font-semibold">{selected.name}</h2>{balance ? <><p>Available balance: {leaveDays(balance.available)}</p><p>Estimated remaining balance: {remaining === null ? "—" : leaveDays(remaining)}</p>{remaining !== null && remaining < 0 && <p role="alert">Insufficient available leave balance.</p>}</> : <p role="alert">No balance is allocated for this year. Please contact your administrator.</p>}</div>}
       </aside>
-      <div className="flex flex-wrap gap-3 lg:col-span-3"><button type="submit" disabled={blocked} aria-busy={submission.isPending} className="rounded bg-blue-600 px-5 py-3 font-medium text-white disabled:opacity-50">{submission.isPending ? "Submitting…" : "Submit application"}</button><button type="button" disabled={submission.isPending} onClick={() => { if (!dirty || window.confirm("Discard your unsaved leave application?")) router.replace("/dashboard"); }} className="rounded border px-5 py-3">Cancel</button></div>
+      <div className="flex flex-wrap gap-3 lg:col-span-3"><button type="submit" disabled={blocked} aria-busy={submission.isPending} className="rounded bg-blue-600 px-5 py-3 font-medium text-white disabled:opacity-50">{submission.isPending ? "Submitting…" : "Submit application"}</button><button type="button" disabled={submission.isPending} onClick={() => { if (!dirty || window.confirm("Discard your unsaved leave application?")) router.replace("/leave/history"); }} className="rounded border px-5 py-3">Cancel</button></div>
     </form></section>;
 }

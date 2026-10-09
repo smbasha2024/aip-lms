@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Literal
 from uuid import UUID
@@ -108,6 +108,10 @@ class ApplicationRow(BaseModel):
     reason: str
     status: Literal["PENDING", "APPROVED", "REJECTED", "CANCELLED"]
     created_at: datetime
+
+    @field_serializer("created_at")
+    def utc_timestamp(self, value: datetime) -> datetime:
+        return value.astimezone(UTC)
 
     @field_serializer("number_of_days")
     def json_number(self, value: Decimal) -> float:

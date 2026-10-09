@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Path, Query, Request
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import current_user, no_query
+from app.api.leave import Service as LeaveServiceDependency
 from app.database import get_db
 from app.models import AppUser
 from app.schemas.employee import (
@@ -17,6 +18,7 @@ from app.schemas.employee import (
     LeaveTypesResponse,
     YearQuery,
 )
+from app.schemas.leave import EmployeeApplicationPage, HistoryQuery
 from app.services.employee_service import EmployeeService
 from app.utils.errors import DomainError
 
@@ -73,3 +75,13 @@ def leave_types(actor: Actor, service: Service, query: Annotated[LeaveTypeQuery,
 )
 def dashboard(actor: Actor, service: Service, query: Annotated[YearQuery, Query()]):
     return service.dashboard(actor, query.year)
+
+
+@router.get("/employees/{employee_id}/leave-applications", response_model=EmployeeApplicationPage)
+def leave_history(
+    employee_id: UUID,
+    actor: Actor,
+    service: LeaveServiceDependency,
+    query: Annotated[HistoryQuery, Query()],
+):
+    return service.employee_history(actor, employee_id, query)

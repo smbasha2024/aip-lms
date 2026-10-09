@@ -1,8 +1,8 @@
 # aip-lms — Employee Leave Management System
 
-Phases 1–6 are implemented and locally verified: infrastructure, database foundation,
+Phases 1–7 are implemented and locally verified: infrastructure, database foundation,
 authentication, employee reads, holiday calendar, advisory calculation and transactional
-Apply Leave. Phase 2 supplies ten mapped
+Apply Leave, history and cancellation. Phase 2 supplies ten mapped
 tables, Alembic revision `0001`, database tests and idempotent development seeds.
 Phase 3 adds email/employee-code login, current user and server sign-out. Administrator writes and leave status transitions belong to later phases. See `docs/PHASE_1_REPORT.md`,
 `docs/PHASE_2_REPORT.md`, `docs/PHASE_3_REPORT.md`, `docs/PHASE_4_REPORT.md` and
@@ -134,8 +134,9 @@ and upcoming dates use ORG_TIMEZONE. /leave/balance supports URL year selection 
 responsive table/cards; available is displayed exactly as returned by the API. The
 dashboard provides personal totals, the last five own applications, all own pending
 requests for the selected year, upcoming active holidays and own unread count. Role
-summaries remain null until Phase 17. History/notification screens and status actions belong to later phases; their
-navigation/actions remain disabled. Apply Leave and recent application detail links are enabled.
+summaries remain null until Phase 17. History and cancellation are locally verified in Phase 7. Notification
+screens and approval/rejection actions remain deferred. Apply Leave, History and recent
+application detail links are enabled.
 
 ## Holidays and leave-day preview
 
@@ -170,6 +171,25 @@ Reason is plain text. Dirty forms require confirmation; ambiguous network/server
 are not automatically retried. Inspect recent Dashboard applications and contact an
 administrator if the outcome cannot be confirmed before an explicit retry. Full history,
 cancellation and approval arrive in subsequent phases. Cancel currently returns to Dashboard.
+
+## History and cancellation
+
+`/leave/history` provides year/status/type/leave-period filters synced to URL, pagination,
+responsive application rows/cards and detail links. History scope is enforced by the server;
+manager employee history uses current reports, while the general application list also
+supports snapshot visibility. History remains personal for every role in this screen.
+
+Owners can cancel only PENDING requests from History or Details, using an accessible native
+confirmation dialog with optional trimmed reason. The server revalidates session/account
+under employee/account/session locks, then locks the application and balance. Cancellation
+releases exactly the stored pending reservation, keeps used unchanged, persists actor/time/
+reason, and writes audit plus owner/snapshot-manager notifications in one transaction.
+Duplicate actions conflict without another release. Unknown mutation outcomes require a
+History refresh before explicit retry. Apply Leave's Cancel destination now returns to History.
+
+Phase 7 passed 313 backend, 121 frontend and 12 browser tests plus typecheck, lint, build
+and migration checks. See `docs/PHASE_7_REPORT.md` for evidence. Changes are uncommitted;
+review, commit, push and hosted CI are next.
 
 ## Check the foundation
 
@@ -272,8 +292,9 @@ through the client. This option does not change application runtime or CI defaul
 
 Hosted CI passed for Phase 2 on 488f73c, Phase 3 on 8ba3ad8 and Phase 4 on f8ae746.
 Phase 5 hosted CI passed on 5f7a238. Phase 6 local evidence is in PHASE_6_REPORT.md;
-pre-commit review found no blockers; commit/push and hosted CI remain pending.
-Phase 7 adds My Leave History and cancellation. Subsequent
+commit 1163325 passed hosted CI. Phase 7 passed its local test gate; review/commit/push and hosted CI remain pending.
+Phase 7 adds My Leave History and cancellation. Phase 8 adds manager team/pending reads
+after Phase 7 review/commit/CI and explicit authorization. Subsequent
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 7 is the next implementation milestone.
+later work. Phase 7 review and hosted CI are the next milestone.

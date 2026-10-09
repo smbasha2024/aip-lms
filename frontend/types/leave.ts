@@ -10,3 +10,12 @@ export interface Application {
   approval_comment: string | null; rejection_reason: string | null; cancellation_reason: string | null;
   created_at: string; updated_at: string | null;
 }
+
+export interface HistoryFilters {
+  year: number; status?: Application["status"] | "ALL"; leave_type_id?: string;
+  from_date?: string; to_date?: string; page: number; page_size: number;
+}
+export interface ApplicationPage {
+  items: import("./employee").ApplicationRow[]; page: number; page_size: number; total: number;
+  employee_id?: string; employee_code?: string;
+}

@@ -1,7 +1,8 @@
 # Phase 6 — Apply Leave and application details
 
 Date: 9 October 2026. Scope: IMPLEMENTATION_PLAN.md Phase 6 and TEST_PLAN.md §125.
-Local Phase 6 gate: complete. Pre-commit review found no blocking issues; commit/push and hosted CI remain pending.
+Phase 6 gate: complete. Commit 1163325 passed review and hosted CI:
+https://github.com/smbasha2024/aip-lms/actions/runs/37831692288.
 
 ## Delivered scope
 
@@ -151,7 +152,7 @@ run after build and all passed.
 No unresolved Phase 6 blocker remains. All local gates and screenshot/cleanup checks
 passed. Pre-commit review confirmed API contracts, authorization, sorted locking, atomic rollback,
 UI error handling and the exact file manifest. Backend/frontend regression checks and lint
-were repeated successfully. Commit/push Phase 6 and observe hosted CI. Phase 5 is already
+were repeated successfully. Commit 1163325 was pushed and all hosted CI gates passed. Phase 5 is already
 verified on 5f7a238: https://github.com/smbasha2024/aip-lms/actions/runs/37824311716.
 Do not proceed to Phase 7 without explicit authorization.
 
