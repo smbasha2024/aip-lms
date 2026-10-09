@@ -11,5 +11,5 @@ vi.mock("next/navigation", async () => {
 
 beforeAll(() => server.listen({ onUnhandledFrame: "error" }));
 afterEach(() => { cleanup(); server.resetHandlers(); sessionStorage.clear(); setAuthTransport(null, null);
-  navigationMock.replace.mockClear(); navigationMock.pathname = "/login"; window.history.replaceState({}, "", "/login"); });
+  navigationMock.replace.mockClear(); navigationMock.push.mockClear(); navigationMock.pathname = "/login"; window.history.replaceState({}, "", "/login"); });
 afterAll(() => server.close());

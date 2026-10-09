@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_serializer, field_validator
 
 from app.schemas.auth import DepartmentRef, Role
 
@@ -156,3 +156,95 @@ class EmployeePage(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class EmployeeQuery(DirectReportsQuery):
+    manager_id: UUID | None = None
+    role: Role | None = None
+
+
+class DepartmentsResponse(BaseModel):
+    items: list[DepartmentRef]
+
+
+class EmployeeUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=200)
+    email: str = Field(min_length=3, max_length=255)
+    department_id: UUID
+    manager_id: UUID | None
+    joining_date: date
+    status: Literal["ACTIVE", "INACTIVE", "RESIGNED", "TERMINATED"]
+    phone: str | None = Field(default=None, max_length=30)
+    designation: str | None = Field(default=None, max_length=150)
+
+    @field_validator(
+        "name",
+        "email",
+        "phone",
+        "designation",
+        "status",
+        "department_id",
+        "manager_id",
+        "joining_date",
+        mode="before",
+    )
+    @classmethod
+    def trim_fields(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("email")
+    @classmethod
+    def normalized_email(cls, value: str) -> str:
+        import re
+
+        value = value.lower()
+        local, separator, domain = value.rpartition("@")
+        label = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
+        valid_local = re.fullmatch(r"[a-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64}", local)
+        if (
+            not separator
+            or not valid_local
+            or local.startswith(".")
+            or local.endswith(".")
+            or ".." in local
+            or not re.fullmatch(label + r"(?:\." + label + r")+", domain)
+        ):
+            raise ValueError("A valid email address is required")
+        return value
+
+
+class EmployeeCreate(EmployeeUpdate):
+    employee_code: str = Field(pattern=r"^[A-Z0-9][A-Z0-9_-]{0,49}$")
+    manager_id: UUID | None = None
+    status: Literal["ACTIVE", "INACTIVE"] = "ACTIVE"
+    role: Role
+    initial_password: SecretStr
+
+    @field_validator("role", mode="before")
+    @classmethod
+    def trim_role(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("employee_code", mode="before")
+    @classmethod
+    def normalize_code(cls, value):
+        return value.strip().upper() if isinstance(value, str) else value
+
+    @field_validator("initial_password")
+    @classmethod
+    def password_length(cls, value: SecretStr) -> SecretStr:
+        if not 12 <= len(value.get_secret_value()) <= 128:
+            raise ValueError("Password must contain 12 to 128 characters")
+        return value
+
+
+class AccountUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    role: Role
+    status: Literal["ACTIVE", "INACTIVE", "LOCKED"]
+
+    @field_validator("role", "status", mode="before")
+    @classmethod
+    def trim_account_fields(cls, value):
+        return value.strip() if isinstance(value, str) else value

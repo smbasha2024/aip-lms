@@ -1588,7 +1588,8 @@ checks. New coverage includes 45 backend and 32 frontend cases. Testing fixed a 
 invalidated-dashboard fallback count; the browser picker regression now waits for its
 filtered response before keyboard selection. Generated schemas/container cleanup pass.
 See PHASE_10_REPORT.md for commands, results and the exact manifest. Changes remain
-uncommitted; pre-commit review passed with no blockers. Commit/push/hosted CI are next. Phase 11 is not authorized.
+committed and pushed as eb8bb78; hosted CI run 37942925216 passed every gate.
+Phase 11 is now authorized.
 
 ## Tests
 
@@ -1619,6 +1620,7 @@ Implement/complete:
 GET  /api/v1/employees
 POST /api/v1/admin/employees
 PUT  /api/v1/admin/employees/{employee_id}
+PUT  /api/v1/admin/employees/{employee_id}/account
 
 GET  /api/v1/departments
 ```
@@ -1660,6 +1662,27 @@ Department lookup only; no department management route
 - edit employee;
 - activate/deactivate;
 - role access.
+
+## Implementation status (9 October 2026)
+
+Phase 11 implements the scoped employee list, department lookup, atomic employee/account
+creation, employee replacement edits and the separate account role/status endpoint.
+The administrator list/create/detail/edit routes are available, reusing existing profile,
+balance and history components. Organization employee and department lookups also
+complete the previously deferred team/approval filter integration.
+
+The shared hierarchy advisory lock and sorted employee/account/session locks protect
+manager eligibility, cycles, direct-report safeguards and administrator availability.
+Mutations revalidate authentication after locks; role/account changes and non-ACTIVE
+employee edits revoke target sessions. Employee code/password changes are not accepted
+by edit endpoints. No migrations, dependencies or environment changes are needed.
+
+Phase 11 meets its local test gate: 605 backend tests, 270 frontend tests and 11 Chromium
+scenarios pass, including authorization, rollback and real PostgreSQL concurrency tests.
+Ruff, TypeScript, ESLint, production build and Alembic checks also pass. Test fixes and
+cleanup are recorded in PHASE_11_REPORT.md. Review is complete with no blocking findings;
+the user has authorized commit, push and GitHub CI verification.
+Phase 12 is not authorized.
 
 ---
 

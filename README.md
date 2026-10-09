@@ -314,7 +314,7 @@ approval/rejection commit 656e3bf passed review and hosted CI run 37877957956.
   URL filters, pagination, responsive cards/tables, loading/empty/error recovery and
   View links. Manager nonpending tabs retain the manager snapshot filter.
 - Approve/reject is added by Phase 9 below. Organization employee and department pickers await
-  their lookup slice; administrator employee search currently uses direct reports.
+  Phase 11 lookup integration below.
 
 Phase 8 passed 366 backend, 161 frontend and 12 browser tests, plus TypeScript, lint,
 production build and Alembic schema checks. Commits 89158a8 and 2bd3546 were pushed;
@@ -361,5 +361,28 @@ Commit 656e3bf passed review and hosted CI run 37877957956.
 
 Phase 10 passes 508 backend, 233 frontend and 11 Chromium browser scenarios, plus
 lint/format/typecheck/build and Alembic drift/head checks. Testing fixed a stale cached
-unread-count fallback. Pre-commit review passed with no blockers; commit/push/hosted CI are next.
+unread-count fallback. Review passed with no blockers; commit eb8bb78 was pushed and hosted CI
+run 37942925216 passed all gates.
 No migration, dependency or environment change. See `docs/PHASE_10_REPORT.md`.
+
+
+## Phase 11 — administrator employee management
+
+- Scoped `GET /api/v1/employees` and department lookup respect role visibility;
+  account details and role filtering are administrator-only.
+- Administrator create/edit endpoints keep employee and account data atomic,
+  including normalized email/username synchronization and Argon2id initial passwords.
+- The separate account role/status endpoint ends target sessions when those values change.
+- Server safeguards reject self deactivation/account edits, final administrator removal,
+  reporting cycles and manager removal while direct reports remain assigned.
+- `/admin/employees`, `/new`, employee details and `/edit` provide searchable lists,
+  validated forms, active manager selection, status confirmation and shared balance/history tabs.
+- Administrator approval employee searches now cover the organization; department
+  filters are available for team and approval lists. Department administration and
+  balance allocation/adjustment remain future phases.
+
+Phase 11 passed its local test gate: 605 backend tests, 270 frontend tests and 11
+Chromium scenarios, plus Ruff, TypeScript, ESLint, production build and Alembic checks.
+Test coverage, fixes and cleanup are recorded in `docs/PHASE_11_REPORT.md`. No migration,
+dependency or environment changes. Phase 11 review is complete; commit/push and GitHub
+CI verification are authorized. Phase 12 has not started.

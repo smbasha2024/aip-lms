@@ -1,7 +1,7 @@
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-# Shared by seed provisioning and future employee/account/hierarchy services.
+# Shared by seed provisioning and employee/account/hierarchy services.
 HIERARCHY_LOCK_KEY = 0x4149504C4D530001
 
 

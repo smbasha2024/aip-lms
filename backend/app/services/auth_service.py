@@ -66,7 +66,7 @@ class AuthService:
                 password = credentials.password.get_secret_value()
                 if not verify_password(password, encoded) or account is None:
                     raise DomainError(401, "INVALID_CREDENTIALS", "Invalid username or password.")
-                # Employee -> account is also the protocol used by future status/role writes.
+                # Employee -> account is also the protocol used by status/role writes.
                 employee_id, user_id = account.employee_id, account.user_id
                 employee = self.repo.lock_employee(employee_id)
                 account = self.repo.lock_account(user_id)
@@ -74,6 +74,12 @@ class AuthService:
                     raise DomainError(
                         409, "CONCURRENT_UPDATE", "Account changed. Please sign in again."
                     )
+                # Email may change while password verification waits for the row locks.
+                identifier = (
+                    employee.email if "@" in credentials.username else employee.employee_code
+                )
+                if credentials.username != identifier:
+                    raise DomainError(401, "INVALID_CREDENTIALS", "Invalid username or password.")
                 if account.password_hash != encoded and not verify_password(
                     password, account.password_hash
                 ):

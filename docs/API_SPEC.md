@@ -333,7 +333,9 @@ matches ACTIVE/INACTIVE employee status. Password hashing failure rolls back eve
 
 Required name, email, department_id, manager_id (nullable only for top-level roles),
 joining_date, status; phone?=null, designation?=null. employee_code and role immutable here.
-200 Employee. Changing email also changes linked username atomically. Deactivation
+200 Employee. A new department assignment must be ACTIVE; an unchanged existing
+inactive department assignment may remain (DATABASE.md §2). Changing email also
+changes linked username atomically. Deactivation
 revokes all sessions; historical applications/balances stay intact. A reporting manager
 cannot transition to a non-ACTIVE employee state while current reports remain assigned. Self deactivation
 and final active administrator removal are rejected. No physical employee deletion.

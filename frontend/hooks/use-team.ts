@@ -15,7 +15,7 @@ export function useApprovals(filters: ApprovalFilters | null) {
 }
 export function useTeamProfile(id: string) {
   const { user } = useAuth();
-  return useQuery({ queryKey: ["team-profile", user?.user_id, user?.role, id], queryFn: ({ signal }) => employeeService.profile(id, signal), enabled: !!user });
+  return useQuery({ queryKey: ["team-profile", user?.user_id, user?.role, id], queryFn: ({ signal }) => employeeService.profile(id, signal), enabled: !!user && !!id });
 }
 export function useTeamBalance(id: string, year: number | null, enabled: boolean) {
   const { user } = useAuth();
