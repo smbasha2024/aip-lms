@@ -41,7 +41,10 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
   await expect(page.getByRole("heading", { name: "Team Leave Applications", exact: true })).toBeVisible();
   const applications = page.getByRole("table", { name: "Leave applications" }); await expect(applications).toBeVisible();
   await expect.poll(async () => (await page.getByRole("button", { name: /^Pending \(\d+\)$/ }).innerText()) === `Pending (${displayedCount})`).toBe(true);
-  for (const item of fixtures) await expect(applications.getByRole("rowheader", { name: `${item.employee_name} ${item.employee_code}`, exact: true })).toBeVisible();
+  for (const item of fixtures) {
+    const applicationRow = applications.getByRole("row").filter({ has: page.locator(`a[href="/leave/applications/${item.application_id}"]`) });
+    await expect(applicationRow.getByRole("rowheader", { name: `${item.employee_name} ${item.employee_code}`, exact: true })).toBeVisible();
+  }
   await expect(page.getByRole("button", { name: /^(Approve|Reject|Cancel)$/i })).toHaveCount(0);
   await page.screenshot({ path: `../.cache/phase8-${code}-approvals.png`, fullPage: true });
   if (code === "MGR001") {
@@ -59,7 +62,7 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
     const combo = page.getByRole("combobox", { name: "Employee", exact: true }); await combo.fill("EMP001");
     await expect(page.getByRole("option", { name: "Example Employee (EMP001)", exact: true })).toBeVisible();
     await combo.press("ArrowDown"); await combo.press("Enter"); await expect(page).toHaveURL(/employee_id=/);
-    await expect(applications.getByRole("row")).toHaveCount(2);
+    await expect(applications.getByRole("row")).toHaveCount(1 + fixtures.filter(item => item.employee_code === "EMP001").length);
     await page.getByRole("button", { name: "Clear filters", exact: true }).click(); await expect(page).toHaveURL(/\/approvals$/);
     await page.getByLabel("Leave From", { exact: true }).fill(`${leaveYear}-11-01`);
     await page.getByLabel("Leave To", { exact: true }).fill(`${leaveYear}-11-30`);
@@ -76,7 +79,11 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
     await page.screenshot({ path: "../.cache/phase8-team-mobile.png", fullPage: true });
     await page.getByRole("link", { name: "View EMP001", exact: true }).click();
     await page.getByRole("button", { name: "Leave Balance", exact: true }).click(); await expect(page.getByRole("heading", { name: "Earned Leave", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Leave History", exact: true }).click(); await expect(page.getByRole("link", { name: /View Example Employee application/ })).toBeVisible();
+    await page.getByRole("button", { name: "Leave History", exact: true }).click();
+    const selected = fixtures.find(item => item.employee_code === "EMP001")!;
+    const mobileLink = page.getByRole("link", { name: `View ${selected.employee_name} application ${selected.application_id.slice(0,8)}`, exact: true });
+    await expect(mobileLink).toBeVisible();
+    await expect(mobileLink).toHaveAttribute("href", `/leave/applications/${selected.application_id}`);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.screenshot({ path: "../.cache/phase8-member-mobile.png", fullPage: true });
   } else {

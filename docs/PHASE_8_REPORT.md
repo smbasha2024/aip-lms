@@ -187,3 +187,17 @@ Commit/push and observe hosted CI as requested. Do not start Phase 9 without aut
 - `tests/e2e/employee.spec.ts`
 - `tests/e2e/leave-flow.ts`
 - `tests/e2e/setup.ts`
+
+## Hosted CI correction
+
+Phase 8 commit `89158a8` was pushed. Hosted run 37872433272 passed backend, migration
+and frontend gates, but one browser assertion matched two requests belonging to
+EMP001 when the concurrent apply flow was pending. The row assertion now scopes to
+the complete application UUID before checking its employee header. A second stable
+current-year EMP001 request and matching balance reservation were added to the
+browser fixture so duplicate employee headers are always exercised. Mobile assertions
+use the accessible visible link and verify the full detail URL, excluding the hidden
+desktop copy. The initial correction run exposed that hidden-copy locator ambiguity;
+the final full browser regression passed all 12 cases in 17.6 seconds. Staged
+whitespace checks pass. No product, authorization, rate-limit or concurrency behavior
+changed. Push the follow-up and verify hosted CI before claiming hosted success.

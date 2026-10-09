@@ -56,12 +56,17 @@ with engine.connect() as connection:
             subjects.append((subject, snapshot))
         own_balance = session.scalar(select(LeaveBalance).where(LeaveBalance.employee_id == employee.employee_id,
             LeaveBalance.leave_type_id == leave_type.leave_type_id, LeaveBalance.leave_year == current_year))
-        own_balance.pending += 1
+        own_balance.pending += 2
         for subject, snapshot in subjects:
             session.add(LeaveApplication(employee_id=subject.employee_id, manager_id=snapshot.employee_id,
                 leave_type_id=leave_type.leave_type_id, leave_year=current_year,
                 from_date=date(current_year, 11, 2), to_date=date(current_year, 11, 2), number_of_days=1,
                 reason='Phase 8 read fixture <img src=x onerror=alert(1)>'))
+        # Two requests from one employee verify that queue rows are identified by application UUID.
+        session.add(LeaveApplication(employee_id=employee.employee_id, manager_id=manager.employee_id,
+            leave_type_id=leave_type.leave_type_id, leave_year=current_year,
+            from_date=date(current_year, 11, 3), to_date=date(current_year, 11, 3), number_of_days=1,
+            reason='Phase 8 read fixture second request'))
 engine.dispose()
 `);
   return async () => {
