@@ -21,6 +21,8 @@ def test_startup_and_liveness(settings):
         "/api/v1/auth/logout",
         "/api/v1/employees",
         "/api/v1/departments",
+        "/api/v1/admin/leave-types",
+        "/api/v1/admin/leave-types/{leave_type_id}",
         "/api/v1/admin/employees",
         "/api/v1/admin/employees/{employee_id}",
         "/api/v1/admin/employees/{employee_id}/account",

@@ -1681,8 +1681,8 @@ Phase 11 meets its local test gate: 605 backend tests, 270 frontend tests and 11
 scenarios pass, including authorization, rollback and real PostgreSQL concurrency tests.
 Ruff, TypeScript, ESLint, production build and Alembic checks also pass. Test fixes and
 cleanup are recorded in PHASE_11_REPORT.md. Review is complete with no blocking findings;
-the user has authorized commit, push and GitHub CI verification.
-Phase 12 is not authorized.
+committed and pushed as 24e395f; GitHub CI run 37953805631 passed every gate.
+Phase 12 is now authorized.
 
 ---
 
@@ -1727,6 +1727,25 @@ Half-day remains false and requires_approval remains true in v1. API and databas
 - edit;
 - activate/deactivate;
 - inactive type not available for new applications.
+
+## Implementation status (9 October 2026)
+
+Phase 12 adds POST/PUT administrator leave type endpoints and the `/admin/leave-types`
+list, create/edit modal and activation/deactivation confirmation. Existing GET reads
+retain role-scoped ACTIVE/INACTIVE/ALL and employee application eligibility behavior.
+Code is normalized and immutable after creation; policy values stay fixed to whole-day
+leave requiring approval. Paid and employee application flags remain configurable.
+
+Writes revalidate administrator authentication under employee/account/session locks,
+lock the leave type against concurrent submission policy reads, and audit atomically.
+Existing balances and application history are preserved. No schema, dependency or
+application environment change is required. Static/schema checks and the exact manifest
+are recorded in PHASE_12_REPORT.md. Phase 12 meets its local test gate: 657 backend
+tests, 294 frontend tests and 11 Chromium scenarios pass, including authorization,
+rollback and independent PostgreSQL concurrency tests. Ruff, TypeScript, ESLint,
+production build and Alembic checks also pass. Review is complete with no blocking
+findings; commit, push and GitHub CI verification are authorized. Phase 13 is not
+authorized.
 
 ---
 

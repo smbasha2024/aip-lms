@@ -1,4 +1,6 @@
 const messages: Record<string, string> = {
+  LEAVE_TYPE_CODE_EXISTS: "Leave type code is already in use.",
+  UNSUPPORTED_LEAVE_POLICY: "Only whole-day leave requiring approval is supported.",
   EMPLOYEE_CODE_EXISTS: "Employee ID is already in use.",
   EMPLOYEE_EMAIL_EXISTS: "Email is already in use.",
   ACCOUNT_USERNAME_EXISTS: "Email is already used by another account.",

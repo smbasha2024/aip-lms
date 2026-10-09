@@ -1,3 +1,4 @@
+import { adminLeaveTypeFlow } from "./admin-leave-type-flow";
 import { adminEmployeeFlow } from "./admin-employee-flow";
 import { approvalFlow, adminApprovalFlow } from "./approval-flow";
 import { notificationFlow } from "./notification-flow";
@@ -64,7 +65,7 @@ for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
     const pending = await (await pendingResponse).json();
     await teamFlow(page,request,code,pending.total);
       if (employeePage) await approvalFlow(employeePage, page, request);
-      else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); }
+      else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); await adminLeaveTypeFlow(page, request); }
     } finally {
       await employeeContext?.close();
     }

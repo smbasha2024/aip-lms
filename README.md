@@ -384,5 +384,22 @@ No migration, dependency or environment change. See `docs/PHASE_10_REPORT.md`.
 Phase 11 passed its local test gate: 605 backend tests, 270 frontend tests and 11
 Chromium scenarios, plus Ruff, TypeScript, ESLint, production build and Alembic checks.
 Test coverage, fixes and cleanup are recorded in `docs/PHASE_11_REPORT.md`. No migration,
-dependency or environment changes. Phase 11 review is complete; commit/push and GitHub
-CI verification are authorized. Phase 12 has not started.
+dependency or environment changes. Commit 24e395f was reviewed and pushed; GitHub CI
+run 37953805631 passed every gate. See `docs/PHASE_11_REPORT.md`.
+
+
+## Phase 12 — leave type administration
+
+- Administrator creation and replacement edits use `/api/v1/admin/leave-types`.
+- `/admin/leave-types` supports status filtering, create/edit modals and confirmed
+  activation/deactivation, with responsive cards and tables.
+- Code is immutable after creation. Paid classification and employee application
+  eligibility are configurable; half-day remains false and approval remains required.
+- Writes include audit records atomically and recheck authorization after locks.
+  Deactivation affects new applications; historical applications and balances remain intact.
+
+Phase 12 passed its local test gate: 657 backend tests, 294 frontend tests and 11
+Chromium scenarios, plus Ruff, TypeScript, ESLint, production build and Alembic checks.
+Test coverage and cleanup are recorded in `docs/PHASE_12_REPORT.md`. No migration,
+dependency or environment changes. Phase 12 review is complete; commit/push and GitHub
+CI verification are authorized. Phase 13 has not started.
