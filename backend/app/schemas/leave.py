@@ -118,3 +118,25 @@ class EmployeeApplicationPage(ApplicationPage):
 class CancelRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     reason: str | None = Field(default=None, min_length=1, max_length=1000)
+
+
+class PendingQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    employee_id: UUID | None = None
+    department_id: UUID | None = None
+    leave_type_id: UUID | None = None
+    from_date: date | None = None
+    to_date: date | None = None
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+
+    @field_validator("from_date", "to_date", mode="before")
+    @classmethod
+    def calendar_date(cls, value):
+        return None if value is None else CalculateDaysRequest.calendar_date(value)
+
+    @model_validator(mode="after")
+    def ordered(self):
+        if self.from_date and self.to_date and self.from_date > self.to_date:
+            raise ValueError("From date must precede To date")
+        return self

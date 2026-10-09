@@ -1,3 +1,4 @@
+import { teamFlow } from "./team-flow";
 import { test, expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page } from "../../frontend/node_modules/@playwright/test";
 import type { BalanceResponse } from "../../frontend/types/employee";
@@ -25,6 +26,7 @@ test("employee sees database balances, full profile and year selection after rel
   await page.screenshot({path:"../.cache/phase4-profile.png",fullPage:true});
   expect((await request.get(`${process.env.E2E_API_URL}/api/v1/employees/${identity.employee_id}`,{headers})).status()).toBe(200);
   expect((await request.get(`${process.env.E2E_API_URL}/api/v1/employees/by-code/MGR001`,{headers})).status()).toBe(403);
+  for(const path of ["/managers/me/direct-reports","/leave/approvals/pending"]) expect((await request.get(`${process.env.E2E_API_URL}/api/v1${path}`,{headers})).status()).toBe(403);
   await page.getByRole("navigation").getByRole("link",{name:"Leave Balance",exact:true}).click();
   const table=page.getByRole("table",{name:"Leave balances"});await expect(table).toBeVisible();
   for(const row of balance.balances) {
@@ -48,8 +50,11 @@ test("mobile balances use cards without horizontal overflow",async({page})=> {
   await page.screenshot({path:"../.cache/phase4-balance-mobile.png",fullPage:true});
 });
 for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
-  test(`${code} retains personal dashboard with unavailable role summary`,async({page})=> {
+  test(`${code} retains personal dashboard with unavailable role summary`,async({page,request})=> {
+    const pendingResponse = page.waitForResponse(response => { const url = new URL(response.url()); return url.pathname === "/api/v1/leave/approvals/pending" && url.searchParams.get("page_size") === "1" && response.ok(); });
     await login(page,code);await expect(page.getByText(`${summary} summary is not available yet.`)).toBeVisible();
     await expect(page.getByRole("heading",{name:"Your leave balances"})).toBeVisible();
+    const pending = await (await pendingResponse).json();
+    await teamFlow(page,request,code,pending.total);
   });
 }

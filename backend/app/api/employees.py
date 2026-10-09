@@ -13,7 +13,9 @@ from app.schemas.employee import (
     BalanceQuery,
     BalanceResponse,
     DashboardResponse,
+    DirectReportsQuery,
     EmployeeDetail,
+    EmployeePage,
     LeaveTypeQuery,
     LeaveTypesResponse,
     YearQuery,
@@ -85,3 +87,8 @@ def leave_history(
     query: Annotated[HistoryQuery, Query()],
 ):
     return service.employee_history(actor, employee_id, query)
+
+
+@router.get("/managers/me/direct-reports", response_model=EmployeePage)
+def direct_reports(actor: Actor, service: Service, query: Annotated[DirectReportsQuery, Query()]):
+    return service.direct_reports(actor, query)

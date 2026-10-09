@@ -140,3 +140,19 @@ class DashboardResponse(BaseModel):
     unread_notification_count: int
     manager_summary: None = Field(default=None, description="Unavailable until Phase 17.")
     admin_summary: None = Field(default=None, description="Unavailable until Phase 17.")
+
+
+class DirectReportsQuery(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=20, ge=1, le=100)
+    department_id: UUID | None = None
+    status: Literal["ACTIVE", "INACTIVE", "RESIGNED", "TERMINATED", "ALL"] = "ALL"
+    search: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class EmployeePage(BaseModel):
+    items: list[AdminEmployeeDetail | EmployeeDetail]
+    page: int
+    page_size: int
+    total: int

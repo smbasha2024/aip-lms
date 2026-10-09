@@ -97,7 +97,13 @@ class LeaveRepository:
     ):
         row = LeaveApplication
         statement = select(row).join(Employee, row.employee_id == Employee.employee_id)
-        if scope == "own":
+        if scope == "pending":
+            statement = statement.where(
+                row.employee_id != actor.employee_id, row.status == "PENDING"
+            )
+            if actor.role == "MANAGER":
+                statement = statement.where(row.manager_id == actor.employee_id)
+        elif scope == "own":
             statement = statement.where(row.employee_id == actor.employee_id)
         elif scope == "team":
             statement = statement.where(
@@ -172,6 +178,20 @@ class LeaveRepository:
                 .where(
                     LeaveApplication.employee_id == employee_id,
                     LeaveApplication.manager_id == manager_id,
+                )
+                .limit(1)
+            )
+            is not None
+        )
+
+    def assigned_pending(self, employee_id: UUID, manager_id: UUID):
+        return (
+            self.db.scalar(
+                select(LeaveApplication.id)
+                .where(
+                    LeaveApplication.employee_id == employee_id,
+                    LeaveApplication.manager_id == manager_id,
+                    LeaveApplication.status == "PENDING",
                 )
                 .limit(1)
             )

@@ -692,13 +692,15 @@ Approve/Reject open the dialogs in §8.3.1. After success: toast, refetch the ap
 
 ## 10.1 Team Leave Applications (`/approvals`)
 
+**Phase staging:** Phase 8 implements read-only View actions and dashboard counts from the pending/direct-report list totals. Approve/reject controls arrive in Phase 9. Until organization employee lookup is implemented in Phase 11, administrator employee search uses the direct-report endpoint too; the unfiltered administrator queue remains organization-wide. Department filtering is accepted in URLs/APIs; the department picker waits for the department lookup slice.
+
 **APIs:** `GET /leave/approvals/pending` (default tab), `GET /leave/applications` (other statuses), `POST .../approve`, `POST .../reject`.
 
 **Layout:** page header "Team Leave Applications"; status tabs **Pending (default) | Approved | Rejected | Cancelled | All** with a count badge on Pending (`total`); `FilterBar`; table/cards.
 
 **Filters:** Employee (`AsyncEmployeeSelect` limited to direct reports — use `GET /managers/me/direct-reports` as the option source for managers), Leave Type, Date range (`from_date`/`to_date`).
 - **Pending tab** → `GET /leave/approvals/pending` (supports `employee_id`, `leave_type_id`, `from_date`, `to_date`, `page`, `page_size`; also `department_id` for admins).
-- **Other tabs** → `GET /leave/applications?status={S}` (administrators omit `manager_id`).
+- **Other tabs** → `GET /leave/applications?status={S}&scope=visible&manager_id={viewer.employee_id}` for managers, retaining assigned historical requests; administrators use organization scope and omit `manager_id`.
 
 **Columns:** Employee (name + code), Leave Type, From, To, Days, Reason (truncated, full on hover/details), Applied Date, Status, Actions.
 

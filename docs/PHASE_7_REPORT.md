@@ -208,3 +208,9 @@ the exact manifest and staged whitespace check passed. All local gates remain gr
 - `frontend/types/leave.ts`
 - `tests/e2e/calendar.spec.ts`
 - `tests/e2e/leave-flow.ts`
+
+## Hosted CI follow-up (9 October 2026)
+
+Commit `c6a373098a13852086ad8340e2cb4031590423c3` was pushed successfully.
+All hosted jobs passed: https://github.com/smbasha2024/aip-lms/actions/runs/37869155399.
+The working tree was clean and synchronized before Phase 8 began.

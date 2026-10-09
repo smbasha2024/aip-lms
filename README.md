@@ -292,9 +292,29 @@ through the client. This option does not change application runtime or CI defaul
 
 Hosted CI passed for Phase 2 on 488f73c, Phase 3 on 8ba3ad8 and Phase 4 on f8ae746.
 Phase 5 hosted CI passed on 5f7a238. Phase 6 local evidence is in PHASE_6_REPORT.md;
-commit 1163325 passed hosted CI. Phase 7 passed its local test gate; review/commit/push and hosted CI remain pending.
-Phase 7 adds My Leave History and cancellation. Phase 8 adds manager team/pending reads
-after Phase 7 review/commit/CI and explicit authorization. Subsequent
+commit 1163325 passed hosted CI. Phase 7 commit c6a3730 passed hosted CI.
+Phase 7 adds My Leave History and cancellation. Phase 8 implements manager team/pending
+reads and read-only review; its local test gate passed. See docs/PHASE_8_REPORT.md. Subsequent
 phases add the approved leave, manager and administrator slices. Production deployment
 platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 7 review and hosted CI are the next milestone.
+later work. Phase 8 review/commit/hosted CI are the next milestone.
+
+## Phase 8 — manager team and pending review
+
+- `GET /api/v1/managers/me/direct-reports`: paginated current reports, excluding self,
+  with literal case-insensitive name/email/code search, status and department filters.
+- `GET /api/v1/leave/approvals/pending`: pending snapshot-assigned manager queue or
+  administrator organization queue, excluding self, oldest first with a UUID tie.
+- `/dashboard` adds live queue/report totals for managers and administrators.
+- `/team` provides server search, status and pagination; `/team/[employeeId]` uses
+  existing authorized profile/balance/history APIs. Former snapshot assignment does
+  not grant full employee access.
+- `/approvals` provides status tabs, leave type, employee and inclusive overlap dates,
+  URL filters, pagination, responsive cards/tables, loading/empty/error recovery and
+  View links. Manager nonpending tabs retain the manager snapshot filter.
+- Approve/reject remains Phase 9. Organization employee and department pickers await
+  their lookup slice; administrator employee search currently uses direct reports.
+
+Phase 8 passed 366 backend, 161 frontend and 12 browser tests, plus TypeScript, lint,
+production build and Alembic schema checks. Review/commit/hosted CI remain pending.
+No schema, dependencies, environment files or production data changes are required.

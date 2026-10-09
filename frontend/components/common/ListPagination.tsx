@@ -1,0 +1,4 @@
+"use client";
+export function ListPagination({ page, pageSize, total, update, label }: { page: number; pageSize: number; total: number; update: (key: string, value: string) => void; label: string }) {
+  return <nav aria-label={`${label} pagination`} className="flex flex-wrap items-center gap-4"><button disabled={page <= 1} onClick={() => update("page", String(page - 1))} className="rounded border px-3 py-2 disabled:opacity-50">Previous</button><p>Page {page} · {total} {label.toLowerCase()}</p><button disabled={page * pageSize >= total} onClick={() => update("page", String(page + 1))} className="rounded border px-3 py-2 disabled:opacity-50">Next</button><label>Per page<select value={pageSize} onChange={event => update("page_size", event.target.value)} className="ml-2 rounded border p-2">{Array.from(new Set([10,20,50,100,pageSize])).sort((a,b)=>a-b).map(size => <option key={size}>{size}</option>)}</select></label></nav>;
+}

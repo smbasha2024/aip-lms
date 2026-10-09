@@ -6,10 +6,12 @@ This is the canonical REST contract. Updated 7 October 2026 after the Phase 0 au
 `REQUIREMENTS.md` owns behavior; `DATABASE.md` owns persistence; `ARCHITECTURE.md`
 owns layering; `UI_SPEC.md` owns presentation. Resolve disagreements in the owning
 specification before implementation. Examples are illustrative; the schemas below
-are complete contracts. Phases 3–7 implement authentication, employee/profile/balance
+are complete contracts. Phases 3–8 implement authentication, employee/profile/balance
 and dashboard reads, holiday reads, advisory leave-day calculation, submission and
-application detail, filtered history and owner cancellation. Subsequent phases implement the remaining endpoints. See
-PHASE_3_REPORT.md, PHASE_4_REPORT.md, PHASE_5_REPORT.md, PHASE_6_REPORT.md and PHASE_7_REPORT.md for evidence.
+application detail, filtered history, owner cancellation, direct reports and pending
+approval reads. Subsequent phases implement the remaining endpoints. See
+PHASE_3_REPORT.md, PHASE_4_REPORT.md, PHASE_5_REPORT.md, PHASE_6_REPORT.md,
+PHASE_7_REPORT.md and PHASE_8_REPORT.md for evidence.
 
 ## 1. Common conventions
 
@@ -278,7 +280,10 @@ not treat application visibility as unrestricted employee-profile access.
 
 200 Page<ApplicationRow>. Query employee_id?, department_id?, leave_type_id?, from_date?,
 to_date?, page, page_size; sorted created_at asc then application_id asc. Only actionable
-PENDING requests, excluding self. Managers use snapshot assignment; admins see organization.
+PENDING requests, excluding self. Inactive subjects remain visible so they can be
+rejected; approval requires ACTIVE status. An explicit self/unrelated employee filter
+returns 403; current reports with no assigned pending requests return an empty page.
+For managers, other explicit employees require a pending snapshot assignment. Managers use snapshot assignment; admins see organization.
 
 ### POST /leave/applications/{application_id}/approve
 

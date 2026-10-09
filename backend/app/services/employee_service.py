@@ -19,7 +19,9 @@ from app.schemas.employee import (
     BalanceResponse,
     Counters,
     DashboardResponse,
+    DirectReportsQuery,
     EmployeeDetail,
+    EmployeePage,
     EmployeeRef,
     HolidayResponse,
     LeaveTypeResponse,
@@ -107,6 +109,9 @@ class EmployeeService:
 
     def profile(self, actor: AppUser, *, employee_id: UUID | None = None, code: str | None = None):
         employee = self.target(actor, employee_id=employee_id, code=code)
+        return self.employee_detail(actor, employee)
+
+    def employee_detail(self, actor: AppUser, employee: Employee):
         values = dict(
             employee_ref(employee).model_dump(),
             email=employee.email,
@@ -188,4 +193,15 @@ class EmployeeService:
                 HolidayResponse.model_validate(row) for row in self.repo.upcoming_holidays(today)
             ],
             unread_notification_count=self.repo.unread_count(actor.employee_id),
+        )
+
+    def direct_reports(self, actor: AppUser, query: DirectReportsQuery):
+        if actor.role not in {"MANAGER", "ADMINISTRATOR"}:
+            forbidden()
+        rows, total = self.repo.direct_reports(actor.employee_id, query)
+        return EmployeePage(
+            items=[self.employee_detail(actor, row) for row in rows],
+            page=query.page,
+            page_size=query.page_size,
+            total=total,
         )

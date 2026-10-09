@@ -6,11 +6,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { calendarDate, leaveDays } from "@/lib/format";
 import { QueryError, QueryLoading } from "@/components/common/QueryState";
 import { YearSelect } from "@/components/common/YearSelect";
+import { ManagerDashboardPanel } from "./ManagerDashboardPanel";
 const counters = [{ key: "allocated", label: "Allocated" }, { key: "carried_forward", label: "Carried Forward" }, { key: "used", label: "Used" }, { key: "pending", label: "Pending" }, { key: "available", label: "Available" }] as const;
 export function EmployeeDashboard() {
   const { user } = useAuth(); const selection = useLeaveYear(); const query = useDashboard(selection.year); const data = query.data;
   return <section className="max-w-6xl space-y-6"><header className="flex flex-wrap items-center justify-between gap-4"><div><p className="text-sm text-slate-600">Your workspace</p><h1 className="text-3xl font-semibold">Welcome, {user?.name}</h1>
     <p className="mt-2 text-sm text-slate-600">{user?.employee_code} · {user?.department.name} · {user?.business_today && calendarDate(user.business_today)} ({user?.organization_timezone})</p></div><YearSelect {...selection} /></header>
+    {user && user.role !== "EMPLOYEE" && <ManagerDashboardPanel/>}
     {selection.year === null ? <p role="alert">Enter a year between 1900 and 9999, or select a year above.</p> : query.isPending ? <QueryLoading /> : query.isError ? <QueryError error={query.error} retry={() => void query.refetch()} /> : data && <>
       <section aria-labelledby="totals-title"><h2 id="totals-title" className="mb-3 text-xl font-semibold">Leave totals · {data.year}</h2><dl className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{counters.map(field => <div key={field.key} className="rounded-lg border border-slate-200 bg-white p-4"><dt className="text-sm text-slate-600">{field.label}</dt><dd className="mt-2 text-2xl font-semibold">{leaveDays(data.leave_totals[field.key])}</dd></div>)}</dl></section>
       <section aria-labelledby="balances-title"><div className="mb-3 flex flex-wrap justify-between gap-2"><h2 id="balances-title" className="text-xl font-semibold">Your leave balances</h2><Link href={`/leave/balance?year=${data.year}`} className="text-sm font-medium text-blue-700 underline">View detailed balances</Link></div>

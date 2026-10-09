@@ -1290,9 +1290,8 @@ atomic pending release/events and shared accessible dialog. The full gates passe
 backend tests, 121 frontend tests, 12 browser tests, Ruff/typecheck/ESLint/build and Alembic
 check/current. Verification corrected explicit employee-filter authorization, dialog focus
 and centering, and rapid URL-filter edits. Screenshot and fixture cleanup checks passed.
-See PHASE_7_REPORT.md for evidence and the exact manifest. Changes remain uncommitted;
-pre-commit review found no blockers; commit/push and hosted CI are the next gate.
-Phase 8 is not authorized.
+See PHASE_7_REPORT.md for evidence and the exact manifest. Commit c6a3730 was pushed
+and passed hosted CI (run 37869155399). Phase 8 was subsequently authorized.
 
 ## Exit Criteria
 
@@ -1374,6 +1373,19 @@ Frontend:
 - empty state;
 - filters;
 - responsive tables/cards.
+
+## Implementation status (9 October 2026)
+
+Phase 8 is implemented and locally verified: scoped direct-report and pending read
+APIs, manager dashboard counts/navigation, team list/member tabs and read-only
+approval list/detail. The local gate passed 366 backend tests, 161 frontend tests,
+12 browser tests, Ruff/typecheck/ESLint/build and Alembic check/current. New coverage
+includes 53 backend and 40 frontend cases; existing browser flows cover team review
+without adding logins. Authorization, reassignment privacy, filters, pagination,
+read-only controls, keyboard selection and responsive layouts are verified.
+See PHASE_8_REPORT.md for evidence and the exact manifest. No migrations,
+dependencies or environment changes were required. Review/commit/push and hosted
+CI remain pending. Phase 9 is not authorized.
 
 ## Exit Criteria
 

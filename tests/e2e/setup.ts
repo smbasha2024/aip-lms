@@ -23,8 +23,8 @@ from alembic.config import Config
 from database.seed import SeedPasswords, seed_records
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from app.models import Employee, LeaveType, LeaveBalance
-from datetime import datetime
+from app.models import Employee, LeaveType, LeaveBalance, LeaveApplication
+from datetime import date, datetime
 from zoneinfo import ZoneInfo
 with engine.connect() as connection:
     connection.execute(CreateSchema(name)); connection.commit()
@@ -40,6 +40,28 @@ with engine.connect() as connection:
         year = datetime.now(ZoneInfo(settings.org_timezone)).year + 1
         session.add(LeaveBalance(employee_id=employee.employee_id,
             leave_type_id=leave_type.leave_type_id, leave_year=year, allocated=20))
+        # Phase 8 read fixtures use the current year, leaving future apply/cancel flows isolated.
+        current_year = year - 1
+        manager = session.scalar(select(Employee).where(Employee.employee_code == 'MGR001'))
+        admin = session.scalar(select(Employee).where(Employee.employee_code == 'ADM001'))
+        subjects = [(employee, manager)]
+        for code, label, snapshot in [('E2EFORMER', 'Former Example Report', manager),
+                                       ('E2EOTHER', 'Other Example Report', admin)]:
+            subject = Employee(employee_code=code, name=label, email=code.lower()+'@example.invalid',
+                manager_id=admin.employee_id, department_id=employee.department_id,
+                joining_date=date(current_year, 1, 1))
+            session.add(subject); session.flush()
+            session.add(LeaveBalance(employee_id=subject.employee_id, leave_type_id=leave_type.leave_type_id,
+                leave_year=current_year, allocated=20, pending=1))
+            subjects.append((subject, snapshot))
+        own_balance = session.scalar(select(LeaveBalance).where(LeaveBalance.employee_id == employee.employee_id,
+            LeaveBalance.leave_type_id == leave_type.leave_type_id, LeaveBalance.leave_year == current_year))
+        own_balance.pending += 1
+        for subject, snapshot in subjects:
+            session.add(LeaveApplication(employee_id=subject.employee_id, manager_id=snapshot.employee_id,
+                leave_type_id=leave_type.leave_type_id, leave_year=current_year,
+                from_date=date(current_year, 11, 2), to_date=date(current_year, 11, 2), number_of_days=1,
+                reason='Phase 8 read fixture <img src=x onerror=alert(1)>'))
 engine.dispose()
 `);
   return async () => {

@@ -8,7 +8,9 @@ export async function applyLeaveFlow(page: Page, request: APIRequestContext, ide
   await page.setViewportSize({width:1280,height:900});
   await page.getByRole("navigation").getByRole("link",{name:"Apply Leave",exact:true}).click();
   await expect(page.getByRole("heading",{name:"Apply Leave",exact:true})).toBeVisible();
-  await page.getByLabel("Leave Type *").selectOption({label:"Earned Leave (20 available)"});
+  const types = await (await request.get(`${origin}/api/v1/leave-types`, {headers})).json();
+  const earnedId = types.items.find((type: {code:string;leave_type_id:string}) => type.code === "EARNED").leave_type_id;
+  await page.getByLabel("Leave Type *").selectOption(earnedId);
   await page.getByLabel("From Date *").fill(day);await page.getByLabel("To Date *").fill(day);
   await page.getByLabel("Reason *").fill("Phase 6 browser leave\nPersonal reason");
   const submit=page.getByRole("button",{name:"Submit application"});await expect(submit).toBeEnabled();

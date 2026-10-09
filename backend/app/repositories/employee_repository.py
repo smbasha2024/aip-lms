@@ -1,7 +1,7 @@
 from datetime import date
 from uuid import UUID
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload
 
 from app.models import Employee, Holiday, LeaveApplication, LeaveBalance, LeaveType, Notification
@@ -101,3 +101,41 @@ class EmployeeRepository:
             .select_from(Notification)
             .where(Notification.employee_id == employee_id, Notification.is_read.is_(False))
         )
+
+    def direct_reports(self, manager_id: UUID, query):
+        statement = select(Employee).where(
+            Employee.manager_id == manager_id, Employee.employee_id != manager_id
+        )
+        if query.department_id:
+            statement = statement.where(Employee.department_id == query.department_id)
+        if query.status != "ALL":
+            statement = statement.where(Employee.status == query.status)
+        if query.search:
+            pattern = (
+                "%"
+                + query.search.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+                + "%"
+            )
+            statement = statement.where(
+                or_(
+                    *[
+                        column.ilike(pattern, escape="\\")
+                        for column in [Employee.name, Employee.email, Employee.employee_code]
+                    ]
+                )
+            )
+        total = self.db.scalar(select(func.count()).select_from(statement.subquery()))
+        if (query.page - 1) * query.page_size >= total:
+            return [], total
+        return list(
+            self.db.scalars(
+                statement.options(
+                    joinedload(Employee.department),
+                    joinedload(Employee.manager),
+                    joinedload(Employee.account),
+                )
+                .order_by(Employee.name, Employee.employee_id)
+                .offset((query.page - 1) * query.page_size)
+                .limit(query.page_size)
+            )
+        ), total

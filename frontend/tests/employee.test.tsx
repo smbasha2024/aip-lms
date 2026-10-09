@@ -105,7 +105,9 @@ describe("Phase 4 employee screens",()=> {
     expect(await screen.findByText("Research Day (Optional)")).toBeVisible();expect(screen.getByText("Research Leave · PENDING")).toBeVisible();expect(screen.getByText(/01-Nov-2026 – 02-Nov-2026/)).toBeVisible();
   });
   it.each(["MANAGER","ADMINISTRATOR"] as const)("shows unavailable summary for %s",async role=> {
-    server.use(http.get(`${origin}/dashboard`,()=>HttpResponse.json({...dashboard,leave_balances:[]})));mount(<EmployeeDashboard/>,{...user,role});
+    server.use(http.get(`${origin}/dashboard`,()=>HttpResponse.json({...dashboard,leave_balances:[]})),
+      http.get(`${origin}/managers/me/direct-reports`,()=>HttpResponse.json({items:[],total:0,page:1,page_size:1})),
+      http.get(`${origin}/leave/approvals/pending`,()=>HttpResponse.json({items:[],total:0,page:1,page_size:1})));mount(<EmployeeDashboard/>,{...user,role});
     expect(await screen.findByText(role==="MANAGER" ? "Team summary is not available yet." : "Organization summary is not available yet.")).toBeVisible();expect(screen.getByText(/No leave balances have been allocated/)).toBeVisible();
   });
   it("retries dashboard errors",async()=> {

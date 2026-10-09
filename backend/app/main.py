@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.approvals import router as approval_router
 from app.api.auth import router as auth_router
 from app.api.calendar import router as calendar_router
 from app.api.employees import router as employee_router
@@ -58,4 +59,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(employee_router)
     app.include_router(calendar_router)
     app.include_router(leave_router)
+    app.include_router(approval_router)
     return app

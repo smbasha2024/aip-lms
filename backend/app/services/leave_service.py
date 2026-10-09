@@ -19,6 +19,7 @@ from app.schemas.leave import (
     EmployeeApplicationPage,
     HistoryQuery,
     LeaveTypeRef,
+    PendingQuery,
 )
 from app.services.auth_service import AuthService, utc_now
 from app.services.calendar_service import CalendarService
@@ -367,3 +368,30 @@ class LeaveService:
             raise DomainError(
                 500, "TRANSACTION_FAILED", "Cancellation could not be completed."
             ) from None
+
+    def pending(self, actor: AppUser, query: PendingQuery):
+        if actor.role not in {"MANAGER", "ADMINISTRATOR"}:
+            forbidden()
+        if query.employee_id:
+            if query.employee_id == actor.employee_id:
+                forbidden()
+            if actor.role == "MANAGER":
+                employee = self.repo.employee(query.employee_id)
+                if not (
+                    employee and employee.manager_id == actor.employee_id
+                ) and not self.repo.assigned_pending(query.employee_id, actor.employee_id):
+                    forbidden()
+            if actor.role == "ADMINISTRATOR":
+                EmployeeService(self.db, self.settings, self.clock).target(
+                    actor, employee_id=query.employee_id
+                )
+        filters = ApplicationQuery(
+            **query.model_dump(mode="json"), status="PENDING", sort_order="asc"
+        )
+        rows, total = self.repo.history(actor, filters, "pending")
+        return ApplicationPage(
+            items=[application_row(row) for row in rows],
+            page=query.page,
+            page_size=query.page_size,
+            total=total,
+        )
