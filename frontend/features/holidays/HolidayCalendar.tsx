@@ -3,8 +3,8 @@ import { useRef } from "react";
 import { eachDayOfInterval, startOfMonth, endOfMonth, getISODay, format, parseISO } from "date-fns";
 import type { Holiday } from "@/types/employee";
 export const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
-export function HolidayCalendar({ year, month, today, holidays, select, navigate }: {
-  year: number; month: number; today: string; holidays: Holiday[];
+export function HolidayCalendar({ year, month, today, holidays, select, navigate, showStatus = false }: {
+  year: number; month: number; today: string; holidays: Holiday[]; showStatus?: boolean;
   select: (holiday: Holiday) => void; navigate: (year: number, month: number) => void;
 }) {
   const first=parseISO(`${String(year).padStart(4,"0")}-${String(month).padStart(2,"0")}-01`);
@@ -25,12 +25,12 @@ export function HolidayCalendar({ year, month, today, holidays, select, navigate
       {Array.from({length:getISODay(first)-1},(_,index)=><span key={`empty-${index}`} aria-hidden />)}
       {days.map((day,index)=>{const key=format(day,"yyyy-MM-dd");const holiday=byDate.get(key);const weekend=getISODay(day)>=6;
         return <button key={key} ref={element=>{refs.current[index]=element;}} type="button"
-          aria-label={`${format(day,"EEEE, dd MMMM yyyy")}${holiday ? `, ${holiday.name}, ${holiday.is_optional ? "Optional" : "Mandatory"}` : ""}`}
+          aria-label={`${format(day,"EEEE, dd MMMM yyyy")}${holiday ? `, ${holiday.name}, ${holiday.is_optional ? "Optional" : "Mandatory"}${showStatus ? `, ${holiday.status === "ACTIVE" ? "Active" : "Inactive"}` : ""}` : ""}`}
           aria-current={key===today ? "date" : undefined} onClick={()=>holiday&&select(holiday)}
           onKeyDown={event=>{const delta:Record<string,number>={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7};
             if(event.key in delta){event.preventDefault();const target=index+delta[event.key];if(target>=0&&target<days.length) refs.current[target]?.focus();}}}
           className={`min-h-24 min-w-0 rounded border p-1 text-left align-top sm:p-2 ${weekend ? "bg-slate-50" : "bg-white"} ${key===today ? "border-blue-600 ring-1 ring-blue-600" : "border-slate-200"}`}>
-          <span className="block text-sm">{format(day,"d")}</span>{holiday&&<span title={`${holiday.name} (${holiday.is_optional ? "Optional" : "Mandatory"})`} className="mt-2 block truncate text-xs text-blue-800">{holiday.is_optional ? "○" : "●"} {holiday.name}</span>}
+          <span className="block text-sm">{format(day,"d")}</span>{holiday&&<span title={`${holiday.name} (${holiday.is_optional ? "Optional" : "Mandatory"})`} className={`mt-2 block truncate text-xs ${showStatus && holiday.status === "INACTIVE" ? "text-slate-600" : "text-blue-800"}`}>{showStatus && holiday.status === "INACTIVE" ? "Inactive · " : ""}{holiday.is_optional ? "○" : "●"} {holiday.name}</span>}
         </button>;})}
     </div><p className="mt-3 text-xs text-slate-600">Use arrow keys to move between dates. Select a holiday to view details.</p>
   </section>;

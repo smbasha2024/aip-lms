@@ -218,6 +218,7 @@ backend/
 │   │   ├── admin_employees.py
 │   │   ├── admin_leave_types.py
 │   │   ├── admin_balances.py
+│   │   ├── admin_holidays.py
 │   │   ├── leave.py
 │   │   ├── approvals.py
 │   │   ├── calendar.py
@@ -270,7 +271,7 @@ backend/
     └── api/
 ```
 
-Router modules are directly under `app/api`, matching the implemented Phase 13
+Router modules are directly under `app/api`, matching the implemented Phase 14
 baseline. Expanded examples in other layers are illustrative; filenames can evolve
 while architectural boundaries remain intact. Create later-phase modules only when
 their phase is authorized.

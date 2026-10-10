@@ -1821,8 +1821,8 @@ All local gates passed: 750 backend tests (including 93 new cases), 329 frontend
 (including 35 new cases), 11 Chromium scenarios, standard typecheck, lint, formatting,
 production build and Alembic checks. See `PHASE_13_REPORT.md` for recovery details,
 transaction evidence, exact manifest and the existing non-blocking development
-lint dependency advisory. Pre-commit review passed with no blocking findings;
-commit/push and GitHub CI verification are authorized. Phase 14 remains unstarted.
+lint dependency advisory. Commit `6be072d` was reviewed and pushed; GitHub CI run
+38053172833 passed every gate. Phase 14 is now authorized.
 
 ---
 
@@ -1859,6 +1859,25 @@ Activate/Deactivate
 - deactivate;
 - leave-day calculation reflects active holidays for future calculations;
 - historical applications remain unchanged.
+
+## Implementation status (10 October 2026)
+
+Phase 14 implements administrator holiday create/update/deactivate endpoints and
+`/admin/holidays` with calendar/list views, year/month and inactive filtering,
+validated add/edit dialogs and confirmed activation/deactivation. Year is derived;
+date uniqueness and audit atomicity use existing PostgreSQL constraints/transactions.
+Existing application days are never recalculated by holiday writes. No migration or
+new dependency is needed. Development and production explicitly use Turbopack.
+
+Phase 14 is locally tested and complete: 810 backend tests (60 new cases),
+368 frontend tests (39 new cases), all 11 Chromium scenarios, typecheck, lint,
+formatting, explicit Turbopack production build and Alembic checks pass. Separate
+administrator concurrency, rollback and stored-day preservation are verified. See
+`PHASE_14_REPORT.md` for evidence and the exact manifest. The local password
+configuration was updated at the user's request while preserving existing account
+hashes, seed password policy and database volumes. Pre-commit review passed with no
+blocking findings; commit, push and hosted CI verification are authorized. The GitHub
+run for the resulting commit records hosted verification. Phase 15 remains unstarted.
 
 ---
 

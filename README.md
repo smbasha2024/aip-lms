@@ -418,5 +418,33 @@ and documentation/Ruff inconsistencies corrected. Phase 13 now passes 750 backen
 329 frontend and 11 Chromium tests plus standard typecheck, lint, formatting,
 production build and migration checks. No migration, package or lockfile change.
 See `docs/PHASE_13_REPORT.md` for the exact manifest and the existing development-only
-braces advisory; production npm audit has zero findings. Review passed with no blocking
-findings; commit/push and GitHub CI verification are authorized. Phase 14 has not started.
+braces advisory; production npm audit has zero findings. Commit `6be072d` was reviewed
+and pushed; [GitHub CI run 38053172833](https://github.com/smbasha2024/aip-lms/actions/runs/38053172833)
+passed every gate. Phase 14 is now authorized.
+
+## Bundler
+
+Development and production builds explicitly use Turbopack (`next dev --turbopack` and
+`next build --turbopack`) with the pinned Next.js 16.4.0. The production build succeeds
+without Webpack or extra bundler configuration. CI uses the same `npm run build` script.
+See [Next.js 16 bundler documentation](https://nextjs.org/docs/app/guides/upgrading/version-16).
+
+## Phase 14 — holiday administration
+
+`/admin/holidays` provides year/month filters, Show inactive, calendar/list views and
+Add/Edit/Activate/Deactivate actions. The backend derives year from date, enforces
+global date uniqueness including inactive records, and commits changes with audit
+records under administrator/session/resource locks. DELETE deactivates without
+removing history; PUT reactivates. Existing application days and counters are preserved.
+
+Local PostgreSQL and seed configuration were updated as requested; examples remain
+blank and private `.env` stays ignored. Existing employee account passwords are
+preserved; SEED_* values apply to newly created seed accounts. Seed and account
+password policies remain 12–128 characters; account hashing remains Argon2id.
+
+Phase 14 local gates pass: 810 backend tests, 368 frontend tests, 11 Chromium scenarios,
+typecheck, lint, formatting, explicit Turbopack production build and Alembic checks.
+Transaction/concurrency tests verify rollback and stored application days. See
+`docs/PHASE_14_REPORT.md` for the exact scope, commands, results and next action.
+Pre-commit review passed with no blocking findings. Commit, push and hosted GitHub CI
+verification are authorized; the resulting run records hosted verification.
