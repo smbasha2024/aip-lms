@@ -104,6 +104,23 @@ with engine.connect() as connection:
                 **(dict(approved_by=manager.employee_id, approved_at=datetime.now(UTC)) if approved else {})))
         session.add(Holiday(holiday_date=friday+timedelta(days=1), year=calendar_year,
             name='Calendar Holiday', description='Plain <script>holiday</script>', is_optional=False, status='ACTIVE'))
+        # Phase 16 report data is isolated from every existing mutation workflow.
+        report_year = current_year + 4
+        session.add(LeaveBalance(employee_id=employee.employee_id, leave_type_id=leave_type.leave_type_id,
+            leave_year=report_year, allocated=0, carried_forward=5, used=1, pending=1))
+        session.add(LeaveBalance(employee_id=employee.employee_id, leave_type_id=sick.leave_type_id,
+            leave_year=report_year, allocated=10, carried_forward=5, used=12))
+        report_start = date(report_year, 10, 5)
+        while report_start.weekday() != 0:
+            report_start += timedelta(days=1)
+        for index, status in enumerate(['APPROVED', 'PENDING', 'REJECTED']):
+            fields = dict(approved_by=manager.employee_id, approved_at=datetime.now(UTC)) if status == 'APPROVED' else dict(rejected_by=manager.employee_id, rejected_at=datetime.now(UTC), rejection_reason='Report fixture') if status == 'REJECTED' else {}
+            session.add(LeaveApplication(employee_id=employee.employee_id, manager_id=manager.employee_id,
+                leave_type_id=leave_type.leave_type_id, leave_year=report_year,
+                from_date=report_start+timedelta(days=index), to_date=report_start+timedelta(days=index),
+                number_of_days=1, reason='Phase 16 report fixture', status=status, **fields))
+        session.add(Holiday(holiday_date=date(report_year, 10, 10), year=report_year,
+            name='Historical Report Holiday', status='INACTIVE', is_optional=True))
         session.flush()
         own_request = session.scalar(select(LeaveApplication).where(LeaveApplication.employee_id == employee.employee_id,
             LeaveApplication.reason == 'Phase 8 read fixture second request'))

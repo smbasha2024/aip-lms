@@ -466,5 +466,24 @@ invalidate the relevant queries; **Refresh calendar** also reloads them.
 Phase 15 local testing passed: 826 backend tests, 412 frontend tests and 11 Chromium
 scenarios, including the calendar at 360/768/1024/1440 pixels. Typecheck, lint and the
 Turbopack build pass. See `docs/PHASE_15_REPORT.md` for the manifest and results.
-Local review passed, including backend Ruff checks. Hosted CI will be verified after
-commit/push. Phase 16 is unstarted.
+Commit `3f1ee38` was reviewed and pushed. [GitHub CI run 38061966142](https://github.com/smbasha2024/aip-lms/actions/runs/38061966142)
+passed all backend, migration, frontend, Turbopack build and Chromium gates.
+
+## Phase 16 — reports
+
+Open **Reports** (`/reports`) to view role-specific leave summaries and application
+history. Employees see their own information; managers see current direct reports and
+a Pending Approvals link; administrators see organization balances/utilization, status
+counts and active/inactive holidays. Filters and pagination are stored in the URL.
+
+`GET /api/v1/reports/leave-summary` returns stored balance counters with authorized server
+filters, business-year defaults and pagination. Utilization is displayed to one decimal;
+zero allocation shows an em dash. Application and holiday reports reuse existing APIs.
+No CSV/Excel/PDF export controls are included in v1. Reports are read-only.
+
+Local testing passes: 862 backend tests, 462 frontend tests and 11 Chromium workflows.
+Typecheck, frontend/backend lint/format, Turbopack production build, migration consistency
+and production dependency checks also pass. See `docs/PHASE_16_REPORT.md` for scope,
+files, commands, responsive checks and results. Local review corrected the report table
+scroll hints and reran frontend/build checks. GitHub CI runs on push and is verified for
+the exact commit. Phase 17 is unstarted.

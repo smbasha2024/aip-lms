@@ -4,6 +4,7 @@ import { adminLeaveTypeFlow } from "./admin-leave-type-flow";
 import { adminEmployeeFlow } from "./admin-employee-flow";
 import { approvalFlow, adminApprovalFlow } from "./approval-flow";
 import { notificationFlow } from "./notification-flow";
+import { reportsFlow } from "./reports-flow";
 import { teamCalendarFlow } from "./team-calendar-flow";
 import { teamFlow } from "./team-flow";
 import { test, expect } from "../../frontend/node_modules/@playwright/test";
@@ -18,6 +19,8 @@ async function login(page: Page, code="EMP001") {
 }
 async function bearer(page: Page) { return page.evaluate(()=>JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string); }
 test("employee sees database balances, full profile and year selection after reload",async({page,request})=> {
+  // Reports add three views, filter/navigation checks and responsive screenshots.
+  test.setTimeout(60_000);
   const errors: string[]=[];page.on("pageerror",error=>errors.push(error.message));
   await login(page);
   await expect(page.getByRole("heading",{name:"Your leave balances"})).toBeVisible();
@@ -26,6 +29,8 @@ test("employee sees database balances, full profile and year selection after rel
   const response=await request.get(`${process.env.E2E_API_URL}/api/v1/employees/${identity.employee_id}/leave-balance`,{headers});
   const balance: BalanceResponse=await response.json();expect(balance.balances).toHaveLength(6);
   for(const row of balance.balances) await expect(page.getByRole("heading",{name:row.leave_type_name,exact:true})).toBeVisible();
+  await reportsFlow(page, request, "EMP001");
+  await page.goto("/dashboard");
   await notificationFlow(page, request);
   await page.screenshot({path:"../.cache/phase4-dashboard.png",fullPage:true});
   await page.getByRole("navigation").getByRole("link",{name:"My Profile"}).click();
@@ -50,8 +55,8 @@ test("employee sees database balances, full profile and year selection after rel
 });
 for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
   test(`${code} retains personal dashboard, team review and approval workflow`,async({page,request,browser})=> {
-    // Calendar and existing decision/admin flows share one login and test budget.
-    test.setTimeout(60_000);
+    // Calendar, reports and decision/admin flows share one login and test budget.
+    test.setTimeout(90_000);
     const employeeContext = code === "MGR001" ? await browser.newContext({ baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:13000", viewport: { width: 390, height: 844 } }) : null;
     const employeePage = employeeContext ? await employeeContext.newPage() : null;
     try {
@@ -70,6 +75,7 @@ for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
     const pending = await (await pendingResponse).json();
     await teamFlow(page,request,code,pending.total);
     await teamCalendarFlow(page, request, code);
+    await reportsFlow(page, request, code);
       if (employeePage) await approvalFlow(employeePage, page, request);
       else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); await adminLeaveTypeFlow(page, request); await adminBalanceFlow(page, request); await adminHolidayFlow(page, request); }
     } finally {

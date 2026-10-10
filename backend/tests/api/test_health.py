@@ -42,6 +42,7 @@ def test_startup_and_liveness(settings):
         "/api/v1/leave/approvals/pending",
         "/api/v1/leave-types",
         "/api/v1/dashboard",
+        "/api/v1/reports/leave-summary",
         "/api/v1/notifications",
         "/api/v1/notifications/{notification_id}/read",
         "/api/v1/holidays",

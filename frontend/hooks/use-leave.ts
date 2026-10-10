@@ -28,7 +28,7 @@ export function useApplyLeave() {
   return useMutation({ mutationFn: leaveService.apply, retry: false,
     onSuccess: async application => {
       client.setQueryData(["application", user?.employee_id, user?.role, application.application_id], application);
-      await Promise.all(["balances", "admin-balances", "dashboard", "applications", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] })));
+      await Promise.all(["balances", "admin-balances", "reports", "dashboard", "applications", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] })));
     } });
 }
 export function useApplication(id: string) {
@@ -45,7 +45,7 @@ export function useCancelLeave() {
   const client = useQueryClient(); const { user } = useAuth();
   return useMutation({ mutationFn: leaveService.cancel, retry: false,
     onSuccess: application => client.setQueryData(["application", user?.employee_id, user?.role, application.application_id], application),
-    onSettled: async () => { await Promise.all(["application", "applications", "balances", "admin-balances", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
+    onSettled: async () => { await Promise.all(["application", "applications", "balances", "admin-balances", "reports", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
 }
 
 export function useDecideLeave(action: "approve" | "reject") {
@@ -53,7 +53,7 @@ export function useDecideLeave(action: "approve" | "reject") {
   return useMutation({ retry: false,
     mutationFn: ({ id, text }: { id: string; text: string }) => action === "approve" ? leaveService.approve({ id, ...(text ? { comment: text } : {}) }) : leaveService.reject({ id, reason: text }),
     onSuccess: application => client.setQueryData(["application", user?.employee_id, user?.role, application.application_id], application),
-    onSettled: async () => { await Promise.all(["application", "applications", "balances", "admin-balances", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
+    onSettled: async () => { await Promise.all(["application", "applications", "balances", "admin-balances", "reports", "dashboard", "approvals", "notifications"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
 }
 
 export function useApprovalBalance(application: Application | undefined, enabled: boolean) {

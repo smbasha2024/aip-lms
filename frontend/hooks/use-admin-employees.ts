@@ -25,6 +25,6 @@ export function useEmployeeMutation() {
     if (employee.status !== change.expected) throw new ApiError(409, "CONCURRENT_UPDATE", "Employment status changed. Refresh before trying again.");
     return adminEmployeeService.update(change.id, { ...employeeUpdate(employee), status: employee.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" });
   }, onSuccess: async () => {
-    await Promise.all(["employees", "team", "team-profile", "balances", "applications", "approvals", "dashboard", "profile", "employee"].map(key => client.invalidateQueries({ queryKey: [key] })));
+    await Promise.all(["employees", "team", "team-profile", "balances", "reports", "applications", "approvals", "dashboard", "profile", "employee"].map(key => client.invalidateQueries({ queryKey: [key] })));
   } });
 }

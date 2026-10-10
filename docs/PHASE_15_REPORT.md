@@ -1,7 +1,7 @@
 # Phase 15 — Team Leave Calendar
 
 Date: 10 October 2026
-Status: Implementation, full local test gate and review passed; hosted CI pending.
+Status: Implementation, local tests, review, push and hosted CI passed.
 Base: Phase 14 commit `ff069e4298828cf7ca9aab3b8ff3f0e26f7cdcf3`.
 
 ## Summary and scope
@@ -219,7 +219,14 @@ Real private configuration stays ignored with mode 0600 and absent from versiona
 
 ## Recommended next action
 
-Commit and push the reviewed Phase 15 changes and verify hosted CI for that exact commit.
-Local testing and review are complete. The GitHub run result will be reported separately
-after pushing. Phase 16 (Reports) is the recommended next phase after successful CI;
-it remains unstarted and requires separate authorization.
+Phase 15 is complete, including hosted CI for the pushed commit recorded below.
+Phase 16 (Reports) was separately authorized next; see PHASE_16_REPORT.md for its status.
+
+## Hosted completion
+
+Commit `3f1ee380e4afddf3978d0e7c94d1a03b76f6d7bc` was pushed to
+`feature/project-foundation`. GitHub Actions run
+[38061966142](https://github.com/smbasha2024/aip-lms/actions/runs/38061966142) passed
+all steps: backend lint/format and 826 tests, migrations, frontend type/lint and 412 tests,
+Turbopack production build and 11 Chromium scenarios. The branch was synchronized and
+working tree clean at completion. Phase 16 is separately authorized in the next task.

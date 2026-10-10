@@ -1,0 +1,10 @@
+import type { BalanceRow } from "@/types/admin-balance";
+import { leaveDays } from "@/lib/format";
+import { UtilizationCell } from "./UtilizationCell";
+export function SummaryReportTable({ items, utilization }: { items: BalanceRow[]; utilization: boolean }) {
+  const counters = ["allocated", "carried_forward", "used", "pending", "available"] as const;
+  const labels = { allocated: "Allocated", carried_forward: "Carried Forward", used: "Used", pending: "Pending", available: "Available" };
+  return <><div className="hidden overflow-x-auto rounded border bg-white md:block"><p className="p-3 text-xs text-slate-600">Scroll horizontally to view all summary columns.</p><table className="w-full text-left text-sm"><caption className="sr-only">Leave summary report</caption><thead><tr>{["Employee", "Leave Type", ...counters.map(key => labels[key]), ...(utilization ? ["Utilization %"] : [])].map(label => <th key={label} scope="col" className="p-3">{label}</th>)}</tr></thead><tbody>{items.map(row => <tr key={row.balance_id} className="border-t"><th scope="row" className="p-3 font-medium"><span className="block">{row.employee.name}</span><span className="block text-xs text-slate-600">{row.employee.employee_code} · {row.department.name}</span></th><td className="p-3">{row.leave_type.name}</td>{counters.map(key => <td key={key} className="p-3">{leaveDays(row[key])}</td>)}{utilization && <td className="p-3"><UtilizationCell used={row.used} allocated={row.allocated}/></td>}</tr>)}</tbody></table></div>
+    <div className="space-y-3 md:hidden">{items.map(row => <article key={row.balance_id} className="space-y-3 rounded border bg-white p-4"><h3 className="break-words font-semibold">{row.employee.name} ({row.employee.employee_code})</h3><p>{row.department.name} · {row.leave_type.name}</p><dl className="grid grid-cols-2 gap-3">{counters.map(key => <div key={key}><dt className="text-sm text-slate-600">{labels[key]}</dt><dd>{leaveDays(row[key])}</dd></div>)}{utilization && <div><dt className="text-sm text-slate-600">Utilization %</dt><dd><UtilizationCell used={row.used} allocated={row.allocated}/></dd></div>}</dl></article>)}</div>
+  </>;
+}

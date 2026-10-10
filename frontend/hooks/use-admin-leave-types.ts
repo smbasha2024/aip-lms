@@ -22,6 +22,6 @@ export function useLeaveTypeMutation() {
     if (row.status !== change.expected) throw new ApiError(409, "CONCURRENT_UPDATE", "Leave type status changed. Refresh before trying again.");
     return adminLeaveTypeService.update(change.id, { ...leaveTypeUpdate(row), status: row.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" });
   }, onSuccess: async () => {
-    await Promise.all(["leave-types", "leave-preview"].map(key => client.invalidateQueries({ queryKey: [key] })));
+    await Promise.all(["leave-types", "leave-preview", "reports", "applications"].map(key => client.invalidateQueries({ queryKey: [key] })));
   } });
 }

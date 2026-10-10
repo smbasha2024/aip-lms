@@ -8,3 +8,10 @@ export function eventTime(value: string, timezone: string): string {
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find(item => item.type === type)?.value ?? "";
   return `${part("day")}-${part("month")}-${part("year")}, ${part("hour")}:${part("minute")} ${part("dayPeriod")} (${timezone})`;
 }
+
+export function utilizationPercent(used: number | null | undefined, allocated: number | null | undefined): number | null {
+  if (typeof used !== "number" || typeof allocated !== "number" || !Number.isFinite(used) || !Number.isFinite(allocated) || used < 0 || allocated <= 0) return null;
+  const percent = used / allocated * 100;
+  const rounded = Math.round(percent * 10) / 10;
+  return Number.isFinite(rounded) ? rounded : null;
+}

@@ -1931,8 +1931,8 @@ Typecheck, lint, explicit Turbopack production build, migration drift check and 
 dependency audit pass. Disposable schemas and temporary test servers were cleaned up.
 See `PHASE_15_REPORT.md` for exact files, commands, results and corrected test failures.
 Review passed after fixing Ruff formatting in the new backend test file; its 16 tests
-passed again. Commit/push and hosted CI remain the next gate.
-Phase 16 remains unstarted.
+passed again. Commit `3f1ee38` was pushed; GitHub CI run `38061966142` passed every gate.
+Phase 16 is separately authorized and its implementation status is recorded below.
 
 ---
 
@@ -1994,6 +1994,24 @@ CSV/Excel/PDF export is deferred beyond v1; no export control in this phase.
 - utilization zero division;
 - pagination;
 - no export controls in v1.
+
+## Implementation status (10 October 2026)
+
+Phase 16 implements authenticated `GET /reports/leave-summary` with own/team/organization
+scope, business-year defaults, historical balances and stable server pagination. `/reports`
+provides each role's summary/utilization/application views and administrator status counts/
+holidays through documented read APIs, with URL filters and mobile cards. Existing leave
+and administration actions invalidate reports. No export controls, migration or dependency
+change were introduced.
+
+Typecheck, frontend lint, repository-wide Ruff lint/format and explicit Turbopack production
+build pass. Local tests pass: 862 backend tests, 462 frontend tests across 15 files and
+11 Chromium workflows, including all role reports and responsive checks. Alembic is at
+head with no model drift, dependency/private-config checks pass and isolated test resources
+are cleaned up. Review corrected the missing table scroll hints required by UI_SPEC.md;
+frontend/static/Turbopack checks pass again. See `PHASE_16_REPORT.md` for the exact
+manifest, review and test results. Hosted CI is verified for the exact commit after push.
+Phase 17 remains unstarted.
 
 ---
 

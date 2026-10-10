@@ -19,5 +19,5 @@ export function useBalanceMutation() {
     if (change.kind === "create") return adminBalanceService.create(change.body);
     if (change.kind === "edit") return adminBalanceService.edit(change.id, change.body);
     return adminBalanceService.adjust(change.id, change.body);
-  }, onSettled: async () => { await Promise.all(["admin-balances", "balances", "dashboard", "leave-preview"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
+  }, onSettled: async () => { await Promise.all(["admin-balances", "balances", "reports", "dashboard", "leave-preview"].map(key => client.invalidateQueries({ queryKey: [key] }))); } });
 }
