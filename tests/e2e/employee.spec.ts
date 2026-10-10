@@ -1,3 +1,4 @@
+import { adminBalanceFlow } from "./admin-balance-flow";
 import { adminLeaveTypeFlow } from "./admin-leave-type-flow";
 import { adminEmployeeFlow } from "./admin-employee-flow";
 import { approvalFlow, adminApprovalFlow } from "./approval-flow";
@@ -47,6 +48,8 @@ test("employee sees database balances, full profile and year selection after rel
 });
 for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
   test(`${code} retains personal dashboard, team review and approval workflow`,async({page,request,browser})=> {
+    // Four administrator flows share one login to preserve the production login limit.
+    if (code === "ADM001") test.setTimeout(60_000);
     const employeeContext = code === "MGR001" ? await browser.newContext({ baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:13000", viewport: { width: 390, height: 844 } }) : null;
     const employeePage = employeeContext ? await employeeContext.newPage() : null;
     try {
@@ -65,7 +68,7 @@ for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
     const pending = await (await pendingResponse).json();
     await teamFlow(page,request,code,pending.total);
       if (employeePage) await approvalFlow(employeePage, page, request);
-      else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); await adminLeaveTypeFlow(page, request); }
+      else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); await adminLeaveTypeFlow(page, request); await adminBalanceFlow(page, request); }
     } finally {
       await employeeContext?.close();
     }

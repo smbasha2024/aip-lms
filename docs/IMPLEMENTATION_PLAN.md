@@ -1744,8 +1744,8 @@ are recorded in PHASE_12_REPORT.md. Phase 12 meets its local test gate: 657 back
 tests, 294 frontend tests and 11 Chromium scenarios pass, including authorization,
 rollback and independent PostgreSQL concurrency tests. Ruff, TypeScript, ESLint,
 production build and Alembic checks also pass. Review is complete with no blocking
-findings; commit, push and GitHub CI verification are authorized. Phase 13 is not
-authorized.
+findings. Commit ae607e8 was pushed; GitHub CI run 37961654546 passed all gates.
+After the repository reset, Phase 13 restart is authorized (10 October 2026).
 
 ---
 
@@ -1807,6 +1807,22 @@ Adjust Balance dialog
 - negative/invalid result protection according to policy;
 - audit log;
 - role access.
+
+## Implementation status (10 October 2026)
+
+Phase 13 was restarted after restoring the Phase 12 baseline. It now implements the
+four administrator balance endpoints and `/admin/leave-balances` with allocation,
+entitlement editing and audited adjustments. Employee and balance locks preserve
+used/pending counters during concurrent leave actions. No migration or dependency
+change was needed. Repository structure/documentation and root Ruff classification
+were corrected before implementation.
+
+All local gates passed: 750 backend tests (including 93 new cases), 329 frontend tests
+(including 35 new cases), 11 Chromium scenarios, standard typecheck, lint, formatting,
+production build and Alembic checks. See `PHASE_13_REPORT.md` for recovery details,
+transaction evidence, exact manifest and the existing non-blocking development
+lint dependency advisory. Pre-commit review passed with no blocking findings;
+commit/push and GitHub CI verification are authorized. Phase 14 remains unstarted.
 
 ---
 

@@ -188,8 +188,8 @@ Duplicate actions conflict without another release. Unknown mutation outcomes re
 History refresh before explicit retry. Apply Leave's Cancel destination now returns to History.
 
 Phase 7 passed 313 backend, 121 frontend and 12 browser tests plus typecheck, lint, build
-and migration checks. See `docs/PHASE_7_REPORT.md` for evidence. Changes are uncommitted;
-review, commit, push and hosted CI are next.
+and migration checks. See `docs/PHASE_7_REPORT.md` for evidence. Phase 7 commit
+`c6a3730` was reviewed and pushed, and hosted CI passed.
 
 ## Check the foundation
 
@@ -401,5 +401,22 @@ run 37953805631 passed every gate. See `docs/PHASE_11_REPORT.md`.
 Phase 12 passed its local test gate: 657 backend tests, 294 frontend tests and 11
 Chromium scenarios, plus Ruff, TypeScript, ESLint, production build and Alembic checks.
 Test coverage and cleanup are recorded in `docs/PHASE_12_REPORT.md`. No migration,
-dependency or environment changes. Phase 12 review is complete; commit/push and GitHub
-CI verification are authorized. Phase 13 has not started.
+dependency or environment changes. Commit ae607e8 was reviewed and pushed; GitHub CI
+run 37961654546 passed all gates. Phase 13 restart is authorized after the local reset.
+
+## Phase 13 — leave balance administration
+
+Administrators can browse `/admin/leave-balances` by employee, department, type and
+year; allocate missing balances; edit allocated/carried-forward; and apply signed,
+reasoned adjustments. Used/pending remain read-only. Writes revalidate administrator
+sessions under the existing lock order and commit counter changes with audit records.
+Historical and inactive employee/type allocations are supported. Dialogs check
+eligibility, prevent duplicate/uncertain resubmission and invalidate affected reads.
+
+After restoring the Phase 12 repository, the structure and configuration were checked
+and documentation/Ruff inconsistencies corrected. Phase 13 now passes 750 backend,
+329 frontend and 11 Chromium tests plus standard typecheck, lint, formatting,
+production build and migration checks. No migration, package or lockfile change.
+See `docs/PHASE_13_REPORT.md` for the exact manifest and the existing development-only
+braces advisory; production npm audit has zero findings. Review passed with no blocking
+findings; commit/push and GitHub CI verification are authorized. Phase 14 has not started.

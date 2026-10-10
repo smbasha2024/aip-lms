@@ -1,7 +1,9 @@
 # Phase 12 — Leave Type Administration
 
 Date: 9 October 2026
-Status: Phase 12 local test gate passed; review complete. Commit/push and GitHub CI authorized.
+Status: Phase 12 reviewed, committed and pushed as `ae607e8`; GitHub CI run
+[37961654546](https://github.com/smbasha2024/aip-lms/actions/runs/37961654546) passed all gates.
+The sections below retain the original local review evidence.
 
 ## Scope delivered
 
@@ -118,8 +120,9 @@ containers were preserved. Generated tsconfig.tsbuildinfo was removed. No packag
 application environment changes were made.
 
 Phase 12 meets TEST_PLAN.md §27 and §131 and the full local regression gate. No blocking
-failure or new contract ambiguity remains. The user authorized review, commit, push
-and GitHub CI verification. Phase 13 is not authorized.
+failure or new contract ambiguity remains. Review, commit, push and GitHub CI
+verification were subsequently completed. Phase 13 restart was authorized on
+10 October 2026 after restoring this Phase 12 baseline.
 
 ## Pre-commit review
 

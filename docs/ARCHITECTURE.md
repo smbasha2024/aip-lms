@@ -182,8 +182,7 @@ backend/
 │   ├── main.py
 │   ├── config.py
 │   │
-│   ├── api/
-│   │   └── routes/
+│   ├── api/                 # routers and dependencies.py
 │   │
 │   ├── models/
 │   │
@@ -198,8 +197,7 @@ backend/
 ├── tests/
 │
 ├── requirements.txt
-├── .env.example
-└── README.md
+└── .env.example              # setup instructions live in root README.md
 ```
 
 A possible expanded structure is:
@@ -215,15 +213,16 @@ backend/
 │   │
 │   ├── api/
 │   │   ├── dependencies.py
-│   │   │
-│   │   └── routes/
-│   │       ├── auth.py
-│   │       ├── employees.py
-│   │       ├── leave_types.py
-│   │       ├── leave_balances.py
-│   │       ├── leave_applications.py
-│   │       ├── holidays.py
-│   │       └── reports.py
+│   │   ├── auth.py
+│   │   ├── employees.py
+│   │   ├── admin_employees.py
+│   │   ├── admin_leave_types.py
+│   │   ├── admin_balances.py
+│   │   ├── leave.py
+│   │   ├── approvals.py
+│   │   ├── calendar.py
+│   │   ├── notifications.py
+│   │   └── health.py
 │   │
 │   ├── models/
 │   │   ├── user.py
@@ -271,7 +270,10 @@ backend/
     └── api/
 ```
 
-The exact filenames may evolve as the application grows, but the architectural boundaries must remain intact.
+Router modules are directly under `app/api`, matching the implemented Phase 13
+baseline. Expanded examples in other layers are illustrative; filenames can evolve
+while architectural boundaries remain intact. Create later-phase modules only when
+their phase is authorized.
 
 ---
 
@@ -282,7 +284,7 @@ The exact filenames may evolve as the application grows, but the architectural b
 Location:
 
 ```text
-backend/app/api/routes/
+backend/app/api/
 ```
 
 Routers expose REST APIs.
@@ -1921,7 +1923,9 @@ Examples:
 
 /api/v1/leave-types
 
-/api/v1/leave-balances
+/api/v1/employees/{employee_id}/leave-balance
+
+/api/v1/admin/leave-balances
 
 /api/v1/leave/applications
 

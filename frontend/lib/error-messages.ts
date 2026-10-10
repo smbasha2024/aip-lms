@@ -1,4 +1,7 @@
 const messages: Record<string, string> = {
+  LEAVE_BALANCE_ALREADY_EXISTS: "A balance already exists for this employee, leave type and year.",
+  LEAVE_BALANCE_NOT_FOUND: "Leave balance could not be found.",
+  INSUFFICIENT_ALLOCATION: "Allocation must cover used and pending leave.",
   LEAVE_TYPE_CODE_EXISTS: "Leave type code is already in use.",
   UNSUPPORTED_LEAVE_POLICY: "Only whole-day leave requiring approval is supported.",
   EMPLOYEE_CODE_EXISTS: "Employee ID is already in use.",
