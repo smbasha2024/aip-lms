@@ -501,8 +501,15 @@ approved_application_count, on_leave_today_count and upcoming_team_leave. Counts
 the scope defined in API_SPEC.md §14; assigned approval scope differs from current team.
 ADMINISTRATOR renders admin_summary organization employee/application counts.
 Never simulate aggregates with many one-row list calls or count a single paginated
-page. During staged development a null role summary is an unavailable section,
-not a zero-count assertion. Final Phase 17 must provide the role summary.
+page. Phase 17 provides the typed summary for the signed-in manager/administrator;
+a null summary is an unavailable section, not a zero-count assertion. Manager pending
+approvals span all years; approved totals use selected year. On-leave today and upcoming
+team leave use the current business date independently of the year filter. Administrator
+employee totals use employment status; application counts use selected year including self.
+Personal quick actions remain available during loading/error states. Manager quick links
+include Approvals, My Team, Team Calendar and Reports. Administrator quick links include
+Employee Management, Leave Types, Leave Balances, Leave Applications (the implemented
+organization application report), Holiday Management and Reports.
 Loading/empty/error states remain accessible; API-backed values are authoritative.
 
 ---

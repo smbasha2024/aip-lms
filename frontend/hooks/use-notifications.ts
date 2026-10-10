@@ -2,6 +2,7 @@
 import { useEffect, useSyncExternalStore } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "./use-auth";
+import { dashboardKey } from "./use-employee";
 import { notificationService } from "@/services/notification-service";
 import type { DashboardResponse } from "@/types/employee";
 import type { NotificationFilters } from "@/types/notification";
@@ -36,7 +37,7 @@ export function useNotificationCount() {
   const client = useQueryClient();
   const dashboard = useSyncExternalStore(
     callback => client.getQueryCache().subscribe(callback),
-    () => client.getQueryState<DashboardResponse>(["dashboard", user?.employee_id, year]),
+    () => client.getQueryState<DashboardResponse>(dashboardKey(user, year)),
     () => undefined,
   );
   const unread = useNotifications({ is_read: false, page: 1, page_size: 1 });

@@ -2010,8 +2010,8 @@ build pass. Local tests pass: 862 backend tests, 462 frontend tests across 15 fi
 head with no model drift, dependency/private-config checks pass and isolated test resources
 are cleaned up. Review corrected the missing table scroll hints required by UI_SPEC.md;
 frontend/static/Turbopack checks pass again. See `PHASE_16_REPORT.md` for the exact
-manifest, review and test results. Hosted CI is verified for the exact commit after push.
-Phase 17 remains unstarted.
+manifest, review and test results. Commit `bb5ab9a` was pushed; GitHub CI run
+`38065722343` passed all gates. Phase 17 is separately authorized below.
 
 ---
 
@@ -2047,6 +2047,31 @@ Add:
 - admin quick actions.
 
 Prefer a well-designed dashboard API over many permanent aggregate workaround calls.
+
+## Implementation status (10 October 2026)
+
+Phase 17 completes the typed manager/administrator summaries on the existing dashboard
+API and the role-specific panels, while preserving personal information for all roles.
+Manager pending approvals use assigned snapshot scope across years; team size, approved
+requests and today/upcoming leave use current direct reports excluding self. Administrator
+employee totals use employment status and application totals use organization/selected year.
+Counts are server aggregates; no permanent one-row dashboard list workaround remains.
+
+Personal quick actions remain available during data loading/errors. Role-safe cache keys
+include user, employee, role and year; the notification bell observes the same key. Existing
+mutations invalidate dashboards; leave-type edits now refresh dashboard labels too.
+Application quick links use the implemented organization Reports view. No migration,
+dependency, private environment change or deferred audit viewer was introduced.
+The explicit testing step added 22 focused backend tests and 16 frontend cases. All 22
+focused backend and 478 frontend tests pass; migration/model drift and lint/type checks
+pass. Full backend regression passed 874 cases; the final focused run covers the remaining
+new cases (884 distinct backend cases overall). A successful external Turbopack build was
+verified with the isolated test API origin. All 11 production Chromium workflows passed
+in 53.0 seconds, including role counts, keyboard focus and year restoration. Eight manager/
+administrator dashboard screenshots at 360/768/1024/1440 pixels were inspected without a
+layout defect. Disposable test resources were cleaned up and private configuration preserved.
+See `PHASE_17_REPORT.md` for exact files and gates. Phase 17 is locally complete and tested;
+review/commit/push and hosted CI remain pending separate authorization.
 
 ---
 

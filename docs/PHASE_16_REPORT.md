@@ -1,7 +1,7 @@
 # Phase 16 — Reports
 
 Date: 10 October 2026
-Status: Implementation, full local test gate and review passed. Hosted results are reported after push.
+Status: Implementation, local tests, review, push and hosted CI passed.
 Base: Phase 15 commit `3f1ee380e4afddf3978d0e7c94d1a03b76f6d7bc`.
 
 ## 1. Summary
@@ -230,6 +230,13 @@ API_SPEC.md §14, UI_SPEC.md §12, REQUIREMENTS.md §8.15/§10 and IMPLEMENTATIO
 
 ## 12. Recommended next action
 
-Commit and push the reviewed Phase 16 changes, then verify GitHub CI for the exact pushed
-commit. The hosted run result is reported separately after push. Phase 17 (Dashboard
-Completion) remains unstarted and requires separate authorization.
+Phase 16 is complete, including hosted CI for the pushed commit below. Phase 17
+(Dashboard Completion) was separately authorized; see PHASE_17_REPORT.md for its status.
+
+## Hosted completion
+
+Commit `bb5ab9a9af6ad720d95d14ec56107fbbc6c9a50d` was pushed to
+`feature/project-foundation`. [GitHub CI run 38065722343](https://github.com/smbasha2024/aip-lms/actions/runs/38065722343)
+passed all gates: 862 backend tests (288.99 seconds), 462 frontend tests, 11 Chromium
+workflows (33.5 seconds), migrations, lint/typecheck and the Turbopack production build.
+Phase 17 was separately authorized next.

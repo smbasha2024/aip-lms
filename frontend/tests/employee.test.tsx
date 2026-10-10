@@ -108,7 +108,7 @@ describe("Phase 4 employee screens",()=> {
     server.use(http.get(`${origin}/dashboard`,()=>HttpResponse.json({...dashboard,leave_balances:[]})),
       http.get(`${origin}/managers/me/direct-reports`,()=>HttpResponse.json({items:[],total:0,page:1,page_size:1})),
       http.get(`${origin}/leave/approvals/pending`,()=>HttpResponse.json({items:[],total:0,page:1,page_size:1})));mount(<EmployeeDashboard/>,{...user,role});
-    expect(await screen.findByText(role==="MANAGER" ? "Team summary is not available yet." : "Organization summary is not available yet.")).toBeVisible();expect(screen.getByText(/No leave balances have been allocated/)).toBeVisible();
+    expect(await screen.findByText(role==="MANAGER" ? "Team summary is unavailable." : "Organization summary is unavailable.")).toBeVisible();expect(screen.getByText(/No leave balances have been allocated/)).toBeVisible();
   });
   it("retries dashboard errors",async()=> {
     server.use(http.get(`${origin}/dashboard`,()=>fail()));mount(<EmployeeDashboard/>);expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong");

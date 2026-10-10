@@ -1,8 +1,9 @@
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext, Response } from "../../frontend/node_modules/@playwright/test";
 import type { ApplicationPage } from "../../frontend/types/leave";
+import type { DashboardResponse } from "../../frontend/types/employee";
 import type { EmployeePage } from "../../frontend/types/team";
-export async function teamFlow(page: Page, request: APIRequestContext, code: string, dashboardPendingTotal: number) {
+export async function teamFlow(page: Page, request: APIRequestContext, code: string, dashboard: DashboardResponse) {
   const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
   const headers = { Authorization: `Bearer ${token}` }; const base = `${process.env.E2E_API_URL}/api/v1`;
@@ -10,7 +11,7 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
   const fixtures = queue.items.filter(item => item.reason.startsWith("Phase 8 read fixture"));
   const leaveYear = fixtures[0].from_date.slice(0,4);
   const reports: EmployeePage = await (await request.get(`${base}/managers/me/direct-reports`, { headers })).json();
-  let displayedCount = dashboardPendingTotal;
+  let displayedCount = queue.total;
   const updateCount = (response: Response) => {
     const url = new URL(response.url());
     if (url.pathname === "/api/v1/leave/approvals/pending" && url.searchParams.get("page_size") === "1" && response.ok()) {
@@ -18,9 +19,13 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
     }
   };
   page.on("response", updateCount);
-  const panel = page.getByRole("region", { name: "Team workspace" });
-  await expect(panel.getByText(String(dashboardPendingTotal), { exact: true })).toBeVisible();
-  await expect(panel.getByText(`${reports.total} current direct reports`)).toBeVisible();
+  const panel = page.getByRole("region", { name: code === "MGR001" ? "Team workspace" : "Organization workspace" });
+  const count = code === "MGR001" ? dashboard.manager_summary!.pending_approval_count : dashboard.admin_summary!.pending_application_count;
+  await expect(panel.locator("dl > div").filter({ has: page.getByText(code === "MGR001" ? "Pending approvals" : "Pending applications", { exact: true }) }).locator("dd")).toHaveText(String(count));
+  if (code === "MGR001") {
+    expect(dashboard.manager_summary!.team_size).toBe(reports.total);
+    expect(count).toBe(queue.total);
+  }
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "My Team", exact: true }).click();
   await expect(page.getByRole("heading", { name: "My Team", exact: true })).toBeVisible();
   const table = page.getByRole("table", { name: "Current direct reports" }); await expect(table).toBeVisible();

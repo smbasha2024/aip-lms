@@ -129,6 +129,22 @@ class HolidayResponse(BaseModel):
     status: Literal["ACTIVE", "INACTIVE"]
 
 
+class ManagerSummary(BaseModel):
+    team_size: int
+    pending_approval_count: int
+    approved_application_count: int
+    on_leave_today_count: int
+    upcoming_team_leave: list[ApplicationRow]
+
+
+class AdminSummary(BaseModel):
+    total_employees: int
+    active_employees: int
+    pending_application_count: int
+    approved_application_count: int
+    rejected_application_count: int
+
+
 class DashboardResponse(BaseModel):
     year: int
     employee: EmployeeRef
@@ -138,8 +154,8 @@ class DashboardResponse(BaseModel):
     recent_applications: list[ApplicationRow]
     upcoming_holidays: list[HolidayResponse]
     unread_notification_count: int
-    manager_summary: None = Field(default=None, description="Unavailable until Phase 17.")
-    admin_summary: None = Field(default=None, description="Unavailable until Phase 17.")
+    manager_summary: ManagerSummary | None = None
+    admin_summary: AdminSummary | None = None
 
 
 class DirectReportsQuery(BaseModel):

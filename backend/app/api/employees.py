@@ -73,7 +73,7 @@ def leave_types(actor: Actor, service: Service, query: Annotated[LeaveTypeQuery,
 @router.get(
     "/dashboard",
     response_model=DashboardResponse,
-    description="Personal dashboard. Manager/admin summaries remain null until Phase 17.",
+    description="Personal dashboard with role-authorized manager or administrator aggregates.",
 )
 def dashboard(actor: Actor, service: Service, query: Annotated[YearQuery, Query()]):
     return service.dashboard(actor, query.year)

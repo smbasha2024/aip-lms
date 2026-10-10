@@ -7,9 +7,10 @@ import { notificationFlow } from "./notification-flow";
 import { reportsFlow } from "./reports-flow";
 import { teamCalendarFlow } from "./team-calendar-flow";
 import { teamFlow } from "./team-flow";
+import { dashboardFlow } from "./dashboard-flow";
 import { test, expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page } from "../../frontend/node_modules/@playwright/test";
-import type { BalanceResponse } from "../../frontend/types/employee";
+import type { DashboardResponse, BalanceResponse } from "../../frontend/types/employee";
 async function login(page: Page, code="EMP001") {
   await page.goto("/login");
   await page.getByLabel("Email or Employee ID *").fill(code);
@@ -56,7 +57,7 @@ test("employee sees database balances, full profile and year selection after rel
 for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
   test(`${code} retains personal dashboard, team review and approval workflow`,async({page,request,browser})=> {
     // Calendar, reports and decision/admin flows share one login and test budget.
-    test.setTimeout(90_000);
+    test.setTimeout(120_000);
     const employeeContext = code === "MGR001" ? await browser.newContext({ baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:13000", viewport: { width: 390, height: 844 } }) : null;
     const employeePage = employeeContext ? await employeeContext.newPage() : null;
     try {
@@ -69,11 +70,12 @@ for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
         expect(await employeePage.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
         await employeePage.screenshot({ path: "../.cache/phase4-balance-mobile.png", fullPage: true });
       }
-    const pendingResponse = page.waitForResponse(response => { const url = new URL(response.url()); return url.pathname === "/api/v1/leave/approvals/pending" && url.searchParams.get("page_size") === "1" && response.ok(); });
-    await login(page,code);await expect(page.getByText(`${summary} summary is not available yet.`)).toBeVisible();
+    const dashboardResponse = page.waitForResponse(response => new URL(response.url()).pathname === "/api/v1/dashboard" && response.ok());
+    await login(page,code);await expect(page.getByRole("region", { name: `${summary} workspace` })).toBeVisible();
     await expect(page.getByRole("heading",{name:"Your leave balances"})).toBeVisible();
-    const pending = await (await pendingResponse).json();
-    await teamFlow(page,request,code,pending.total);
+    const dashboard: DashboardResponse = await (await dashboardResponse).json();
+    const currentDashboard = await dashboardFlow(page, code, dashboard);
+    await teamFlow(page,request,code,currentDashboard);
     await teamCalendarFlow(page, request, code);
     await reportsFlow(page, request, code);
       if (employeePage) await approvalFlow(employeePage, page, request);

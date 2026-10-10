@@ -25,9 +25,17 @@ export interface Holiday {
   holiday_id: string; holiday_date: string; name: string; description: string | null;
   year: number; is_optional: boolean; status: "ACTIVE" | "INACTIVE";
 }
+export interface ManagerSummary {
+  team_size: number; pending_approval_count: number; approved_application_count: number;
+  on_leave_today_count: number; upcoming_team_leave: ApplicationRow[];
+}
+export interface AdminSummary {
+  total_employees: number; active_employees: number; pending_application_count: number;
+  approved_application_count: number; rejected_application_count: number;
+}
 export interface DashboardResponse {
   year: number; employee: EmployeeRef; leave_totals: Counters; leave_balances: BalanceItem[];
   pending_application_count: number; recent_applications: ApplicationRow[];
   upcoming_holidays: Holiday[]; unread_notification_count: number;
-  manager_summary: null; admin_summary: null;
+  manager_summary: ManagerSummary | null; admin_summary: AdminSummary | null;
 }

@@ -9,11 +9,13 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings
 from app.models import AppUser, Employee, LeaveApplication, LeaveBalance
+from app.repositories.dashboard_repository import DashboardRepository
 from app.repositories.employee_repository import EmployeeRepository
 from app.schemas.auth import DepartmentRef
 from app.schemas.employee import (
     AccountRef,
     AdminEmployeeDetail,
+    AdminSummary,
     ApplicationRow,
     BalanceItem,
     BalanceResponse,
@@ -26,6 +28,7 @@ from app.schemas.employee import (
     HolidayResponse,
     LeaveTypeResponse,
     LeaveTypesResponse,
+    ManagerSummary,
 )
 from app.services.auth_service import utc_now
 from app.utils.errors import DomainError
@@ -180,7 +183,19 @@ class EmployeeService:
                 for name in Counters.model_fields
             }
         )
+        manager_summary = None
+        admin_summary = None
+        dashboard = DashboardRepository(self.repo.db)
+        if actor.role == "MANAGER":
+            counts, upcoming = dashboard.manager_summary(actor.employee_id, year, today)
+            manager_summary = ManagerSummary(
+                **counts, upcoming_team_leave=[application_row(row) for row in upcoming]
+            )
+        elif actor.role == "ADMINISTRATOR":
+            admin_summary = AdminSummary(**dashboard.admin_summary(year))
         return DashboardResponse(
+            manager_summary=manager_summary,
+            admin_summary=admin_summary,
             year=year,
             employee=employee_ref(actor.employee),
             leave_totals=totals,

@@ -485,5 +485,26 @@ Local testing passes: 862 backend tests, 462 frontend tests and 11 Chromium work
 Typecheck, frontend/backend lint/format, Turbopack production build, migration consistency
 and production dependency checks also pass. See `docs/PHASE_16_REPORT.md` for scope,
 files, commands, responsive checks and results. Local review corrected the report table
-scroll hints and reran frontend/build checks. GitHub CI runs on push and is verified for
-the exact commit. Phase 17 is unstarted.
+scroll hints and reran frontend/build checks. Commit `bb5ab9a` was pushed;
+[GitHub CI run 38065722343](https://github.com/smbasha2024/aip-lms/actions/runs/38065722343)
+passed all gates.
+
+## Phase 17 — dashboard completion
+
+`/dashboard` preserves personal balances, pending totals, last five applications, upcoming
+holidays and unread notifications for all roles. Managers additionally see current team
+size, assigned pending approvals, approved requests for the selected year, distinct staff
+on leave today and the next five approved current-team requests ending today or later.
+Administrators see organization employee and yearly application counts plus administration
+quick links. All role counts come from `GET /api/v1/dashboard`; dashboard list-page
+aggregate workarounds are removed. Team approvals use submission assignments while team
+leave uses current direct reports.
+
+Phase 17 is locally implemented and tested. The 22 focused backend, 478 frontend and
+11 production Chromium workflows pass, along with migration/model-drift, lint and type
+checks. Backend regression passed 874 cases; the final focused run covers all additional
+dashboard cases (884 distinct backend cases overall). The user built with Turbopack outside
+the sandbox; the compiled test API origin and production runtime were verified. Eight
+manager/administrator dashboard screenshots at 360/768/1024/1440 pixels were inspected
+without a layout defect. See `docs/PHASE_17_REPORT.md` for exact results. Review/commit and
+hosted CI remain pending. No migration, dependency or private environment change is required.

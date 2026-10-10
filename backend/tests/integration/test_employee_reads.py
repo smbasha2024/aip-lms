@@ -375,7 +375,24 @@ def test_dashboard_real_aggregates_own_scope_and_full_rows(auth_context):
     )  # Last five overall, not submission-year filtering.
     for code in ["MGR001", "ADM001"]:
         body = client.get("/api/v1/dashboard", headers=token(auth_context, code)).json()
-        assert body["manager_summary"] is None and body["admin_summary"] is None
+        if code == "MGR001":
+            assert body["admin_summary"] is None
+            assert set(body["manager_summary"]) == {
+                "team_size",
+                "pending_approval_count",
+                "approved_application_count",
+                "on_leave_today_count",
+                "upcoming_team_leave",
+            }
+        else:
+            assert body["manager_summary"] is None
+            assert set(body["admin_summary"]) == {
+                "total_employees",
+                "active_employees",
+                "pending_application_count",
+                "approved_application_count",
+                "rejected_application_count",
+            }
         assert body["employee"]["employee_id"] == str(ids[code])
 
 

@@ -443,13 +443,18 @@ Upcoming holidays: next five ACTIVE mandatory/optional dates >= business today.
 Manager summary (MANAGER only): `{team_size: int, pending_approval_count: int,
 approved_application_count: int, on_leave_today_count: int, upcoming_team_leave: ApplicationRow[]}`.
 Team size/current/upcoming counts use current direct reports, excluding self; pending
-approval count uses actionable snapshot queue; approved count uses current reports/year;
-on-leave today counts distinct employees; upcoming leave is next five APPROVED requests
-ending today or later, sorted from_date asc. Administrator summary (ADMINISTRATOR only):
+approval count uses the actionable snapshot queue across all years (including assigned
+former/inactive reports and excluding self); approved count uses current reports/selected year.
+On-leave today counts distinct current reports with APPROVED dates spanning business today;
+upcoming leave is next five APPROVED requests for current reports ending today or later,
+sorted from_date asc then application_id asc. Today/upcoming are independent of selected year.
+Administrator summary (ADMINISTRATOR only):
 `{total_employees,active_employees,pending_application_count,approved_application_count,
-rejected_application_count: int}` using organization/year scope. Unavailable summaries
-remain null during staged development until Phase 17 implements them; document that
-phase state in runtime OpenAPI. Do not fabricate counts in the UI.
+rejected_application_count: int}`. Employee totals include all employment statuses; active
+employees means employee.status=ACTIVE, independently of account status. Application counts
+use organization/selected year scope, including self. Phase 17 returns the matching role
+summary; employee summaries and the other role's summary remain null. Runtime OpenAPI
+publishes the typed summary objects. Do not fabricate counts in the UI.
 
 ### GET /reports/leave-summary
 

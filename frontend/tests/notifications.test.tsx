@@ -8,6 +8,7 @@ import { NotificationFeedbackProvider } from "@/features/notifications/Notificat
 import { NotificationList } from "@/features/notifications/NotificationList";
 import { NotificationsScreen } from "@/features/notifications/NotificationsScreen";
 import { useNotifications } from "@/hooks/use-notifications";
+import { dashboardKey } from "@/hooks/use-employee";
 import { notificationService } from "@/services/notification-service";
 import { setAuthTransport } from "@/lib/auth-transport";
 import { safeReturnTo } from "@/lib/permissions";
@@ -126,12 +127,12 @@ describe("bell and polling", () => {
     await userEvent.click(screen.getByRole("button", { name: "Notifications" })); await screen.findByText("You're all caught up."); fireEvent.pointerDown(document.body); expect(screen.queryByRole("region")).not.toBeInTheDocument();
   });
   it("cached dashboard fallback without dashboard fetch", async () => {
-    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }); client.setQueryData(["dashboard", "e1", 2026], { unread_notification_count: 3 }); server.use(http.get(`${origin}/notifications`, () => fail()));
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }); client.setQueryData(dashboardKey(identity, 2026), { unread_notification_count: 3 }); server.use(http.get(`${origin}/notifications`, () => fail()));
     mount(<NotificationBell/>, client); expect(screen.getByLabelText("3 unread notifications")).toHaveTextContent("3"); await userEvent.click(screen.getByRole("button", { name: "Notifications" })); await screen.findAllByRole("alert"); expect(screen.queryByText("private SQL")).not.toBeInTheDocument();
   });
   it("an invalidated dashboard count is not used as fallback", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } });
-    client.setQueryData(["dashboard", "e1", 2026], { unread_notification_count: 3 });
+    client.setQueryData(dashboardKey(identity, 2026), { unread_notification_count: 3 });
     let dashboardCalls = 0;
     server.use(http.get(`${origin}/notifications`, () => fail()), http.get(`${origin}/dashboard`, () => { dashboardCalls++; return fail(); }));
     mount(<NotificationBell/>, client); expect(screen.getByLabelText("3 unread notifications")).toBeVisible();

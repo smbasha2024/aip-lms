@@ -10,6 +10,7 @@ import { TeamScreen } from "@/features/team/TeamScreen";
 import { TeamMemberScreen } from "@/features/team/TeamMemberScreen";
 import { ApprovalsScreen } from "@/features/approvals/ApprovalsScreen";
 import { ManagerDashboardPanel } from "@/features/dashboard/ManagerDashboardPanel";
+import { AdminDashboardPanel } from "@/features/dashboard/AdminDashboardPanel";
 import { AppShell } from "@/components/layout/AppShell";
 import { SESSION_KEY } from "@/hooks/use-auth-session";
 import { safeReturnTo } from "@/lib/permissions";
@@ -50,8 +51,10 @@ function url(path: string) { window.history.replaceState({}, "", path); navigati
 
 describe("Phase 8 team and pending review", () => {
   it.each(["MANAGER", "ADMINISTRATOR"] as const)("enables manager navigation and live counts for %s", async role => {
-    defaults(); url("/dashboard"); mount(<AppShell><ManagerDashboardPanel/></AppShell>, { ...manager, role });
-    expect(await within(await screen.findByRole("region", { name: "Team workspace" })).findByText("7")).toBeVisible(); expect(screen.getByText("1 current direct reports")).toBeVisible();
+    defaults(); url("/dashboard"); mount(<AppShell>{role === "MANAGER"
+      ? <ManagerDashboardPanel year={2026} summary={{ team_size: 1, pending_approval_count: 7, approved_application_count: 2, on_leave_today_count: 0, upcoming_team_leave: [] }}/>
+      : <AdminDashboardPanel year={2026} summary={{ total_employees: 7, active_employees: 1, pending_application_count: 2, approved_application_count: 0, rejected_application_count: 0 }}/>}</AppShell>, { ...manager, role });
+    expect(await within(await screen.findByRole("region", { name: role === "MANAGER" ? "Team workspace" : "Organization workspace" })).findByText("7")).toBeVisible();
     const nav = screen.getAllByRole("navigation", { name: "Main navigation" })[0];
     expect(within(nav).getByRole("link", { name: "My Team" })).toHaveAttribute("href", "/team");
     expect(within(nav).getByRole("link", { name: "Pending Approvals" })).toHaveAttribute("href", "/approvals");
