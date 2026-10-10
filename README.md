@@ -446,5 +446,25 @@ Phase 14 local gates pass: 810 backend tests, 368 frontend tests, 11 Chromium sc
 typecheck, lint, formatting, explicit Turbopack production build and Alembic checks.
 Transaction/concurrency tests verify rollback and stored application days. See
 `docs/PHASE_14_REPORT.md` for the exact scope, commands, results and next action.
-Pre-commit review passed with no blocking findings. Commit, push and hosted GitHub CI
-verification are authorized; the resulting run records hosted verification.
+Commit `ff069e4` was reviewed and pushed. [GitHub CI run 38056205862](https://github.com/smbasha2024/aip-lms/actions/runs/38056205862)
+passed every gate, including the Turbopack build.
+
+## Phase 15 — team leave calendar
+
+Managers and administrators can open **Team Calendar** (`/team/calendar`). Managers
+see current direct reports; administrators see the organization. Choose a month/year,
+search for an employee, filter by leave type or turn off **Include pending**. Desktop
+dates show up to three employee chips and **+N more** for full day details; mobile
+uses an agenda grouped by date. Chips open the existing application detail screen.
+Holiday/weekend markers and Approved/Pending labels supplement colour styling.
+
+The calendar reads all pages for the selected month using the documented inclusive
+overlap filters. Date expansion includes the application's requested range and does
+not recalculate its stored leave days. Existing approval/cancellation/holiday changes
+invalidate the relevant queries; **Refresh calendar** also reloads them.
+
+Phase 15 local testing passed: 826 backend tests, 412 frontend tests and 11 Chromium
+scenarios, including the calendar at 360/768/1024/1440 pixels. Typecheck, lint and the
+Turbopack build pass. See `docs/PHASE_15_REPORT.md` for the manifest and results.
+Local review passed, including backend Ruff checks. Hosted CI will be verified after
+commit/push. Phase 16 is unstarted.

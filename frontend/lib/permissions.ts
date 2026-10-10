@@ -17,7 +17,7 @@ export function safeReturnTo(value: string | null, role: Role): string {
     if (decoded.startsWith("//") || decoded.includes(String.fromCharCode(92))) return "/dashboard";
     const url = new URL(value, "https://local.invalid");
     // Only implemented, protected screens can be a login destination in this slice.
-    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile", "/leave/balance", "/holidays", "/leave/apply", "/leave/history", "/approvals", "/team", "/notifications", "/admin/employees", "/admin/employees/new", "/admin/leave-types", "/admin/leave-balances", "/admin/holidays"].includes(url.pathname) && !/^\/leave\/applications\/[0-9a-f-]{36}$/i.test(url.pathname)
+    if (url.origin !== "https://local.invalid" || !["/dashboard", "/profile", "/leave/balance", "/holidays", "/leave/apply", "/leave/history", "/approvals", "/team", "/team/calendar", "/notifications", "/admin/employees", "/admin/employees/new", "/admin/leave-types", "/admin/leave-balances", "/admin/holidays"].includes(url.pathname) && !/^\/leave\/applications\/[0-9a-f-]{36}$/i.test(url.pathname)
         && !/^\/admin\/employees\/[0-9a-f-]{36}(?:\/edit)?$/i.test(url.pathname)
         && !/^\/team\/[0-9a-f-]{36}$/i.test(url.pathname)
         || !canAccess(url.pathname, role)) return "/dashboard";
@@ -34,7 +34,7 @@ export const navigation = [
   { label: "Holidays", href: "/holidays", ready: true },
   { label: "Pending Approvals", href: "/approvals", ready: true },
   { label: "My Team", href: "/team", ready: true },
-  { label: "Team Calendar", href: "/team/calendar" },
+  { label: "Team Calendar", href: "/team/calendar", ready: true },
   { label: "Reports", href: "/reports" },
   { label: "Employees", href: "/admin/employees", ready: true },
   { label: "Leave Types", href: "/admin/leave-types", ready: true },

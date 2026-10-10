@@ -1875,9 +1875,9 @@ formatting, explicit Turbopack production build and Alembic checks pass. Separat
 administrator concurrency, rollback and stored-day preservation are verified. See
 `PHASE_14_REPORT.md` for evidence and the exact manifest. The local password
 configuration was updated at the user's request while preserving existing account
-hashes, seed password policy and database volumes. Pre-commit review passed with no
-blocking findings; commit, push and hosted CI verification are authorized. The GitHub
-run for the resulting commit records hosted verification. Phase 15 remains unstarted.
+hashes, seed password policy and database volumes. Commit `ff069e4` was reviewed and
+pushed; GitHub CI run 38056205862 passed every gate, including the Turbopack build.
+Phase 15 is now authorized.
 
 ---
 
@@ -1916,6 +1916,23 @@ Mobile:
 - filters;
 - approved/pending distinction;
 - mobile agenda.
+
+## Implementation status (10 October 2026)
+
+Phase 15 implements `/team/calendar`: manager current-report/administrator organization
+scope, all displayed-month pages for Approved and optional Pending leave, active
+holidays, employee/type filters, URL month/year navigation, desktop three-chip cells
+and full day details, and a mobile agenda. Existing APIs already provide inclusive
+month-overlap filtering and scoped authorization, so no backend/schema change is needed.
+
+Phase 15 local test gate passed: 826 backend tests, 412 frontend tests and 11 Chromium
+scenarios, including new calendar coverage and 360/768/1024/1440 responsive checks.
+Typecheck, lint, explicit Turbopack production build, migration drift check and production
+dependency audit pass. Disposable schemas and temporary test servers were cleaned up.
+See `PHASE_15_REPORT.md` for exact files, commands, results and corrected test failures.
+Review passed after fixing Ruff formatting in the new backend test file; its 16 tests
+passed again. Commit/push and hosted CI remain the next gate.
+Phase 16 remains unstarted.
 
 ---
 

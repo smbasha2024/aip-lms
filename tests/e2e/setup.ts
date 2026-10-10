@@ -23,7 +23,7 @@ from alembic.config import Config
 from database.seed import SeedPasswords, seed_records
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-from app.models import Employee, LeaveType, LeaveBalance, LeaveApplication, Notification
+from app.models import Employee, LeaveType, LeaveBalance, LeaveApplication, Notification, Holiday
 from datetime import UTC, date, datetime, timedelta
 from zoneinfo import ZoneInfo
 with engine.connect() as connection:
@@ -84,6 +84,26 @@ with engine.connect() as connection:
             leave_type_id=leave_type.leave_type_id, leave_year=current_year,
             from_date=date(current_year, 11, 3), to_date=date(current_year, 11, 3), number_of_days=1,
             reason='Phase 8 read fixture second request'))
+        # Phase 15 calendar fixtures use a separate future month and read-only subjects.
+        calendar_year = current_year + 3
+        friday = date(calendar_year, 8, 1)
+        while friday.weekday() != 4:
+            friday += timedelta(days=1)
+        for index in range(1, 6):
+            subject = Employee(employee_code=f'E2ECAL{index}', name=f'Calendar Report {index}',
+                email=f'calendar{index}@example.invalid', manager_id=manager.employee_id,
+                department_id=employee.department_id, joining_date=date(current_year, 1, 1))
+            session.add(subject); session.flush()
+            approved = index < 5
+            session.add(LeaveBalance(employee_id=subject.employee_id, leave_type_id=leave_type.leave_type_id,
+                leave_year=calendar_year, allocated=20, used=2 if approved else 0, pending=0 if approved else 2))
+            session.add(LeaveApplication(employee_id=subject.employee_id, manager_id=manager.employee_id,
+                leave_type_id=leave_type.leave_type_id, leave_year=calendar_year,
+                from_date=friday, to_date=friday+timedelta(days=3), number_of_days=2,
+                reason='Phase 15 calendar fixture', status='APPROVED' if approved else 'PENDING',
+                **(dict(approved_by=manager.employee_id, approved_at=datetime.now(UTC)) if approved else {})))
+        session.add(Holiday(holiday_date=friday+timedelta(days=1), year=calendar_year,
+            name='Calendar Holiday', description='Plain <script>holiday</script>', is_optional=False, status='ACTIVE'))
         session.flush()
         own_request = session.scalar(select(LeaveApplication).where(LeaveApplication.employee_id == employee.employee_id,
             LeaveApplication.reason == 'Phase 8 read fixture second request'))

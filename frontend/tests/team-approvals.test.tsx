@@ -55,7 +55,7 @@ describe("Phase 8 team and pending review", () => {
     const nav = screen.getAllByRole("navigation", { name: "Main navigation" })[0];
     expect(within(nav).getByRole("link", { name: "My Team" })).toHaveAttribute("href", "/team");
     expect(within(nav).getByRole("link", { name: "Pending Approvals" })).toHaveAttribute("href", "/approvals");
-    expect(within(nav).getByText("Team Calendar")).toHaveAttribute("aria-disabled", "true");
+    expect(within(nav).getByRole("link", { name: "Team Calendar" })).toHaveAttribute("href", "/team/calendar");
   });
   it.each(["/team", "/approvals", `/team/${employeeId}`])("denies employee route %s before rendering protected data", async path => {
     defaults(); url(path); mount(<TeamScreen/>, { ...manager, role: "EMPLOYEE" });
@@ -194,7 +194,7 @@ describe("Phase 8 team and pending review", () => {
   it.each(["/team", `/team/${employeeId}`, "/approvals?status=ALL"])("restores implemented manager destinations %s safely", path => {
     expect(safeReturnTo(path, "MANAGER")).toBe(path); expect(safeReturnTo(path, "ADMINISTRATOR")).toBe(path); expect(safeReturnTo(path, "EMPLOYEE")).toBe("/dashboard");
   });
-  it("rejects future calendar login destinations", () => { expect(safeReturnTo("/team/calendar", "MANAGER")).toBe("/dashboard"); });
+  it("restores implemented calendar login destinations", () => { expect(safeReturnTo("/team/calendar", "MANAGER")).toBe("/team/calendar"); });
   it("sends only pending wire filters, bearer token and abort signal", async () => {
     setAuthTransport("test-token", null); const controller = new AbortController(); let params = new URLSearchParams();
     server.use(http.get(`${origin}/leave/approvals/pending`, ({ request }) => { expect(request.headers.get("Authorization")).toBe("Bearer test-token"); params = new URL(request.url).searchParams; return HttpResponse.json(page([])); }));
