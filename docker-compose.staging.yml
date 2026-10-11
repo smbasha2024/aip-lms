@@ -1,0 +1,117 @@
+# Dedicated local staging project. Invoke with --env-file .env.staging.
+name: aip-lms-staging
+
+x-api: &api
+  image: aip-lms-staging-api:local
+  build:
+    context: .
+    dockerfile: deploy/backend.Dockerfile
+  environment: &api-env
+    APP_ENV: production
+    DATABASE_URL: ${STAGING_DATABASE_URL:?Run deploy/prepare_staging.py first}
+    ORG_TIMEZONE: Asia/Kolkata
+    ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+    CORS_ALLOWED_ORIGINS: '["https://localhost:8443"]'
+  networks: [api]
+  read_only: true
+  tmpfs: [/tmp]
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+services:
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: aip_lms_staging
+      POSTGRES_USER: aip_lms_staging
+      POSTGRES_PASSWORD: ${STAGING_POSTGRES_PASSWORD:?Run deploy/prepare_staging.py first}
+    volumes:
+      - staging_data:/var/lib/postgresql/data
+    networks: [api]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  migrate:
+    <<: *api
+    command: ["sh", "-ec", "alembic -c database/alembic.ini upgrade head && alembic -c database/alembic.ini check"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: "no"
+
+  backend:
+    <<: *api
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  fixtures:
+    <<: *api
+    profiles: [fixtures]
+    environment:
+      <<: *api-env
+      # Synthetic local fixtures only. Production API stays APP_ENV=production.
+      APP_ENV: development
+      SEED_EMPLOYEE_PASSWORD: ${STAGING_SEED_EMPLOYEE_PASSWORD:?Run deploy/prepare_staging.py first}
+      SEED_MANAGER_PASSWORD: ${STAGING_SEED_MANAGER_PASSWORD:?Run deploy/prepare_staging.py first}
+      SEED_ADMINISTRATOR_PASSWORD: ${STAGING_SEED_ADMINISTRATOR_PASSWORD:?Run deploy/prepare_staging.py first}
+    command: [python, database/seed.py]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    restart: "no"
+
+  frontend:
+    image: aip-lms-staging-frontend:local
+    build:
+      context: .
+      dockerfile: deploy/frontend.Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: https://localhost:8443
+    environment:
+      NEXT_PUBLIC_API_URL: https://localhost:8443
+      NEXT_PUBLIC_APP_NAME: Employee Leave Management
+    networks: [web]
+    read_only: true
+    tmpfs: [/tmp, /app/.next/cache]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/login').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  proxy:
+    image: haproxy:3.2-alpine
+    # Root reads the mode-0600 local TLS key; capabilities are dropped below.
+    user: "0:0"
+    ports: ["127.0.0.1:8443:8443"]
+    volumes:
+      - ./deploy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./deploy/login_limit.lua:/usr/local/etc/haproxy/login_limit.lua:ro
+      - ./.cache/staging/tls/localhost.pem:/usr/local/etc/haproxy/localhost.pem:ro
+    networks: [web, api]
+    depends_on:
+      backend: {condition: service_healthy}
+      frontend: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    restart: unless-stopped
+
+networks:
+  web:
+  api:
+    internal: true
+volumes:
+  staging_data:

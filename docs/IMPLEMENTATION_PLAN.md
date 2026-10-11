@@ -2200,6 +2200,20 @@ and release checks.
 
 # 26. Phase 20 — Documentation and Release Readiness
 
+## Subsequent approved local staging slice
+
+Following Phase 20, the user selected local Docker staging first. Deployment files,
+independent private configuration initialization, HTTPS proxy and a Docker-only
+Next.js standalone build mode are implemented and locally validated: 11 integration
+checks, 5 initializer tests, 9 browser checks across three engines, 9 axe scans with
+zero violations and 27 screenshots. Frontend regression passed 513 tests; backend
+non-database regression passed 76 with 888 integration tests deliberately skipped.
+See [LOCAL_STAGING.md](LOCAL_STAGING.md) and
+[STAGING_VALIDATION_REPORT.md](STAGING_VALIDATION_REPORT.md). No new product phase, API
+or schema is introduced. Phase 20 commit `fca49ac` passed all five jobs in
+[CI run 38153057238](https://github.com/smbasha2024/aip-lms/actions/runs/38153057238);
+that evidence does not validate these subsequent deployment changes.
+
 ## Implementation status (11 October 2026)
 
 Documentation implemented: current README setup guide, safe root/frontend environment

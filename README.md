@@ -20,6 +20,7 @@ and operational checks in [Release readiness](docs/RELEASE_READINESS.md).
 | [Testing runbook](docs/TESTING.md) | Reproducible test commands |
 | [Database runbook](database/README.md) | Migrations and development seeds |
 | [Release readiness](docs/RELEASE_READINESS.md) | Deployment, recovery and sign-off |
+| [Local Docker staging](docs/LOCAL_STAGING.md) | Isolated local HTTPS deployment and validation commands |
 | [Agent instructions](AGENTS.md) | Repository coding rules |
 
 Historical implementation and validation evidence remains in `docs/PHASE_*_REPORT.md`.

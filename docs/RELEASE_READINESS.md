@@ -26,6 +26,15 @@ Prior hosted evidence: [CI run 38148174622](https://github.com/smbasha2024/aip-l
 and [Phase 19 report](PHASE_19_REPORT.md). CI artifacts expire after seven days; archive
 required evidence securely before expiry. Do not publish employee data or credentials.
 
+Phase 20 commit `fca49ac` subsequently passed all five jobs in
+[CI run 38153057238](https://github.com/smbasha2024/aip-lms/actions/runs/38153057238).
+The separately approved [local Docker staging setup](LOCAL_STAGING.md) is now
+locally validated: see [staging report](STAGING_VALIDATION_REPORT.md). Local results
+cover build, HTTPS/readiness, role workflows, transactions, proxy concurrency,
+restore/persistence and three browser engines. Production topology, credentials,
+provisioning, recovery policy and manual/load gates remain outstanding.
+This CI result validates Phase 20, not the subsequent staging changes, which require their own exact-commit CI result.
+
 ## Production decisions and classification
 
 These gates apply before deployment. Assign actual owners and attach evidence;
@@ -52,8 +61,9 @@ committed secrets or critical contract mismatches block release under [TEST_PLAN
 
 ## Deployment order
 
-1. Select the platform. Repository Compose supplies local PostgreSQL; it does not supply
-   production app images, HTTPS, a proxy or automated deployment.
+1. Select the platform. Default Compose supplies local PostgreSQL. The separate
+   local staging Compose supplies app images and a loopback HTTPS proxy; it is
+   not a production rollout or approved production infrastructure.
 2. Provision PostgreSQL 17 privately with separate production credentials/databases.
    Review migration-role and runtime-role privileges.
 3. Install pinned runtime backend requirements and frontend lockfile dependencies using

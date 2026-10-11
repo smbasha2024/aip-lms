@@ -2081,6 +2081,19 @@ Managed PostgreSQL
 
 Deployment-specific decisions should not alter the application layering defined here.
 
+## Approved local Docker staging
+
+The separate `docker-compose.staging.yml` project supplies a loopback HTTPS HAProxy
+endpoint, a Turbopack-built Next.js standalone server, two FastAPI workers and
+private PostgreSQL. A one-shot migration precedes API startup. One proxy owns a
+rolling login window across API workers and replaces supplied forwarding headers.
+Credentials, certificate and volume are independent of development/test. API uses
+production settings; optional synthetic fixtures use an explicit isolated job.
+No schema, REST contract or business-layer change is introduced. This local
+single-proxy design passed local build, HTTPS/readiness, transaction, concurrency,
+restore/persistence and three-engine browser checks; see
+[LOCAL_STAGING.md](LOCAL_STAGING.md). Production release gates remain separate.
+
 ---
 
 # 50. Environment Separation
@@ -2095,7 +2108,7 @@ Test
 Production
 ```
 
-Potential future environment:
+Additional local environment:
 
 ```text
 Staging
