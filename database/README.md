@@ -33,7 +33,7 @@ are not usable credentials. With APP_ENV=development, run from the repository ro
 PYTHONPATH=backend backend/.venv/bin/python -m database.seed
 ```
 
-The command refuses APP_ENV=production before opening a database connection. It
+The command requires APP_ENV=development and refuses test/production before opening a database connection. It
 uses one transaction and the shared hierarchy advisory lock. Existing business keys
 are preserved, including modified passwords, roles, statuses and allocations. Missing
 accounts require the corresponding local password. Passwords use Argon2id defaults
@@ -47,6 +47,23 @@ Codes are EARNED, PRIVILEGE, SICK, PATERNITY, MATERNITY and LOP. Sample allocati
 are respectively 20, 10, 12, 10, 90 and 30 days per employee, with zero counters.
 These are illustrative development values; production policy is not inferred from them.
 The current year is evaluated in ORG_TIMEZONE. No applications, sessions or
-notifications are seeded. A repeat run inserts nothing for existing keys.
+notifications are seeded. A repeat run inserts nothing for existing keys. A new calendar
+year can create missing current-year balances; existing balances remain unchanged.
 
-See docs/PHASE_2_REPORT.md for verification and local environment details.
+## Operations and release verification
+
+There are ten mapped application tables; a fresh migration also creates `alembic_version`
+(eleven physical tables in total). `/health/ready` checks database connectivity only,
+not migration head or schema compatibility. Serialize migration execution; do not rely
+on worker startup to apply it.
+
+Development seed data is not production bootstrap. Administrator APIs require an existing
+administrator, so approve a separate secure first-administrator/master-data provisioning
+procedure before deployment. Seed variables do not reset existing account passwords.
+
+Use [Testing](../docs/TESTING.md) for isolated schema gates and
+[Release readiness](../docs/RELEASE_READINESS.md) for controlled migration, backup,
+restore, rollback and production sign-off. Do not downgrade `0001` or delete volumes
+to recover a live business database. Historical foundation evidence is in
+[Phase 2 report](../docs/PHASE_2_REPORT.md); final regression evidence is in
+[Phase 19 report](../docs/PHASE_19_REPORT.md).

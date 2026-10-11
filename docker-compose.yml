@@ -1,4 +1,4 @@
-# PostgreSQL infrastructure only. Application scaffolding remains Phase 1 work.
+# Local PostgreSQL infrastructure only; application processes run separately.
 # Set passwords in root .env; no usable credentials are committed here.
 services:
   postgres:

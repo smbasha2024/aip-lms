@@ -1,558 +1,233 @@
 # aip-lms — Employee Leave Management System
 
-Phases 1–7 are implemented and locally verified: infrastructure, database foundation,
-authentication, employee reads, holiday calendar, advisory calculation and transactional
-Apply Leave, history and cancellation. Phase 2 supplies ten mapped
-tables, Alembic revision `0001`, database tests and idempotent development seeds.
-Phase 3 adds email/employee-code login, current user and server sign-out. Administrator writes and leave status transitions belong to later phases. See `docs/PHASE_1_REPORT.md`,
-`docs/PHASE_2_REPORT.md`, `docs/PHASE_3_REPORT.md`, `docs/PHASE_4_REPORT.md` and
-`docs/PHASE_5_REPORT.md` and `docs/PHASE_6_REPORT.md` for evidence.
+A role-based leave management application using Next.js, FastAPI and PostgreSQL.
+Phases 1–19 implement employee leave workflows, manager approvals, administrator
+maintenance, reports, dashboards, notifications and an audit viewer. Phase 20 supplies
+setup, testing and release instructions. Production deployment requires the approvals
+and operational checks in [Release readiness](docs/RELEASE_READINESS.md).
 
-## Project documents
+## Documentation
 
-Read AGENTS.md and the seven canonical specifications under docs/. Use their
-subject-specific ownership; UI_SPEC.md is the canonical UI/route map. UI_SPEC_V2.md and
-AGENTS_V01.md are archived references. docs/READINESS_CORRECTIONS.md tracks the audit.
+| Document | Owns |
+| --- | --- |
+| [Requirements](docs/REQUIREMENTS.md) | Product behavior |
+| [Architecture](docs/ARCHITECTURE.md) | Application structure |
+| [Database specification](docs/DATABASE.md) | Persistent data contracts |
+| [API specification](docs/API_SPEC.md) | REST wire contracts |
+| [UI specification](docs/UI_SPEC.md) | Screens and interactions |
+| [Implementation plan](docs/IMPLEMENTATION_PLAN.md) | Phase scope and status |
+| [Test plan](docs/TEST_PLAN.md) | Coverage and release gates |
+| [Testing runbook](docs/TESTING.md) | Reproducible test commands |
+| [Database runbook](database/README.md) | Migrations and development seeds |
+| [Release readiness](docs/RELEASE_READINESS.md) | Deployment, recovery and sign-off |
+| [Agent instructions](AGENTS.md) | Repository coding rules |
 
-## Prerequisites and dependencies
+Historical implementation and validation evidence remains in `docs/PHASE_*_REPORT.md`.
 
-Development runtimes are pinned in `.python-version` (Python 3.13.3) and `.nvmrc`
-(Node 24.5.0). PostgreSQL 17 is the target database major. Backend direct dependencies
-live in requirements.in/requirements-dev.in, with resolved exact pins in requirements.txt
-and requirements-dev.txt. Frontend exact direct pins and transitive lock are package.json
-and package-lock.json. No global npm/Python packages are required.
+## Prerequisites
 
-Next.js 16 uses the ESLint CLI separately from build. ESLint 9 is pinned for compatibility
-with Next's plugin peer ranges. jsdom 26 supports the selected Node runtime. Vitest 5/MSW 3
-use their current APIs. Dependency upgrades must pass the full foundation gate.
+- Python **3.13.3** (`.python-version`), with virtual environment support.
+- Node.js **24.5.0** (`.nvmrc`) and npm; the frontend supports Node 24.
+- PostgreSQL **17**, directly installed or supplied by Docker Desktop/Compose.
+- Git and enough free disk space for database volumes, npm, builds and browser artifacts.
+- Network access during installation and builds, including the font used by `next/font`.
 
-## Local configuration
+Backend dependencies are pinned in `backend/requirements*.txt`; frontend dependencies
+are locked in `frontend/package-lock.json`. Use `npm ci` rather than changing the lock.
+Development and production builds use **Turbopack** (`next dev/build --turbopack`).
 
-Use .env.example as a reference and set values in repository-root .env manually.
-Never overwrite an existing .env. Set distinct POSTGRES_PASSWORD and TEST_POSTGRES_PASSWORD,
-then configure DATABASE_URL and TEST_DATABASE_URL with postgresql+psycopg URLs for the
-respective services. URL-encode password characters. Backend loads root .env explicitly;
-backend/.env.example is a reference, not another runtime configuration source.
+All following commands start at the repository root unless stated otherwise.
 
-CORS_ALLOWED_ORIGINS is a JSON array, for example `["http://localhost:3000"]`.
-APP_ENV accepts development/test/production. ORG_TIMEZONE defaults to Asia/Kolkata;
-ACCESS_TOKEN_EXPIRE_MINUTES defaults to 60 (valid range 1..1440). Production requires
-explicit HTTPS CORS origins. Invalid configuration fails with a safe message.
+## Environment configuration
 
-In test mode, TEST_DATABASE_URL is required, its database name must contain `test`,
-and its database name must differ from DATABASE_URL even when host aliases differ.
-The backend selects TEST_DATABASE_URL in that mode. Test data must be disposable.
-
-Create frontend/.env.local from frontend/.env.example. NEXT_PUBLIC_API_URL is backend
-origin only, with no /api/v1 suffix; the API client adds the prefix once for domain APIs.
-Infrastructure /health paths have no prefix. Never put secrets in NEXT_PUBLIC_* settings.
-Frontend env values are compiled into the production build; rebuild after changing them.
-
-## PostgreSQL
-
-After setting both local passwords in root .env:
+On a **new checkout only**, create private configuration:
 
 ```sh
-docker compose up -d postgres
-docker compose --profile test up -d postgres_test
+cp .env.example .env
+cp frontend/.env.example frontend/.env.local
 ```
 
-Services are loopback-bound on ports 5432 (development) and 5433 (test) by default,
-with separate volumes. Compose requires a working Docker runtime. Initialization
-settings apply only to fresh volumes; do not delete populated volumes to fix credentials.
-Do not use development/test credentials or volumes in production.
+If either file already exists, edit the necessary values in place; preserve its contents.
+Both files are ignored by Git. Never commit passwords, bearer tokens or database URLs
+containing credentials. `NEXT_PUBLIC_*` values are visible in the browser.
 
-## Install and run
+| Variable | Purpose |
+| --- | --- |
+| `APP_ENV` | `development`, `test`, or `production`; local setup uses `development` |
+| `DATABASE_URL` | Development database; production uses a separately provisioned database |
+| `TEST_DATABASE_URL` | Separate disposable database whose name contains `test` |
+| `ORG_TIMEZONE` | IANA business timezone; default `Asia/Kolkata` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Server session lifetime, 1–1440; default 60 |
+| `CORS_ALLOWED_ORIGINS` | JSON list of frontend origins, without paths or trailing slashes |
+| `POSTGRES_*` / `TEST_POSTGRES_*` | Compose database names, users, passwords and host ports |
+| `SEED_*_PASSWORD` | Three locally supplied development account passwords, 12–128 characters |
+| `NEXT_PUBLIC_API_URL` | API origin only, default `http://localhost:8000`; no `/api/v1` suffix |
+| `NEXT_PUBLIC_APP_NAME` | Public application name |
 
-From the repository root:
+Backend settings explicitly load the root `.env`; process environment overrides it.
+Frontend configuration loads `frontend/.env.local`. Supply test runner variables separately
+as described in [Testing](docs/TESTING.md); Playwright does not load `.env.local` for them.
+
+Set the two Compose passwords and both connection URLs before starting. URL format:
+
+```text
+postgresql+psycopg://USER:URL_ENCODED_PASSWORD@localhost:PORT/DATABASE_NAME
+```
+
+Use development and test names/ports matching the Compose values; defaults are
+`aip_lms_dev:5432` and `aip_lms_test:5433`. They must be different databases, even when
+using different ports. Quote passwords in dotenv when needed, especially values containing
+`#`; percent-encode reserved characters in the URL password component (for example,
+`#` becomes `%23`). The raw Compose password and encoded URL password represent the
+same value. Do not paste real credentials into documentation or terminal command arguments.
+
+## PostgreSQL setup
+
+For a new local installation with configured root `.env`:
 
 ```sh
-python3 -m venv backend/.venv
+docker compose --profile test up -d --wait postgres postgres_test
+docker compose --profile test ps
+```
+
+Compose exposes only loopback database ports and retains data in named volumes.
+If an installation already uses a named Compose project, continue using that project
+with `-p YOUR_EXISTING_PROJECT`; otherwise a new project creates different volumes and
+can conflict with occupied ports. Do not use `down -v` on databases you need to preserve.
+Changing the password in `.env` does not change a role password in an initialized volume;
+rotate that role through PostgreSQL administration and then update its connection URL.
+
+Alternatively, create separate development/test databases on PostgreSQL 17 and configure
+the URLs accordingly. Compose-specific variables are unnecessary for directly managed servers.
+
+## Install backend and frontend
+
+```sh
+python3.13 -m venv backend/.venv
 backend/.venv/bin/python -m pip install -r backend/requirements-dev.txt
-npm ci --prefix frontend
+npm --prefix frontend ci
 ```
 
-Start the backend in one terminal (from backend/):
+Production backend installation uses `backend/requirements.txt`; development requirements
+add testing and lint tools. No application process creates tables or runs migrations.
 
-```sh
-.venv/bin/uvicorn app.main:create_app --factory --reload --host 127.0.0.1 --port 8000
-```
+## Apply migrations
 
-Start the frontend in another terminal (from frontend/):
-
-```sh
-npm run dev
-```
-
-GET /health returns process liveness; GET /health/ready executes SELECT 1 and returns
-200 when connected or safe 503 DATABASE_UNAVAILABLE otherwise. Startup does not create
-schema or run migrations. Swagger/OpenAPI are enabled in development/test and disabled
-in production. A database connection is not required for liveness.
-
-## Authentication
-
-Open /login and use a linked employee email or employee code with the locally supplied
-seed password. No default passwords are available. POST /api/v1/auth/login returns an
-opaque bearer token and Identity; GET /api/v1/auth/me revalidates the session, account,
-employee and current role. POST /api/v1/auth/logout commits revocation of the presented
-session, including recognized expired/already-revoked tokens. Other sessions stay active.
-The three development passwords generated during Phase 2 are retained locally in the
-ignored .cache/phase2-seed.env; keep them private. Root .env and frontend/.env.local
-were not replaced. Configure the development connections/origins before starting locally.
-
-Tokens are generated with 32 random bytes and only SHA-256 digests are stored in the
-database. Passwords use Argon2id. Authentication responses are not cacheable. The client
-uses memory and sessionStorage, restores identity through /auth/me, and clears credentials
-and all query caches on expiry, status denial or sign-out. Logout failure is reported
-without claiming that server revocation succeeded. No cookie, JWT or refresh-token flow.
-
-Login has a controllable ten-attempt/IP/minute limiter in this single-process foundation.
-**Production requires the shared deployment proxy limit** of ten attempts/IP/minute across
-all workers, trusted proxy configuration, HTTPS and deployment verification. No production
-proxy platform has been selected or configured by this phase. The frontend applies a fresh
-nonce CSP through proxy.ts, permits only its configured API origin for connections, and
-uses dynamic document rendering. Inter is fetched at build time by next/font and served
-locally; builds require access to the font source. Tokens remain accessible to same-origin
-scripts, so deployment must preserve CSP and avoid unsafe third-party scripts.
-
-The protected shell provides role-aware navigation and an accessible mobile drawer.
-UI role guards supplement backend checks. Phase 4 expands /dashboard and /profile and
-enables /leave/balance with authenticated reads of real PostgreSQL data.
-
-## Employee profile, balances and dashboard
-
-Phase 4 implements GET /api/v1/employees/{employee_id}, GET /api/v1/employees/by-code/{employee_code},
-GET /api/v1/employees/{employee_id}/leave-balance, GET /api/v1/leave-types and GET /api/v1/dashboard.
-Employees read their own data, managers read self/current direct reports, administrators
-read organization data. Account metadata is returned only to administrators. A manager
-may also read the single type/year balance for a pending request assigned to them; this
-exception grants no profile access. Status and session validity are checked on every request.
-
-Balances include inactive historical types and use Decimal arithmetic on the server.
-Missing allocations return an empty list and are never created by reads. Default years
-and upcoming dates use ORG_TIMEZONE. /leave/balance supports URL year selection and
-responsive table/cards; available is displayed exactly as returned by the API. The
-dashboard provides personal totals, the last five own applications, all own pending
-requests for the selected year, upcoming active holidays and own unread count. Role
-summaries remain null until Phase 17. History and cancellation are locally verified in Phase 7. Notification
-screens and approval/rejection actions remain deferred. Apply Leave, History and recent
-application detail links are enabled.
-
-## Holidays and leave-day preview
-
-Phase 5 implements GET /api/v1/holidays (organization year, optional month and status),
-GET /api/v1/holidays/{holiday_id}, and POST /api/v1/leave/calculate-days. Holiday reads
-require authentication; non-administrators may read active holidays only. /holidays
-provides calendar/list views, URL year/month navigation, keyboard day navigation and
-responsive list cards. The common screen fetches the active selected year and filters
-months for display; administrator inactive/all reads remain available through the API.
-
-Calculation takes employee_id, leave_type_id, from_date and to_date. All roles calculate
-only for themselves with an active eligible type and a future/today, ordered, same-year
-range. Inclusive Monday–Friday days exclude ACTIVE mandatory weekday holidays; optional
-and inactive holidays do not reduce days. Weekend holidays are not deducted twice.
-A valid weekend-only preview returns zero. The advisory API makes no allocation, manager
-or overlap checks and does not reserve balances or create applications. The reusable
-LeaveSummaryPanel displays server counts and is consumed by Phase 6 Apply Leave.
-
-## Apply Leave
-
-Phase 6 adds POST /api/v1/leave/applications and GET /api/v1/leave/applications/{id}.
-/leave/apply loads active eligible types and balances for the selected From Date year,
-uses a debounced, cancellable server preview and displays estimated remaining balance.
-Submitting recalculates days, validates active employee/type/manager and serializes
-cross-type overlap/balance checks under PostgreSQL employee/account/session/balance locks.
-Application, pending reservation, audit and distinct owner/manager notifications commit
-atomically. Every role submits for self only; unpaid LOP still requires allocation.
-
-Successful submission opens a PENDING detail with authoritative days and manager snapshot.
-Managers may read own/current-report/snapshot-assigned details; administrators read all.
-Reason is plain text. Dirty forms require confirmation; ambiguous network/server failures
-are not automatically retried. Inspect recent Dashboard applications and contact an
-administrator if the outcome cannot be confirmed before an explicit retry. Full history,
-cancellation and approval arrive in subsequent phases. Cancel currently returns to Dashboard.
-
-## History and cancellation
-
-`/leave/history` provides year/status/type/leave-period filters synced to URL, pagination,
-responsive application rows/cards and detail links. History scope is enforced by the server;
-manager employee history uses current reports, while the general application list also
-supports snapshot visibility. History remains personal for every role in this screen.
-
-Owners can cancel only PENDING requests from History or Details, using an accessible native
-confirmation dialog with optional trimmed reason. The server revalidates session/account
-under employee/account/session locks, then locks the application and balance. Cancellation
-releases exactly the stored pending reservation, keeps used unchanged, persists actor/time/
-reason, and writes audit plus owner/snapshot-manager notifications in one transaction.
-Duplicate actions conflict without another release. Unknown mutation outcomes require a
-History refresh before explicit retry. Apply Leave's Cancel destination now returns to History.
-
-Phase 7 passed 313 backend, 121 frontend and 12 browser tests plus typecheck, lint, build
-and migration checks. See `docs/PHASE_7_REPORT.md` for evidence. Phase 7 commit
-`c6a3730` was reviewed and pushed, and hosted CI passed.
-
-## Check the foundation
-
-From the repository root:
-
-```sh
-backend/.venv/bin/ruff check --config backend/pyproject.toml backend database
-backend/.venv/bin/ruff format --config backend/pyproject.toml --check backend database
-```
-
-From backend/, configured for separate dev/test PostgreSQL:
-
-```sh
-.venv/bin/pytest
-.venv/bin/pytest --database --tb=short
-```
-
-The normal runner skips PostgreSQL integration explicitly. The required `--database`
-gate fails for missing/invalid configuration or unavailable database; do not count a
-skipped integration test as Phase 1 completion. Environment variables override dotenv.
-For the full gate use APP_ENV=test and the isolated test connection.
-
-From repository root, with APP_ENV=test and test configuration loaded:
-
-```sh
-backend/.venv/bin/alembic -c database/alembic.ini current
-backend/.venv/bin/alembic -c database/alembic.ini history
-```
-
-Phase 2 maps all ten tables in one registry. Apply the reviewed schema explicitly;
-application startup never creates it:
+With `APP_ENV=development` and the development URL configured:
 
 ```sh
 backend/.venv/bin/alembic -c database/alembic.ini upgrade head
 backend/.venv/bin/alembic -c database/alembic.ini check
+backend/.venv/bin/alembic -c database/alembic.ini current
 ```
 
-For development seeds, use APP_ENV=development and supply SEED_EMPLOYEE_PASSWORD,
-SEED_MANAGER_PASSWORD and SEED_ADMINISTRATOR_PASSWORD locally (12..128 characters).
-There are no default passwords. From the repository root:
+The current head is **`0001`**: ten application tables, plus Alembic's version table.
+See [Database instructions](database/README.md) before modifying an existing database.
+Migration rollback can delete business data; production recovery needs a verified backup.
+
+## Seed development data and sign in
+
+Set all three `SEED_*_PASSWORD` values locally, then run:
 
 ```sh
 PYTHONPATH=backend backend/.venv/bin/python -m database.seed
 ```
 
-Seeding refuses production and creates only missing business keys in one transaction.
-Existing names, roles, statuses, password hashes and balances remain intact. Samples
-include EMP001, MGR001, ADM001, six leave types, current-year allocations and one
-example holiday. These values demonstrate the schema and are not production policy.
-See database/README.md for details. PostgreSQL tests migrate generated schemas inside
-the isolated test database and remove only those schemas after each test.
+The command requires `APP_ENV=development`. It creates missing example records atomically
+and preserves existing passwords, roles, statuses and allocations. Updating seed variables
+does **not** reset existing accounts. There are no published default passwords.
 
-From frontend/:
+| Employee code | Role | Initial password setting |
+| --- | --- | --- |
+| `EMP001` | EMPLOYEE | `SEED_EMPLOYEE_PASSWORD` |
+| `MGR001` | MANAGER | `SEED_MANAGER_PASSWORD` |
+| `ADM001` | ADMINISTRATOR | `SEED_ADMINISTRATOR_PASSWORD` |
 
-```sh
-npm run typecheck
-npm run lint
-npm test
-npm run build
-npx playwright install chromium
-```
+The examples include two departments, the EMP001 → MGR001 → ADM001 reporting chain,
+six leave types, current-year balances and a January 1 holiday. These are development
+samples, not approved production policy. Production administrator bootstrap is an explicit
+pre-deployment decision; do not run development seeds against production.
 
-For browser smoke checks, provide DATABASE_URL, separate TEST_DATABASE_URL,
-CORS_ALLOWED_ORIGINS='["http://127.0.0.1:13000"]', E2E_API_URL=http://127.0.0.1:18000,
-E2E_BASE_URL=http://127.0.0.1:13000 and NEXT_PUBLIC_API_URL=http://127.0.0.1:18000
-in the runner environment. Rebuild with that public API origin, then run:
+## Run the backend
+
+In one terminal, from the repository root:
 
 ```sh
-npm run test:e2e
+backend/.venv/bin/uvicorn app.main:create_app --factory --app-dir backend --host 127.0.0.1 --port 8000
 ```
 
-The runner owns backend/frontend processes on ports 18000/13000, refuses existing
-servers and forces APP_ENV=test for the backend. Smoke specs live in tests/e2e;
-backend tests live in backend/tests and frontend component/service tests in frontend/tests.
-CI (`.github/workflows/ci.yml`) executes the same gates with disposable PostgreSQL 17,
-including Alembic upgrade/drift checks and Chromium. Browser runs create a generated
-phase3_e2e_* schema inside the isolated test database, migrate it and seed random test
-credentials, then drop only that schema. Traces/screenshots are stored under ignored .cache/. CI itself must execute before merge.
+- [Liveness](http://localhost:8000/health): application responds without a database query.
+- [Readiness](http://localhost:8000/health/ready): database connectivity; does not verify migration head.
+- API base: `http://localhost:8000/api/v1`.
 
-## Optional Docker browser for restricted hosts
+## Run the frontend
 
-When a host sandbox prevents native Chromium launch, use the matching official
-Playwright server (the existing runner still owns frontend/backend startup):
+In another terminal:
 
 ```sh
-docker run -d --rm --init --shm-size=1g --name aip-lms-phase1-browser -p 127.0.0.1:33000:33000 mcr.microsoft.com/playwright:v1.63.0-noble /bin/sh -c 'npx -y playwright@1.63.0 run-server --port 33000 --host 0.0.0.0'
+npm --prefix frontend run dev
 ```
 
-With the same isolated database and E2E settings described above, run from frontend/:
+Open [the application](http://localhost:3000). Use an account code and its locally configured
+password. Manager/administrator screens require the corresponding database role.
+
+For a local production build and server:
 
 ```sh
-E2E_BROWSER_WS_ENDPOINT=ws://127.0.0.1:33000/ npm run test:e2e
-docker stop aip-lms-phase1-browser
+npm --prefix frontend run build
+npm --prefix frontend run start
 ```
 
-The browser version must match @playwright/test. Only loopback networking is exposed
-through the client. This option does not change application runtime or CI defaults.
+`NEXT_PUBLIC_API_URL` is compiled into the browser bundle. Rebuild after changing it, and
+start with the same origin so the browser API address agrees with the server's CSP.
+This local build does not constitute production deployment approval.
 
-## Next phases
+## API documentation and authentication
 
-Hosted CI passed for Phase 2 on 488f73c, Phase 3 on 8ba3ad8 and Phase 4 on f8ae746.
-Phase 5 hosted CI passed on 5f7a238. Phase 6 local evidence is in PHASE_6_REPORT.md;
-commit 1163325 passed hosted CI. Phase 7 commit c6a3730 passed hosted CI.
-Phase 7 adds My Leave History and cancellation. Phase 8 implements manager team/pending
-reads and read-only review; its local test gate passed. See docs/PHASE_8_REPORT.md. Subsequent
-phases add the approved leave, manager and administrator slices. Production deployment
-platform, image digest pinning, HTTPS, proxy login limiting and release hardening remain
-later work. Phase 8 commits 89158a8 and 2bd3546 passed hosted CI. Phase 9
-approval/rejection commit 656e3bf passed review and hosted CI run 37877957956.
+In development/test, explore [Swagger](http://localhost:8000/docs),
+[ReDoc](http://localhost:8000/redoc), or [OpenAPI JSON](http://localhost:8000/openapi.json).
+These routes are disabled with `APP_ENV=production`.
 
-## Phase 8 — manager team and pending review
+Login is `POST /api/v1/auth/login`; subsequent protected requests use
+`Authorization: Bearer <opaque token>`. Logout revokes the session server-side.
+Tokens are stored as hashes in PostgreSQL; the frontend keeps the bearer token in memory
+and sessionStorage. There are no JWT signing secrets, refresh tokens or auth cookies in v1.
+Never publish an authenticated request, token, or password in logs/screenshots.
 
-- `GET /api/v1/managers/me/direct-reports`: paginated current reports, excluding self,
-  with literal case-insensitive name/email/code search, status and department filters.
-- `GET /api/v1/leave/approvals/pending`: pending snapshot-assigned manager queue or
-  administrator organization queue, excluding self, oldest first with a UUID tie.
-- `/dashboard` adds live queue/report totals for managers and administrators.
-- `/team` provides server search, status and pagination; `/team/[employeeId]` uses
-  existing authorized profile/balance/history APIs. Former snapshot assignment does
-  not grant full employee access.
-- `/approvals` provides status tabs, leave type, employee and inclusive overlap dates,
-  URL filters, pagination, responsive cards/tables, loading/empty/error recovery and
-  View links. Manager nonpending tabs retain the manager snapshot filter.
-- Approve/reject is added by Phase 9 below. Organization employee and department pickers await
-  Phase 11 lookup integration below.
+[API_SPEC.md](docs/API_SPEC.md) defines exact bodies, errors, role scopes and filtering;
+its operational section explains use of runtime documentation. Available functionality:
 
-Phase 8 passed 366 backend, 161 frontend and 12 browser tests, plus TypeScript, lint,
-production build and Alembic schema checks. Commits 89158a8 and 2bd3546 were pushed;
-hosted run 37872982264 passed all gates.
-No schema, dependencies, environment files or production data changes are required.
+- Employees: profile, balances, holidays, application preview/submission/history/cancellation,
+  notifications, scoped reports and dashboard.
+- Managers: direct reports, pending approvals, approve/reject, team calendar and team dashboard.
+- Administrators: employees/accounts, leave types, balances, holidays, reports and audit reads.
 
-## Phase 9 — approval and rejection
+Authorization is enforced by the backend. Reports do not export files; audit records have
+no automatic retention deletion. Department writes, password reset and production bootstrap
+are not supplied as public APIs by this release.
 
-- `POST /api/v1/leave/applications/{application_id}/approve`: optional comment;
-  transfers the stored pending reservation to used leave exactly once.
-- `POST /api/v1/leave/applications/{application_id}/reject`: required trimmed reason;
-  releases pending leave without changing used leave, including inactive applicants.
-- Assigned snapshot managers and administrators may process pending requests,
-  excluding their own. Account/session authorization is revalidated under locks.
-- Status, balance, action metadata, audit and owner notification commit together.
-- `/approvals` and application details provide confirmation dialogs, detail balance
-  context and refreshed lists/counts. Ambiguous failures require a reload before retry.
-- An inactive applicant's approval error leaves the manager signed in.
+## Run tests
 
-Phase 9 passes 463 backend, 201 frontend and 11 Chromium browser scenarios, plus
-lint/typecheck/build and Alembic drift/head checks. Cancellation locks now include
-the manager notification recipient, fixing the real approval/cancellation race.
-The browser mobile employee balance scenario is preserved inside the manager flow;
-10 login attempts and the production limiter are unchanged.
-See docs/PHASE_9_REPORT.md. No new migrations, dependencies or environment changes.
-Commit 656e3bf passed review and hosted CI run 37877957956.
+Follow [Testing](docs/TESTING.md) for database safety, backend/frontend gates and all five
+browser invocations. Backend tests without `--database` skip PostgreSQL integration gates.
+The browser runner creates its own schema and credentials on the test database and starts
+temporary servers on ports 18000/13000; do not point it at development or production.
 
+Prior release candidate `96f56bc` passed [Phase 19 GitHub CI](https://github.com/smbasha2024/aip-lms/actions/runs/38148174622):
+964 backend tests, 513 frontend tests and 55 browser workflows across Chromium, Chrome,
+Edge, Firefox and WebKit. Those results precede Phase 20 documentation changes;
+Phase 20 also passed local 964/513/55 regression gates, clean installation, migration/seed
+preservation and isolated backup/restore; [Phase 20 report](docs/PHASE_20_REPORT.md)
+records the actual evidence.
 
-## Phase 10 — notifications
+## Production notes
 
-- `GET /api/v1/notifications` lists only the authenticated employee's notifications,
-  with `is_read`, page and page-size filters. Administrators also see only their own.
-- `POST /api/v1/notifications/{notification_id}/read` marks an owned notification
-  read atomically and retains the first read timestamp on repeated calls.
-- The top-bar bell displays the unread count (`9+` above nine), latest five
-  notifications, and a link to `/notifications` with All/Unread filters and pagination.
-- Notifications refresh every 60 seconds while visible and on window focus.
-  The bell can reuse a cached dashboard count without polling the entire dashboard.
-- Clicking a leave notification marks it read and navigates immediately. A failed
-  mark-read shows feedback without blocking navigation; referenced access is still
-  enforced by the application endpoint.
-- New leave-event messages snapshot employee, type, dates, days and status inside
-  the existing transaction. Stored older messages remain readable.
+Use [Release readiness](docs/RELEASE_READINESS.md) as the deployment and recovery checklist.
+Choose the hosting platform, use HTTPS and explicit production CORS origins, supply secrets
+securely, isolate the database and install a shared proxy login rate limit across workers.
+Approve the first real administrator and master-data provisioning procedure, rotate local
+credentials, verify backups/restores, and run staging load/accessibility checks before launch.
 
-Phase 10 passes 508 backend, 233 frontend and 11 Chromium browser scenarios, plus
-lint/format/typecheck/build and Alembic drift/head checks. Testing fixed a stale cached
-unread-count fallback. Review passed with no blockers; commit eb8bb78 was pushed and hosted CI
-run 37942925216 passed all gates.
-No migration, dependency or environment change. See `docs/PHASE_10_REPORT.md`.
-
-
-## Phase 11 — administrator employee management
-
-- Scoped `GET /api/v1/employees` and department lookup respect role visibility;
-  account details and role filtering are administrator-only.
-- Administrator create/edit endpoints keep employee and account data atomic,
-  including normalized email/username synchronization and Argon2id initial passwords.
-- The separate account role/status endpoint ends target sessions when those values change.
-- Server safeguards reject self deactivation/account edits, final administrator removal,
-  reporting cycles and manager removal while direct reports remain assigned.
-- `/admin/employees`, `/new`, employee details and `/edit` provide searchable lists,
-  validated forms, active manager selection, status confirmation and shared balance/history tabs.
-- Administrator approval employee searches now cover the organization; department
-  filters are available for team and approval lists. Department administration and
-  balance allocation/adjustment remain future phases.
-
-Phase 11 passed its local test gate: 605 backend tests, 270 frontend tests and 11
-Chromium scenarios, plus Ruff, TypeScript, ESLint, production build and Alembic checks.
-Test coverage, fixes and cleanup are recorded in `docs/PHASE_11_REPORT.md`. No migration,
-dependency or environment changes. Commit 24e395f was reviewed and pushed; GitHub CI
-run 37953805631 passed every gate. See `docs/PHASE_11_REPORT.md`.
-
-
-## Phase 12 — leave type administration
-
-- Administrator creation and replacement edits use `/api/v1/admin/leave-types`.
-- `/admin/leave-types` supports status filtering, create/edit modals and confirmed
-  activation/deactivation, with responsive cards and tables.
-- Code is immutable after creation. Paid classification and employee application
-  eligibility are configurable; half-day remains false and approval remains required.
-- Writes include audit records atomically and recheck authorization after locks.
-  Deactivation affects new applications; historical applications and balances remain intact.
-
-Phase 12 passed its local test gate: 657 backend tests, 294 frontend tests and 11
-Chromium scenarios, plus Ruff, TypeScript, ESLint, production build and Alembic checks.
-Test coverage and cleanup are recorded in `docs/PHASE_12_REPORT.md`. No migration,
-dependency or environment changes. Commit ae607e8 was reviewed and pushed; GitHub CI
-run 37961654546 passed all gates. Phase 13 restart is authorized after the local reset.
-
-## Phase 13 — leave balance administration
-
-Administrators can browse `/admin/leave-balances` by employee, department, type and
-year; allocate missing balances; edit allocated/carried-forward; and apply signed,
-reasoned adjustments. Used/pending remain read-only. Writes revalidate administrator
-sessions under the existing lock order and commit counter changes with audit records.
-Historical and inactive employee/type allocations are supported. Dialogs check
-eligibility, prevent duplicate/uncertain resubmission and invalidate affected reads.
-
-After restoring the Phase 12 repository, the structure and configuration were checked
-and documentation/Ruff inconsistencies corrected. Phase 13 now passes 750 backend,
-329 frontend and 11 Chromium tests plus standard typecheck, lint, formatting,
-production build and migration checks. No migration, package or lockfile change.
-See `docs/PHASE_13_REPORT.md` for the exact manifest and the existing development-only
-braces advisory; production npm audit has zero findings. Commit `6be072d` was reviewed
-and pushed; [GitHub CI run 38053172833](https://github.com/smbasha2024/aip-lms/actions/runs/38053172833)
-passed every gate. Phase 14 is now authorized.
-
-## Bundler
-
-Development and production builds explicitly use Turbopack (`next dev --turbopack` and
-`next build --turbopack`) with the pinned Next.js 16.4.0. The production build succeeds
-without Webpack or extra bundler configuration. CI uses the same `npm run build` script.
-See [Next.js 16 bundler documentation](https://nextjs.org/docs/app/guides/upgrading/version-16).
-
-## Phase 14 — holiday administration
-
-`/admin/holidays` provides year/month filters, Show inactive, calendar/list views and
-Add/Edit/Activate/Deactivate actions. The backend derives year from date, enforces
-global date uniqueness including inactive records, and commits changes with audit
-records under administrator/session/resource locks. DELETE deactivates without
-removing history; PUT reactivates. Existing application days and counters are preserved.
-
-Local PostgreSQL and seed configuration were updated as requested; examples remain
-blank and private `.env` stays ignored. Existing employee account passwords are
-preserved; SEED_* values apply to newly created seed accounts. Seed and account
-password policies remain 12–128 characters; account hashing remains Argon2id.
-
-Phase 14 local gates pass: 810 backend tests, 368 frontend tests, 11 Chromium scenarios,
-typecheck, lint, formatting, explicit Turbopack production build and Alembic checks.
-Transaction/concurrency tests verify rollback and stored application days. See
-`docs/PHASE_14_REPORT.md` for the exact scope, commands, results and next action.
-Commit `ff069e4` was reviewed and pushed. [GitHub CI run 38056205862](https://github.com/smbasha2024/aip-lms/actions/runs/38056205862)
-passed every gate, including the Turbopack build.
-
-## Phase 15 — team leave calendar
-
-Managers and administrators can open **Team Calendar** (`/team/calendar`). Managers
-see current direct reports; administrators see the organization. Choose a month/year,
-search for an employee, filter by leave type or turn off **Include pending**. Desktop
-dates show up to three employee chips and **+N more** for full day details; mobile
-uses an agenda grouped by date. Chips open the existing application detail screen.
-Holiday/weekend markers and Approved/Pending labels supplement colour styling.
-
-The calendar reads all pages for the selected month using the documented inclusive
-overlap filters. Date expansion includes the application's requested range and does
-not recalculate its stored leave days. Existing approval/cancellation/holiday changes
-invalidate the relevant queries; **Refresh calendar** also reloads them.
-
-Phase 15 local testing passed: 826 backend tests, 412 frontend tests and 11 Chromium
-scenarios, including the calendar at 360/768/1024/1440 pixels. Typecheck, lint and the
-Turbopack build pass. See `docs/PHASE_15_REPORT.md` for the manifest and results.
-Commit `3f1ee38` was reviewed and pushed. [GitHub CI run 38061966142](https://github.com/smbasha2024/aip-lms/actions/runs/38061966142)
-passed all backend, migration, frontend, Turbopack build and Chromium gates.
-
-## Phase 16 — reports
-
-Open **Reports** (`/reports`) to view role-specific leave summaries and application
-history. Employees see their own information; managers see current direct reports and
-a Pending Approvals link; administrators see organization balances/utilization, status
-counts and active/inactive holidays. Filters and pagination are stored in the URL.
-
-`GET /api/v1/reports/leave-summary` returns stored balance counters with authorized server
-filters, business-year defaults and pagination. Utilization is displayed to one decimal;
-zero allocation shows an em dash. Application and holiday reports reuse existing APIs.
-No CSV/Excel/PDF export controls are included in v1. Reports are read-only.
-
-Local testing passes: 862 backend tests, 462 frontend tests and 11 Chromium workflows.
-Typecheck, frontend/backend lint/format, Turbopack production build, migration consistency
-and production dependency checks also pass. See `docs/PHASE_16_REPORT.md` for scope,
-files, commands, responsive checks and results. Local review corrected the report table
-scroll hints and reran frontend/build checks. Commit `bb5ab9a` was pushed;
-[GitHub CI run 38065722343](https://github.com/smbasha2024/aip-lms/actions/runs/38065722343)
-passed all gates.
-
-## Phase 17 — dashboard completion
-
-`/dashboard` preserves personal balances, pending totals, last five applications, upcoming
-holidays and unread notifications for all roles. Managers additionally see current team
-size, assigned pending approvals, approved requests for the selected year, distinct staff
-on leave today and the next five approved current-team requests ending today or later.
-Administrators see organization employee and yearly application counts plus administration
-quick links. All role counts come from `GET /api/v1/dashboard`; dashboard list-page
-aggregate workarounds are removed. Team approvals use submission assignments while team
-leave uses current direct reports.
-
-Phase 17 is locally implemented and tested. The 22 focused backend, 478 frontend and
-11 production Chromium workflows pass, along with migration/model-drift, lint and type
-checks. Backend regression passed 874 cases; the final focused run covers all additional
-dashboard cases (884 distinct backend cases overall). The user built with Turbopack outside
-the sandbox; the compiled test API origin and production runtime were verified. Eight
-manager/administrator dashboard screenshots at 360/768/1024/1440 pixels were inspected
-without a layout defect. See `docs/PHASE_17_REPORT.md` for exact results. Review, commit,
-push and hosted CI completed for commit `59fc83a` (run `38074789522`). No migration, dependency or private environment change is required.
-
-
-## Phase 18 — administrator audit viewer
-
-Administrators can open `/admin/audit` to filter critical-action records by action,
-entity, actor employee UUID and organization-local date range. Entries load in
-bounded pages; expanding View changes fetches sanitized previous/current values.
-Free-text reasons, contact details, credentials, nested/unknown fields and IP addresses
-are excluded. Existing records and atomic audit writes are preserved. No export or
-automatic deletion is provided. See `docs/PHASE_18_REPORT.md`.
-
-Phase 18 is locally implemented and tested: 954 backend, 503 frontend and 11
-production Chromium workflows pass, along with Ruff/format, ESLint, frontend/E2E
-TypeScript, Alembic and the Turbopack build. Four responsive audit screenshots were
-inspected without a layout defect. Temporary test resources were cleaned up.
-Review, commit, push and hosted CI completed for `f711e7f` (run `38107897494`).
-No dependency, migration or private environment change.
-
-## Phase 19 — Regression hardening
-
-Phase 19 adds cross-browser, WCAG 2.1 AA axe, four-width/keyboard, security and
-representative-data performance checks. See [PHASE_19_REPORT.md](docs/PHASE_19_REPORT.md)
-for local results, dependency findings and release limitations. Storage/Docker recovery
-is complete. Local validation passed 964 backend, 513 frontend and 55 browser workflows
-across Chromium, Chrome, Edge, Firefox and WebKit; cleanup and review are complete.
-Commit-specific hosted results are recorded in GitHub Actions.
-
-With the isolated test environment and Turbopack build described above, select one
-browser per invocation from frontend/:
-
-```sh
-npx playwright install --with-deps chromium firefox webkit
-E2E_BROWSER=chromium npm run test:e2e
-E2E_BROWSER=firefox npm run test:e2e
-E2E_BROWSER=webkit npm run test:e2e
-# Branded browsers require their compatible platform installers:
-npx playwright install chrome msedge
-E2E_BROWSER=chrome npm run test:e2e
-E2E_BROWSER=msedge npm run test:e2e
-```
-
-Each invocation creates/drops its own schema and generates random credentials; do
-not run multiple managed invocations concurrently on the same server ports. Remote
-Docker browser execution supports the same selector when that browser is installed
-in the container. Chrome/Edge Linux installers require x86-64; the CI jobs use that
-platform. WebKit tests the Safari engine, with actual Safari/device checks still
-required before release. Axe incomplete results require human review. CI retains
-scan JSON, screenshots, browser versions and failure traces for seven days.
+Compose supplies local PostgreSQL infrastructure; this repository does not automatically
+provision a production platform or deploy application containers. Successful CI alone does
+not approve a production release.

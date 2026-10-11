@@ -2,17 +2,15 @@
 
 # Employee Leave Management System — REST Contract (v1)
 
-This is the canonical REST contract. Updated 7 October 2026 after the Phase 0 audit.
+This is the canonical REST contract. Reconciled 7 October 2026 after the Phase 0 audit;
+operational documentation refreshed in Phase 20 on 11 October 2026.
 `REQUIREMENTS.md` owns behavior; `DATABASE.md` owns persistence; `ARCHITECTURE.md`
 owns layering; `UI_SPEC.md` owns presentation. Resolve disagreements in the owning
 specification before implementation. Examples are illustrative; the schemas below
-are complete contracts. Phases 3–8 implement authentication, employee/profile/balance
-and dashboard reads, holiday reads, advisory leave-day calculation, submission and
-application detail, filtered history, owner cancellation, direct reports and pending
-approval reads. Subsequent phases implement the remaining endpoints. See
-PHASE_3_REPORT.md, PHASE_4_REPORT.md, PHASE_5_REPORT.md, PHASE_6_REPORT.md,
-PHASE_7_REPORT.md and PHASE_8_REPORT.md for evidence. Phase 9 adds the documented
-approve/reject endpoints and passes its local test gate (see PHASE_9_REPORT.md).
+are complete contracts. Phases 3–18 implement authentication, employee/profile/balance,
+leave workflows, approvals, notifications, administration, calendar, reports, dashboard
+and audit reads. Phase reports record implementation evidence; Phase 19 adds full
+regression hardening. Phase 20 changes operational documentation, not wire contracts.
 
 ## 1. Common conventions
 
@@ -496,7 +494,8 @@ are deferred. Safe reads may retry once. No blind adjustment retry after an ambi
 `GET /health` is public, outside `/api/v1`, returning `{status:"ok"}` for process liveness.
 `GET /health/ready` is public, returning 200 `{status:"ready"}` after SELECT 1, or 503
 standard error `DATABASE_UNAVAILABLE` with no connection details. No schema creation on startup.
-Swagger/OpenAPI enabled in development/test; production exposure is a deployment decision.
+Swagger, ReDoc and OpenAPI are enabled in development/test and disabled in production
+by the current application factory.
 
 Implement only the requested phase. Phase 1 configures projects, PostgreSQL, Alembic,
 health/configuration/error foundations and test runners. Phase 2 implements models,
@@ -506,8 +505,8 @@ Later phases add the documented business endpoints. See IMPLEMENTATION_PLAN.md a
 
 ## Phase 18 — Administrator audit read contract
 
-Approved scope: read-only `/api/v1/admin/audit-logs` and
-`/api/v1/admin/audit-logs/{audit_id}`. Both require a live ADMINISTRATOR account;
+Approved scope: read-only `GET /api/v1/admin/audit-logs` and
+`GET /api/v1/admin/audit-logs/{audit_id}`. Both require a live ADMINISTRATOR account;
 unauthenticated callers receive 401 and other roles 403. No write, export, or purge endpoint.
 
 List parameters: `action`, `entity_type`, `performed_by` (UUID), `from_date`,
@@ -560,3 +559,30 @@ Audit detail field allowlist (invalid types/values are omitted):
 Stored null fields are omitted and mark the payload redacted. Null whole payload
 remains null; an empty object remains an empty object. Stored nested account/department
 snapshots are omitted; separate ACCOUNT_UPDATED records retain approved role/status.
+
+## Phase 20 — Runtime API documentation and operations
+
+From a configured development checkout, start the backend using README's factory command.
+`GET /docs`, `GET /redoc` and `GET /openapi.json` expose the runtime schema in development
+and test. They are disabled with `APP_ENV=production`; do not assume production has an
+interactive API explorer. `/health` and `/health/ready` are infrastructure paths outside
+`/api/v1`; readiness verifies database connectivity, not schema or migration version.
+
+For interactive development review, use `POST /api/v1/auth/login` with a locally
+provisioned employee code/password. Supply the returned opaque token in Swagger's
+HTTPBearer Authorize dialog (the token value only), or send
+`Authorization: Bearer <token>` from a client. The database account role determines
+access; changing client state never grants privileges. Logout uses the documented
+`POST /api/v1/auth/logout` contract. Never publish request credentials, token values,
+authenticated screenshots or raw server logs.
+
+Compare the runtime OpenAPI schema, endpoint-specific tests and this document at the
+final release commit. OpenAPI covers schema/route discovery; it does not replace
+authorization, transaction, filtering or concurrency requirements here. Resolve drift
+in the owning specification and implementation before release. Phase 20 adds no endpoint,
+request field, response field, migration or authentication mechanism.
+
+See [README](../README.md) for local operation, [Testing](TESTING.md) for isolated browser
+origins and [Release readiness](RELEASE_READINESS.md) for production provisioning,
+shared login throttling and recovery. No public password-reset, production-bootstrap,
+department-write, report-export or audit-purge API is introduced.
