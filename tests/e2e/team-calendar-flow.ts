@@ -34,7 +34,16 @@ export async function teamCalendarFlow(page: Page, request: APIRequestContext, c
   await page.reload(); await expect(page.getByRole("switch")).not.toBeChecked();
   await page.getByLabel("Leave Type", { exact: true }).selectOption(rows[0].leave_type_id);
   await expect(page).toHaveURL(new RegExp(`leave_type_id=${rows[0].leave_type_id}`));
+  // Cached unfiltered options may still be visible while the search debounces.
+  // Wait for this search to finish so its loading transition cannot interrupt a click.
+  const employeeSearch = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === (code === "ADM001" ? "/api/v1/employees" : "/api/v1/managers/me/direct-reports")
+      && url.searchParams.get("search") === "E2ECAL1" && response.ok();
+  });
   await page.getByRole("combobox", { name: "Employee" }).fill("E2ECAL1");
+  await (await employeeSearch).finished();
+  await expect(page.getByRole("listbox", { name: "Employee search results" }).getByRole("option")).toHaveCount(1);
   await page.getByRole("option", { name: "Calendar Report 1 (E2ECAL1)" }).click();
   await expect(page).toHaveURL(new RegExp(`employee_id=${rows.find(row => row.employee_code === "E2ECAL1")!.employee_id}`));
   await expect(table.getByRole("link", { name: /Calendar Report 2/ })).toHaveCount(0);

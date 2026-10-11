@@ -258,6 +258,15 @@ for all three roles and removes its listener in a finally block. Review validati
 passed all 513 frontend cases, E2E TypeScript and lint; the hosted browser matrix
 validates this stronger assertion for each browser.
 
+Initial hosted run `38147118981` for `ab50480` passed the foundation job and
+Chrome/Edge/Firefox. WebKit passed ten workflows but failed calendar employee selection.
+Its trace showed the click overlapping the 300 ms search debounce: cached options
+were replaced by the new query's loading state during the gesture, and no employee
+navigation was issued. The calendar test now waits for the exact role-scoped search
+response to finish and for its single matching option before clicking. URL and data
+assertions, timeout limits and zero retries remain unchanged. The failed trace is
+retained in the original CI artifact; the correction is validated by the next push.
+
 ## 12. Recommended next action
 
 Publish the reviewed Phase 19 commit and check the foundation and four browser
