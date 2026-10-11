@@ -3976,3 +3976,34 @@ mutations; rendered snapshot assertions remain. Production Turbopack, Ruff/forma
 ESLint, frontend/E2E TypeScript and disposable Alembic checks passed. Four audit
 screenshots at 360/768/1024/1440 pixels were inspected without overflow. Temporary
 resources were cleaned up. See PHASE_18_REPORT.md; hosted CI awaits review/commit/push.
+
+## Phase 19 hardening implementation
+
+- `test_regression_hardening.py`: all protected GETs unauthenticated, administrator
+  reads by role, integrated apply/approve/reject/cancel counters and secret-safe logs;
+  1,000 additional employees and 3,000 applications over three years verify bounded
+  server pages and SELECT budgets. Record PostgreSQL plans for history/overlap/balance.
+- Record p50/p95/error rate for all eleven §102 normal API scenarios (five local samples
+  each) and six representative-size reads (ten each). Timings are informational on
+  developer machines; staging traffic, HTTPS/network and load validation remain release checks.
+- `test_repository_security.py`: private configuration ignored/untracked, approved
+  public frontend configuration, private key and interpolated SQL source guards.
+- Browser workflows reuse existing role sessions; axe-core WCAG 2.1 AA scans include
+  Login, all role Dashboards, Apply, History, Detail, Approvals, Team, Employees, Balance
+  Administration, Audit and Reports. Persist scan JSON (including incomplete checks),
+  browser versions and four-width screenshots. Automated scans do not replace human review.
+- Existing keyboard dialog/calendar/notification checks remain; add skip-to-content,
+  drawer focus trapping/return and 360/768/1024/1440 overflow checks.
+- Negative leave requests verify past dates, insufficient balance, ID tampering, overlap,
+  self approval and holiday exclusions without weakening controls or changing public data.
+- `E2E_BROWSER=chromium|chrome|msedge|firefox|webkit` chooses one project per invocation.
+  Each browser gets fresh fixtures, preventing cross-browser mutation races. WebKit is
+  Safari engine coverage; actual Safari/device behavior remains a release/manual check.
+- CI preserves Chromium evidence and runs Chrome/Edge/Firefox/WebKit jobs independently
+  after the foundation gate. No retry is used to hide a failed workflow.
+- Browser page-error guards classify only same-origin Next `_rsc` teardown failures
+  during an observed main-frame navigation, retaining paths in evidence. Seven unit
+  cases keep non-navigation, API, cross-origin, non-framework and other runtime errors
+  in the failure path. Genuine CORS/CSP/application errors are not globally suppressed.
+- `npm run typecheck:e2e` uses the committed strict `tests/e2e/tsconfig.json`; CI
+  typechecks all root browser helpers/configuration before browser jobs.

@@ -1,9 +1,9 @@
+import { watchPageErrors } from "./page-errors";
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext } from "../../frontend/node_modules/@playwright/test";
 import type { ApplicationPage } from "../../frontend/types/leave";
 export async function teamCalendarFlow(page: Page, request: APIRequestContext, code: string) {
-  const errors: string[] = [], record = (error: Error) => errors.push(error.message);
-  page.on("pageerror", record);
+  const { errors, stop } = watchPageErrors(page);
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
   const headers = { Authorization: `Bearer ${token}` }, base = `${process.env.E2E_API_URL}/api/v1`;
   const identity = await (await request.get(`${base}/auth/me`, { headers })).json();
@@ -63,5 +63,5 @@ export async function teamCalendarFlow(page: Page, request: APIRequestContext, c
   await page.goBack(); await expect(page).toHaveURL(/month=8/); await expect(table).toBeVisible();
   await page.getByRole("button", { name: "Clear filters" }).click(); await expect(page).toHaveURL(/\/team\/calendar$/);
   await expect(page.getByLabel("Month", { exact: true })).toHaveValue(String(Number(identity.business_today.slice(5, 7))));
-  expect(errors).toEqual([]); page.off("pageerror", record);
+  expect(errors).toEqual([]); stop();
 }

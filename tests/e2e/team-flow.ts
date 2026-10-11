@@ -1,10 +1,11 @@
+import { watchPageErrors } from "./page-errors";
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext, Response } from "../../frontend/node_modules/@playwright/test";
 import type { ApplicationPage } from "../../frontend/types/leave";
 import type { DashboardResponse } from "../../frontend/types/employee";
 import type { EmployeePage } from "../../frontend/types/team";
 export async function teamFlow(page: Page, request: APIRequestContext, code: string, dashboard: DashboardResponse) {
-  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  const { errors } = watchPageErrors(page);
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
   const headers = { Authorization: `Bearer ${token}` }; const base = `${process.env.E2E_API_URL}/api/v1`;
   const queue: ApplicationPage = await (await request.get(`${base}/leave/approvals/pending`, { headers })).json();

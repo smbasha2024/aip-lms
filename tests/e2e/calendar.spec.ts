@@ -1,9 +1,12 @@
+import { watchPageErrors } from "./page-errors";
+import { negativeLeaveFlow } from "./hardening-flow";
 import { historyCancelFlow } from "./history-cancel-flow";
 import { applyLeaveFlow } from "./leave-flow";
 import { test, expect } from "../../frontend/node_modules/@playwright/test";
 import { addDays, format, parseISO } from "../../frontend/node_modules/date-fns";
 test("holiday calendar, apply, history and cancellation transactions",async({page,request})=>{
-  const errors: string[]=[];page.on("pageerror",error=>errors.push(error.message));
+  test.setTimeout(120_000);
+  const { errors } = watchPageErrors(page);
   await page.goto("/login");await page.getByLabel("Email or Employee ID *").fill("EMP001");
   await page.getByLabel("Password *",{exact:true}).fill(process.env.E2E_TEST_PASSWORD!);
   await page.getByRole("button",{name:"Sign in",exact:true}).click();await expect(page).toHaveURL(/\/dashboard$/);
@@ -34,5 +37,5 @@ test("holiday calendar, apply, history and cancellation transactions",async({pag
   const preview=await request.post(`${origin}/api/v1/leave/calculate-days`,{headers,data:body});expect(preview.status()).toBe(200);
   expect(await preview.json()).toEqual({from_date:body.from_date,to_date:body.to_date,calendar_days:2,weekend_days:2,holiday_days:0,leave_days:0});
   const after=await (await request.get(`${origin}/api/v1/employees/${identity.employee_id}/leave-balance`,{headers})).json();expect(after).toEqual(before);
-  const applied=await applyLeaveFlow(page,request,identity,headers);await historyCancelFlow(page,request,identity,headers,applied);expect(errors).toEqual([]);
+  const applied=await applyLeaveFlow(page,request,identity,headers);await historyCancelFlow(page,request,identity,headers,applied);await negativeLeaveFlow(page, request, test.info());expect(errors).toEqual([]);
 });

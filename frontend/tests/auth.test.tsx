@@ -1,4 +1,4 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
@@ -112,6 +112,16 @@ describe("Authentication UI", () => {
     expect(navigation.textContent?.includes("Holiday Management")).toBe(role === "ADMINISTRATOR");
     expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
     expect(screen.getByRole("link", { name: "Apply Leave" })).toHaveAttribute("href", "/leave/apply");
+  });
+  it.each(["EMPLOYEE", "MANAGER", "ADMINISTRATOR"] as const)("traps both drawer focus boundaries for %s", async role => {
+    saved(); me({ ...user, role }); mount(<AuthGate><AppShell><p>Workspace</p></AppShell></AuthGate>);
+    await screen.findByText("Workspace");
+    const dialog = document.querySelector<HTMLDialogElement>("dialog")!;
+    dialog.setAttribute("open", "");
+    const first = within(dialog).getByRole("button", { name: "Close navigation" });
+    const links = within(dialog).getAllByRole("link"), last = links[links.length - 1];
+    last.focus(); fireEvent.keyDown(dialog, { key: "Tab" }); expect(first).toHaveFocus();
+    fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true }); expect(last).toHaveFocus();
   });
   it("blocks a direct administrator route without a protected content flash", async () => {
     saved(); me(); navigationMock.pathname = "/admin/employees";

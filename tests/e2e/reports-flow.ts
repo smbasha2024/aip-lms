@@ -1,9 +1,10 @@
+import { watchPageErrors } from "./page-errors";
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext } from "../../frontend/node_modules/@playwright/test";
 import type { SummaryPage } from "../../frontend/types/report";
 import type { ApplicationPage } from "../../frontend/types/leave";
 export async function reportsFlow(page: Page, request: APIRequestContext, code: string) {
-  const errors: string[] = [], record = (error: Error) => errors.push(error.message); page.on("pageerror", record);
+  const { errors, stop } = watchPageErrors(page);
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
   const headers = { Authorization: `Bearer ${token}` }, base = `${process.env.E2E_API_URL}/api/v1`;
   const identity = await (await request.get(`${base}/auth/me`, { headers })).json();
@@ -57,6 +58,10 @@ export async function reportsFlow(page: Page, request: APIRequestContext, code: 
   await page.setViewportSize({ width: 1440, height: 1000 });
   if (code === "ADM001") { await nav.getByRole("button", { name: "Holidays", exact: true }).click(); const holidays = page.getByRole("table", { name: "Holiday report" }); await expect(holidays).toContainText("Historical Report Holiday"); await expect(holidays).toContainText("INACTIVE"); await expect(holidays).toContainText("Optional"); await page.screenshot({ path: "../.cache/phase16-ADM001-holidays.png", fullPage: true }); }
   await page.getByRole("button", { name: "Clear filters", exact: true }).click(); await expect(page.getByLabel("Year")).toHaveValue(identity.business_today.slice(0,4));
-  await page.goto(`/reports?year=${year}`); await expect(table).toBeVisible(); await page.goto(`/reports?year=${year-1}`); await page.goBack(); await expect(table).toBeVisible(); await expect(page).toHaveURL(new RegExp(`year=${year}$`));
-  expect(errors).toEqual([]); page.off("pageerror", record);
+  await page.goto(`/reports?year=${year}`); await expect(table).toBeVisible(); await page.goto(`/reports?year=${year-1}`);
+  // Complete identity and report loading before deliberately navigating back.
+  // WebKit reports a fetch canceled during document teardown as a page error.
+  await expect(table.or(page.getByText("No leave balances match this year and these filters.", { exact: true }))).toBeVisible();
+  await page.goBack(); await expect(table).toBeVisible(); await expect(page).toHaveURL(new RegExp(`year=${year}$`));
+  expect(errors).toEqual([]); stop();
 }

@@ -1,7 +1,7 @@
 # Phase 18 — Audit Log Viewer
 
 Date: 11 October 2026
-Status: Local Phase 18 implementation, test gate and review passed; commit/push and hosted CI pending.
+Status: Phase 18 implementation, local tests and review complete; committed/pushed as `f711e7f` and hosted CI passed.
 Base: Phase 17 commit `59fc83ab8ece8d486f44ab6cc19a40922a2cfcc0` (hosted CI passed).
 
 ## 1. Summary
@@ -214,3 +214,10 @@ frontend routing and account-separated cache, documentation and regression cover
 The local gate passed 954 backend tests, 503 frontend tests and 11 production Chromium
 workflows. Private environment files and generated artifacts are excluded from the commit.
 Hosted CI will be checked against the pushed commit.
+
+## Hosted CI outcome
+
+Commit `f711e7f5055adfa85a727ebd2eecb3a560e6fa7f` was pushed to
+`feature/project-foundation`. GitHub Actions run `38107897494` passed all gates:
+954 backend tests, 503 frontend tests, 11 Chromium workflows, lint/type checks,
+Alembic and the Turbopack production build. Working tree was clean after the push.

@@ -523,5 +523,36 @@ Phase 18 is locally implemented and tested: 954 backend, 503 frontend and 11
 production Chromium workflows pass, along with Ruff/format, ESLint, frontend/E2E
 TypeScript, Alembic and the Turbopack build. Four responsive audit screenshots were
 inspected without a layout defect. Temporary test resources were cleaned up.
-Review/commit/push and hosted CI remain pending. No dependency, migration or
-private environment change.
+Review, commit, push and hosted CI completed for `f711e7f` (run `38107897494`).
+No dependency, migration or private environment change.
+
+## Phase 19 — Regression hardening
+
+Phase 19 adds cross-browser, WCAG 2.1 AA axe, four-width/keyboard, security and
+representative-data performance checks. See [PHASE_19_REPORT.md](docs/PHASE_19_REPORT.md)
+for local results, dependency findings and release limitations. Storage/Docker recovery
+is complete. Local validation passed 964 backend, 513 frontend and 55 browser workflows
+across Chromium, Chrome, Edge, Firefox and WebKit; cleanup and review are complete.
+Commit-specific hosted results are recorded in GitHub Actions.
+
+With the isolated test environment and Turbopack build described above, select one
+browser per invocation from frontend/:
+
+```sh
+npx playwright install --with-deps chromium firefox webkit
+E2E_BROWSER=chromium npm run test:e2e
+E2E_BROWSER=firefox npm run test:e2e
+E2E_BROWSER=webkit npm run test:e2e
+# Branded browsers require their compatible platform installers:
+npx playwright install chrome msedge
+E2E_BROWSER=chrome npm run test:e2e
+E2E_BROWSER=msedge npm run test:e2e
+```
+
+Each invocation creates/drops its own schema and generates random credentials; do
+not run multiple managed invocations concurrently on the same server ports. Remote
+Docker browser execution supports the same selector when that browser is installed
+in the container. Chrome/Edge Linux installers require x86-64; the CI jobs use that
+platform. WebKit tests the Safari engine, with actual Safari/device checks still
+required before release. Axe incomplete results require human review. CI retains
+scan JSON, screenshots, browser versions and failure traces for seven days.

@@ -1,8 +1,9 @@
+import { watchPageErrors } from "./page-errors";
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext } from "../../frontend/node_modules/@playwright/test";
 
 export async function auditFlow(page: Page, request: APIRequestContext, code: string) {
-    const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+    const { errors } = watchPageErrors(page);
     const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
     const headers = { Authorization: `Bearer ${token}` }, api = `${process.env.E2E_API_URL}/api/v1`;
     const response = await request.get(`${api}/admin/audit-logs`, { headers });

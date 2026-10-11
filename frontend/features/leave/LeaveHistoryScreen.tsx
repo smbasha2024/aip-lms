@@ -19,7 +19,7 @@ export function LeaveHistoryScreen() {
   if (selectedType && !options.has(selectedType)) options.set(selectedType, "Selected historical leave type");
   return <section className="max-w-7xl space-y-5"><h1 className="text-3xl font-semibold">My Leave Applications</h1>
     {notice && <p role="status" className="rounded border border-green-200 bg-green-50 p-4">{notice}</p>}
-    <div aria-label="History filters" className="grid gap-4 rounded border bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div role="group" aria-label="History filters" className="grid gap-4 rounded border bg-white p-4 sm:grid-cols-2 lg:grid-cols-5">
       <label>Year<select value={state.year} onChange={event => state.update("year", event.target.value)} className="mt-1 block w-full rounded border p-2">{state.years.map(year => <option key={year}>{year}</option>)}</select></label>
       <label>Status<select value={state.status} onChange={event => state.update("status", event.target.value)} className="mt-1 block w-full rounded border p-2">{["ALL","PENDING","APPROVED","REJECTED","CANCELLED"].map(value => <option key={value} value={value}>{value === "ALL" ? "All" : value.charAt(0) + value.slice(1).toLowerCase()}</option>)}</select></label>
       <label>Leave Type<select value={selectedType ?? ""} onChange={event => state.update("leave_type_id", event.target.value)} className="mt-1 block w-full rounded border p-2"><option value="">All types</option>{Array.from(options, ([id,name]) => <option key={id} value={id}>{name}</option>)}</select></label>

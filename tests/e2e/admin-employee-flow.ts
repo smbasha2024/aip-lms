@@ -1,9 +1,10 @@
+import { watchPageErrors } from "./page-errors";
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext } from "../../frontend/node_modules/@playwright/test";
 import type { Employee } from "../../frontend/types/employee";
 const api = () => `${process.env.E2E_API_URL}/api/v1`;
 export async function adminEmployeeFlow(page: Page, request: APIRequestContext) {
-  const errors: string[] = []; page.on("pageerror", error => errors.push(error.message));
+  const { errors } = watchPageErrors(page);
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
   const auth = { Authorization: `Bearer ${token}` };
   const departments = await (await request.get(`${api()}/departments`, { headers: auth })).json();

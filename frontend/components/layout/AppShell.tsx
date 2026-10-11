@@ -1,6 +1,6 @@
 "use client";
 import { useRef } from "react";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
@@ -9,6 +9,14 @@ import { canAccess, navigation } from "@/lib/permissions";
 import { useApprovals } from "@/hooks/use-team";
 import { NotificationBell } from "@/features/notifications/NotificationBell";
 import { NotificationFeedbackProvider } from "@/features/notifications/NotificationFeedback";
+function trapNavigationFocus(event: KeyboardEvent<HTMLDialogElement>) {
+  if (event.key !== "Tab") return;
+  const controls = event.currentTarget.querySelectorAll<HTMLElement>("button:not(:disabled), a[href]");
+  const first = controls[0], last = controls[controls.length - 1];
+  if (first && last && document.activeElement === (event.shiftKey ? first : last)) {
+    event.preventDefault(); (event.shiftKey ? last : first).focus();
+  }
+}
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, signOut, signingOut } = useAuth(); const path = usePathname();
   const pending = useApprovals({ status: "PENDING", page: 1, page_size: 1 });
@@ -32,7 +40,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div></details></div>
     </header>
     <aside className="fixed bottom-0 left-0 top-16 hidden w-60 overflow-y-auto border-r border-slate-200 bg-white p-4 lg:block">{nav}</aside>
-    <dialog ref={drawer} aria-label="Navigation" onClose={() => trigger.current?.focus()} onClick={event => { if (event.target === event.currentTarget) drawer.current?.close(); }}
+    <dialog ref={drawer} aria-label="Navigation" onKeyDown={trapNavigationFocus} onClose={() => trigger.current?.focus()} onClick={event => { if (event.target === event.currentTarget) drawer.current?.close(); }}
       className="m-0 h-dvh max-h-none w-72 max-w-[85vw] border-0 bg-white p-4 backdrop:bg-slate-900/40 lg:hidden">
       <div className="mb-4 flex items-center justify-between"><h2 className="font-semibold">Navigation</h2><button autoFocus aria-label="Close navigation" onClick={() => drawer.current?.close()} className="rounded p-2"><X aria-hidden size={20} /></button></div>{nav}
     </dialog>

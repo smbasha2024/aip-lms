@@ -1,3 +1,5 @@
+import { watchPageErrors } from "./page-errors";
+import { hardeningFlow } from "./hardening-flow";
 import { auditFlow } from "./audit-flow";
 import { adminHolidayFlow } from "./admin-holiday-flow";
 import { adminBalanceFlow } from "./admin-balance-flow";
@@ -21,9 +23,9 @@ async function login(page: Page, code="EMP001") {
 }
 async function bearer(page: Page) { return page.evaluate(()=>JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string); }
 test("employee sees database balances, full profile and year selection after reload",async({page,request})=> {
-  // Reports add three views, filter/navigation checks and responsive screenshots.
-  test.setTimeout(60_000);
-  const errors: string[]=[];page.on("pageerror",error=>errors.push(error.message));
+  // Integrated flows plus axe scans and screenshots also run in emulated branded browsers.
+  test.setTimeout(300_000);
+  const { errors } = watchPageErrors(page);
   await login(page);
   await expect(page.getByRole("heading",{name:"Your leave balances"})).toBeVisible();
   const token=await bearer(page);const headers={Authorization:`Bearer ${token}`};
@@ -54,12 +56,13 @@ test("employee sees database balances, full profile and year selection after rel
   await expect(page.getByText(`No leave balances have been allocated for ${balance.year-1}. Contact your administrator.`)).toBeVisible();
   await page.reload();await expect(page.getByLabel("Year")).toHaveValue(String(balance.year-1));
   await page.getByLabel("Year").selectOption(String(balance.year));await expect(table).toBeVisible();
-  await page.screenshot({path:"../.cache/phase4-balance.png",fullPage:true});expect(errors).toEqual([]);
+  await page.screenshot({path:"../.cache/phase4-balance.png",fullPage:true});
+  await hardeningFlow(page, "EMP001", test.info());expect(errors).toEqual([]);
 });
 for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
   test(`${code} retains personal dashboard, team review and approval workflow`,async({page,request,browser})=> {
-    // Calendar, reports and decision/admin flows share one login and test budget.
-    test.setTimeout(120_000);
+    // Calendar, reports, decisions/admin and axe checks share one login and test budget.
+    test.setTimeout(600_000);
     const employeeContext = code === "MGR001" ? await browser.newContext({ baseURL: process.env.E2E_BASE_URL ?? "http://127.0.0.1:13000", viewport: { width: 390, height: 844 } }) : null;
     const employeePage = employeeContext ? await employeeContext.newPage() : null;
     try {
@@ -83,6 +86,7 @@ for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
       if (employeePage) await approvalFlow(employeePage, page, request);
       else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); await adminLeaveTypeFlow(page, request); await adminBalanceFlow(page, request); await adminHolidayFlow(page, request); }
       await auditFlow(page, request, code);
+      await hardeningFlow(page, code, test.info());
     } finally {
       await employeeContext?.close();
     }

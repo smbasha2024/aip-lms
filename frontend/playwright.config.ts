@@ -4,6 +4,14 @@ import { defineConfig, devices } from "@playwright/test";
 const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:13000";
 const backendURL = process.env.E2E_API_URL;
 const browserEndpoint = process.env.E2E_BROWSER_WS_ENDPOINT;
+const browser = process.env.E2E_BROWSER ?? "chromium";
+const supportedBrowsers = ["chromium", "chrome", "msedge", "firefox", "webkit"];
+if (!supportedBrowsers.includes(browser)) throw new Error("Unsupported E2E_BROWSER");
+// Select one browser per invocation. Each invocation owns a schema, preventing
+// cross-browser mutations of the same accounts, allocations and applications.
+const browserUse = browser === "firefox" ? { ...devices["Desktop Firefox"] }
+  : browser === "webkit" ? { ...devices["Desktop Safari"] }
+  : { ...devices["Desktop Chrome"], ...(browser === "chromium" ? {} : { channel: browser }) };
 if (!backendURL) throw new Error("E2E_API_URL must explicitly identify the isolated test backend");
 if (new URL(backendURL).origin !== "http://127.0.0.1:18000" ||
     new URL(baseURL).origin !== "http://127.0.0.1:13000") {
@@ -28,12 +36,14 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   reporter: "list",
+  // Remote containers may emulate x86 on ARM; keep native/CI waits at five seconds.
+  expect: { timeout: browserEndpoint ? 15_000 : 5_000 },
   use: { baseURL, trace: "retain-on-failure",
     connectOptions: browserEndpoint ? {
       wsEndpoint: browserEndpoint, exposeNetwork: "<loopback>", timeout: 30_000,
     } : undefined,
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [{ name: browser, use: browserUse }],
   webServer: [
     { command: ".venv/bin/uvicorn --app-dir ../tests/e2e backend_server:create_test_app --factory --host 127.0.0.1 --port 18000",
       cwd: "../backend", url: `${backendURL}/health`, reuseExistingServer: false,

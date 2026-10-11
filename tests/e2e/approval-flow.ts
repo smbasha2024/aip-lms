@@ -1,3 +1,4 @@
+import { watchPageErrors } from "./page-errors";
 import { expect } from "../../frontend/node_modules/@playwright/test";
 import type { Page, APIRequestContext } from "../../frontend/node_modules/@playwright/test";
 import type { Application, ApplicationPage } from "../../frontend/types/leave";
@@ -14,7 +15,7 @@ async function mobileBounds(page: Page, dialog: ReturnType<Page["getByRole"]>) {
   const bounds = await dialog.boundingBox(); expect(bounds).not.toBeNull(); expect(Math.abs(bounds!.x - (390 - bounds!.width) / 2)).toBeLessThan(2);
 }
 export async function approvalFlow(employee: Page, manager: Page, request: APIRequestContext) {
-  const errors: string[] = []; for (const page of [employee,manager]) page.on("pageerror", error => errors.push(error.message));
+  const errors: string[] = []; for (const page of [employee,manager]) watchPageErrors(page, errors);
   const ownerAuth = await headers(employee), managerAuth = await headers(manager);
   const identity = await json<{ employee_id: string; business_today: string }>(request, "/auth/me", ownerAuth);
   const year = Number(identity.business_today.slice(0,4)) + 1;

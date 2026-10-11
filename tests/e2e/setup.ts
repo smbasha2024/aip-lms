@@ -40,6 +40,14 @@ with engine.connect() as connection:
         year = datetime.now(ZoneInfo(settings.org_timezone)).year + 1
         session.add(LeaveBalance(employee_id=employee.employee_id,
             leave_type_id=leave_type.leave_type_id, leave_year=year, allocated=20))
+        # Phase 19 reserves its own month for real mandatory/optional holiday checks.
+        monday = date(year, 9, 1)
+        while monday.weekday() != 0:
+            monday += timedelta(days=1)
+        session.add(Holiday(holiday_date=monday+timedelta(days=1), year=year,
+            name='Hardening Mandatory Holiday', status='ACTIVE', is_optional=False))
+        session.add(Holiday(holiday_date=monday+timedelta(days=2), year=year,
+            name='Hardening Optional Holiday', status='ACTIVE', is_optional=True))
         # Phase 9 uses another type and June dates so existing apply/cancel flows stay isolated.
         sick = session.scalar(select(LeaveType).where(LeaveType.code == 'SICK'))
         session.add(LeaveBalance(employee_id=employee.employee_id, leave_type_id=sick.leave_type_id,

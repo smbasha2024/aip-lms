@@ -2089,7 +2089,7 @@ Status: locally implemented and tested. All 954 backend, 503 frontend and 11 pro
 Chromium workflows pass. Ruff/format, frontend/E2E TypeScript, ESLint, Alembic and
 Turbopack production build pass. Audit screenshots at 360/768/1024/1440 pixels were
 inspected without overflow. Temporary resources were cleaned up and private configuration
-preserved. Review/commit/push and hosted CI await a separate request.
+preserved. Reviewed and pushed as `f711e7f`; GitHub CI run `38107897494` passed all gates.
 See PHASE_18_REPORT.md for the final implementation and validation status.
 
 ---
@@ -2181,6 +2181,23 @@ Verify:
 
 ---
 
+## Phase 19 implementation status (11 October 2026)
+
+Hardening adds a browser selector with per-invocation disposable schemas, CI jobs for
+real Chrome/Edge and Firefox/WebKit, WCAG 2.1 AA axe scans, four-width screen checks,
+keyboard skip/drawer checks, negative leave and mandatory/optional holiday scenarios,
+repository security guards, integrated balance transitions, representative-size query
+budgets/plans and informational p50/p95/error-rate measurements for all 11 documented
+API scenarios. Turbopack remains the production bundler. Storage recovery is complete;
+964 backend and 513 frontend tests passed, with drawer boundary and semantic-label
+corrections. All 55 workflows across Chromium, Chrome, Edge, Firefox and WebKit passed
+with 75 clean axe scans and 260 responsive screenshots. Static/migration/build gates
+and temporary-resource cleanup passed. Phase 19 is locally complete and reviewed;
+check hosted CI against the published commit. See PHASE_19_REPORT.md for evidence
+and release checks.
+
+---
+
 # 26. Phase 20 — Documentation and Release Readiness
 
 Update:
@@ -2266,7 +2283,7 @@ Reports
     ↓
 Dashboard Completion
     ↓
-Audit UI (later release, skipped in v1)
+Audit UI (Phase 18, approved scope extension)
     ↓
 Hardening
     ↓

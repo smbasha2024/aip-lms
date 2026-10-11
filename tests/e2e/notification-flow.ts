@@ -4,12 +4,17 @@ import type { Notification, NotificationPage } from "../../frontend/types/notifi
 export async function notificationFlow(page: Page, request: APIRequestContext) {
   const token = await page.evaluate(() => JSON.parse(sessionStorage.getItem("aip-lms-session")!).token as string);
   const root = `${process.env.E2E_API_URL}/api/v1/notifications`; const headers = { Authorization: `Bearer ${token}` };
-  const initial: NotificationPage = await (await request.get(root, { headers })).json();
+  const initial: NotificationPage = await (await request.get(`${root}?page_size=100`, { headers })).json();
   const fixtures = initial.items.filter(n => n.title.startsWith("Phase 10 notice")); expect(fixtures).toHaveLength(12);
   const bell = page.getByRole("button", { name: "Notifications", exact: true });
   await expect(page.getByLabel(/\d+ unread notifications/)).toHaveText("9+");
+  const latestResponse = page.waitForResponse(response => {
+    const url = new URL(response.url());
+    return url.pathname === "/api/v1/notifications" && url.searchParams.get("page_size") === "5" && response.ok();
+  });
   await bell.click(); const dropdown = page.getByRole("region", { name: "Latest notifications" });
-  await expect(dropdown.getByRole("listitem")).toHaveCount(5); await expect(dropdown.getByText("Phase 10 notice 11", { exact: true })).toBeVisible();
+  await expect(dropdown.getByRole("listitem")).toHaveCount(5); const latest: NotificationPage = await (await latestResponse).json();
+  for (const entry of latest.items) await expect(dropdown.getByText(entry.title, { exact: true }).first()).toBeVisible();
   await page.keyboard.press("Escape"); await expect(dropdown).toHaveCount(0); await expect(bell).toBeFocused();
   await bell.click(); await dropdown.getByRole("link", { name: "View all" }).click(); await expect(page).toHaveURL(/\/notifications$/);
   await expect(page.getByRole("heading", { name: "Notifications", exact: true })).toBeVisible();
