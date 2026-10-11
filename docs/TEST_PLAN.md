@@ -2055,7 +2055,7 @@ HOLIDAY_CREATED
 HOLIDAY_UPDATED
 ```
 
-Audit viewer UI is deferred beyond v1, but audit data creation is not optional where requirements require auditability.
+Phase 18 adds the administrator audit viewer; audit data creation remains mandatory.
 
 ---
 
@@ -3705,7 +3705,6 @@ payroll
 external calendar sync
 advanced analytics
 bulk operations
-audit viewer (deferred beyond v1)
 ```
 
 Do test that current implementation does not accidentally expose incomplete unsupported controls where relevant.
@@ -3933,7 +3932,7 @@ older conditional wording wherever those policies are now fixed in API_SPEC.md.
 ## UI, contracts and release scope (F1-F3/F19)
 
 - Canonical routes and role navigation match UI_SPEC.md; no archived fallback types.
-- No Settings, department CRUD, half-day, automatic approval, audit viewer or export
+- No Settings, department CRUD, half-day, automatic approval or export
   controls in v1. Fixed leave-type policy values are read-only. Optional phone displays.
 - Logout failure clears local caches but shows server sign-out not confirmed. Scoped
   queries/caches do not leak previous user data. Dashboard counts use complete backend
@@ -3946,3 +3945,34 @@ authorization, migration, rollback/concurrency, accessibility and browser gates 
 mandatory at their documented phases. A specification correction is not a passing test.
 
 # End of TEST_PLAN.md
+
+
+## Phase 18 scope extension — Audit Log Viewer
+
+The user approved the previously deferred read-only audit viewer. This approval
+supersedes earlier audit-viewer deferral statements only. Settings, department CRUD,
+exports, IP-based compliance tooling, and automatic retention deletion remain deferred.
+API_SPEC.md owns the audit-read contract; access is restricted to ADMINISTRATOR.
+Existing records, audit creation transactions and retention are preserved. Production
+retention and any purge mechanism need separate review; Phase 18 authorizes no deletion.
+
+When testing is requested, cover: both endpoints' 401/403/live-account enforcement;
+unknown/repeated queries, enum/UUID/date/year validation and inclusive timezone bounds;
+deterministic pagination, empty/out-of-range pages, unknown action/entity grouping;
+redaction of credentials, contact/free text, nested and malformed payloads; nullable
+actors, 404 details, no database mutations; frontend administrator-only access,
+filter submit/reset, pagination, error/retry, redaction notice, and keyboard/mobile
+layouts. Regression and production Turbopack build remain release gates.
+
+
+### Phase 18 local verification (11 October 2026)
+
+Local gate passed: 70 new audit backend cases (41 unit, 29 PostgreSQL integration),
+25 new frontend cases and audit coverage integrated into all three existing role
+browser workflows. Complete results: 954 backend, 503 frontend and 11 Chromium
+workflows passed. Strict API inventory includes both audit endpoints. Manager
+dashboard/queue browser comparison uses fresh reads to tolerate legitimate concurrent
+mutations; rendered snapshot assertions remain. Production Turbopack, Ruff/format,
+ESLint, frontend/E2E TypeScript and disposable Alembic checks passed. Four audit
+screenshots at 360/768/1024/1440 pixels were inspected without overflow. Temporary
+resources were cleaned up. See PHASE_18_REPORT.md; hosted CI awaits review/commit/push.

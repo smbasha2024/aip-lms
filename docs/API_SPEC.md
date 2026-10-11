@@ -466,7 +466,7 @@ own/team, administrators any. Forbidden scope/filter is 403. Includes inactive
 historical types/employees within authorized scope; stable order as
 admin balance list. Utilization is presentation used/allocated*100; zero allocation
 shows an em dash. Use application and holiday read endpoints for other reports.
-CSV/Excel/PDF export is deferred; no export control in v1. No audit-read endpoint in v1.
+CSV/Excel/PDF export is deferred; no export control in v1. Phase 18 adds the administrator audit-read endpoints specified below.
 
 ## 15. Transaction, concurrency and retry contract
 
@@ -502,3 +502,61 @@ Implement only the requested phase. Phase 1 configures projects, PostgreSQL, Ale
 health/configuration/error foundations and test runners. Phase 2 implements models,
 migrations and development seeds (including auth_session). Phase 3 implements authentication.
 Later phases add the documented business endpoints. See IMPLEMENTATION_PLAN.md and TEST_PLAN.md.
+
+
+## Phase 18 — Administrator audit read contract
+
+Approved scope: read-only `/api/v1/admin/audit-logs` and
+`/api/v1/admin/audit-logs/{audit_id}`. Both require a live ADMINISTRATOR account;
+unauthenticated callers receive 401 and other roles 403. No write, export, or purge endpoint.
+
+List parameters: `action`, `entity_type`, `performed_by` (UUID), `from_date`,
+`to_date` (strict YYYY-MM-DD, years 1900–9998), `page` (default 1, minimum 1),
+`page_size` (default 20, 1–100). Unknown or repeated parameters, malformed UUIDs,
+invalid enums, or reversed date ranges return 422 VALIDATION_ERROR. Date boundaries
+are inclusive organization-local calendar days, converted to UTC for querying.
+Sort is created_at descending, then audit_id descending.
+
+Actions: SEED_CREATE, EMPLOYEE_CREATED, EMPLOYEE_UPDATED, ACCOUNT_UPDATED,
+LEAVE_BALANCE_ALLOCATED, LEAVE_BALANCE_UPDATED, LEAVE_BALANCE_ADJUSTED,
+LEAVE_TYPE_CREATED, LEAVE_TYPE_UPDATED, HOLIDAY_CREATED, HOLIDAY_UPDATED,
+HOLIDAY_DEACTIVATED, CREATE, UPDATE, OTHER. Entity types: department, employee,
+app_user, auth_session, leave_type, leave_balance, holiday, leave_appln, notification,
+audit_log, OTHER. OTHER groups unknown stored values; unknown labels are never echoed.
+
+List response: `{items, page, page_size, total}`. Each item contains audit_id,
+entity_type, entity_id (nullable UUID), action, performed_by (nullable UUID),
+actor (nullable `{employee_id, employee_code, name}` from current employee record),
+and created_at (UTC ISO timestamp). Null actor is displayed as System when performed_by
+is null, otherwise Unavailable actor. Actor names are current, not historical snapshots.
+
+Detail adds `old_values`, `new_values` (nullable flat scalar dictionaries), and
+`values_redacted` (boolean). Missing UUID returns 404 AUDIT_LOG_NOT_FOUND. Detail
+accepts no query parameters. The service projects stored JSON onto a validated
+allowlist: UUID identifiers; known status/role enums; bounded finite numeric counters;
+booleans; ISO dates/timestamps; uppercase business codes; literal development_seed origin.
+Nested objects, names, contact details, descriptions, reasons/comments, passwords,
+tokens, business_key and unknown or invalid values are omitted. No IP address is exposed.
+values_redacted is true whenever stored fields were omitted. Neither endpoint emits
+raw JSON payloads. Responses retain Cache-Control: no-store.
+
+Pagination is a live view, not a transaction snapshot across requests; concurrent
+inserts may shift pages. Existing audit rows and mutation transactions are unchanged.
+
+Audit detail field allowlist (invalid types/values are omitted):
+
+| Kind | Fields | Validation |
+| --- | --- | --- |
+| UUID | employee_id, manager_id, department_id, leave_type_id, user_id, balance_id, holiday_id, application_id, approved_by, rejected_by, cancelled_by | UUID strings |
+| Number | allocated, carried_forward, used, pending, available, number_of_days, adjustment, year, leave_year | finite int/float, absolute value ≤ 1,000,000,000; booleans excluded |
+| Boolean | is_paid, allow_employee_application, allow_half_day, requires_approval, is_optional | JSON boolean only |
+| Date | from_date, to_date, joining_date, holiday_date | canonical YYYY-MM-DD |
+| Timestamp | approved_at, rejected_at, cancelled_at | timezone-aware ISO datetime, at most 35 characters |
+| Business code | code, employee_code | 1–50 uppercase letters/digits/underscore/hyphen |
+| Status | status | PENDING, APPROVED, REJECTED, CANCELLED, ACTIVE, INACTIVE, RESIGNED, TERMINATED, LOCKED |
+| Role | role | EMPLOYEE, MANAGER, ADMINISTRATOR |
+| Seed origin | origin | literal development_seed |
+
+Stored null fields are omitted and mark the payload redacted. Null whole payload
+remains null; an empty object remains an empty object. Stored nested account/department
+snapshots are omitted; separate ACCOUNT_UPDATED records retain approved role/status.

@@ -21,6 +21,8 @@ def test_startup_and_liveness(settings):
         "/api/v1/auth/logout",
         "/api/v1/employees",
         "/api/v1/departments",
+        "/api/v1/admin/audit-logs",
+        "/api/v1/admin/audit-logs/{audit_id}",
         "/api/v1/admin/holidays",
         "/api/v1/admin/holidays/{holiday_id}",
         "/api/v1/admin/leave-balances",

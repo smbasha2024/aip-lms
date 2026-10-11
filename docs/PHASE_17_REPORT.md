@@ -1,8 +1,11 @@
 # Phase 17 — Dashboard Completion
 
 Date: 10 October 2026
-Status: Local Phase 17 implementation, tests and review passed; commit/push and hosted CI pending.
+Status: Committed/pushed as `59fc83a`; GitHub CI run `38074789522` passed.
 Base: Phase 16 commit `bb5ab9a9af6ad720d95d14ec56107fbbc6c9a50d`.
+
+Hosted CI: https://github.com/smbasha2024/aip-lms/actions/runs/38074789522
+(884 backend, 478 frontend and 11 Chromium workflows passed on the exact commit).
 
 ## 1. Summary
 
@@ -173,8 +176,8 @@ No application defect was identified or fixed in the testing step, and no produc
 constraint or assertion was weakened to obtain a passing result.
 
 The local Phase 17 gate in TEST_PLAN.md §§60–62 is **satisfied** by the backend/frontend,
-production Chromium and responsive checks above. Hosted CI for this uncommitted phase has
-not been run; it follows review/commit/push when requested.
+production Chromium and responsive checks above. Hosted CI subsequently passed on
+commit `59fc83a`, run `38074789522` (see status at the top of this report).
 
 ## 9. Typecheck/lint/build results
 
@@ -195,7 +198,7 @@ not been run; it follows review/commit/push when requested.
 
 No unresolved Phase 17 local test blocker. The sandbox still prevents a direct Turbopack
 build; the successful external build and production browser gate establish local readiness.
-Review, commit, push and hosted CI remain for a separately requested step.
+Review, commit, push and hosted CI subsequently completed successfully.
 Existing dependency advisory/test-client deprecation from
 previous phases remain; no new dependency decision was introduced. Dashboard aggregates
 use the existing read-committed read transaction; strict cross-query snapshot consistency
@@ -212,9 +215,9 @@ quick access uses the implemented report instead of the deferred/unimplemented a
 
 ## 12. Recommended next action
 
-Review the completed Phase 17 diff, then commit/push and verify GitHub CI when requested.
-No commit or push was performed in this test step. Phase 18 remains deferred beyond v1;
-Phase 19 hardening follows completed Phase 17 and separate authorization.
+Phase 17 is committed, pushed and verified by hosted CI. The user subsequently
+approved Phase 18 audit viewer implementation; see PHASE_18_REPORT.md. Phase 19
+hardening remains a later separately authorized step.
 
 ## Review before commit (10 October 2026)
 

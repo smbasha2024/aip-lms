@@ -1,3 +1,4 @@
+import { auditFlow } from "./audit-flow";
 import { adminHolidayFlow } from "./admin-holiday-flow";
 import { adminBalanceFlow } from "./admin-balance-flow";
 import { adminLeaveTypeFlow } from "./admin-leave-type-flow";
@@ -31,6 +32,7 @@ test("employee sees database balances, full profile and year selection after rel
   const balance: BalanceResponse=await response.json();expect(balance.balances).toHaveLength(6);
   for(const row of balance.balances) await expect(page.getByRole("heading",{name:row.leave_type_name,exact:true})).toBeVisible();
   await reportsFlow(page, request, "EMP001");
+  await auditFlow(page, request, "EMP001");
   await page.goto("/dashboard");
   await notificationFlow(page, request);
   await page.screenshot({path:"../.cache/phase4-dashboard.png",fullPage:true});
@@ -80,6 +82,7 @@ for(const [code,summary] of [["MGR001","Team"],["ADM001","Organization"]]) {
     await reportsFlow(page, request, code);
       if (employeePage) await approvalFlow(employeePage, page, request);
       else { await adminApprovalFlow(page, request); await adminEmployeeFlow(page, request); await adminLeaveTypeFlow(page, request); await adminBalanceFlow(page, request); await adminHolidayFlow(page, request); }
+      await auditFlow(page, request, code);
     } finally {
       await employeeContext?.close();
     }

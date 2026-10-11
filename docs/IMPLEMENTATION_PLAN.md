@@ -275,8 +275,8 @@ department reads; balance identifiers/admin listing; approval/cancellation comme
 dashboard aggregates; scopes/filter semantics; administrator override; cross-year
 policy; calendar rules; transaction/lock ordering and duplicate-action handling.
 
-Half-day/automatic approval, regional calendars, department writes, audit viewer,
-Settings and exports are later-release work. "Later release" never means Phase 2,
+Half-day/automatic approval, regional calendars, department writes, Settings and
+exports are later-release work. The audit viewer was subsequently approved for Phase 18. "Later release" never means Phase 2,
 which is strictly the core database implementation phase.
 
 ## Exit Criteria
@@ -2070,33 +2070,27 @@ verified with the isolated test API origin. All 11 production Chromium workflows
 in 53.0 seconds, including role counts, keyboard focus and year restoration. Eight manager/
 administrator dashboard screenshots at 360/768/1024/1440 pixels were inspected without a
 layout defect. Disposable test resources were cleaned up and private configuration preserved.
-See `PHASE_17_REPORT.md` for exact files and gates. Phase 17 is locally complete and tested;
-review/commit/push and hosted CI remain pending separate authorization.
+See `PHASE_17_REPORT.md` for exact files and gates. Phase 17 was reviewed, committed and pushed as `59fc83a`. GitHub CI run
+`38074789522` passed all gates (884 backend, 478 frontend, 11 Chromium workflows).
 
 ---
 
-# 24. Phase 18 — Audit Log Viewer (Deferred Beyond v1)
+# 24. Phase 18 — Audit Log Viewer
 
-Database audit logging must already exist for critical actions.
+User-approved scope extension: implement the administrator-only, read-only audit
+viewer at `/admin/audit`, following the Phase 18 contract in API_SPEC.md.
 
-Skip this phase in v1. A later release must approve an audit-read contract and access/retention rules before implementing the viewer.
+Deliver schema, repository, service redaction, router, typed client, query hook,
+filter form, paginated entries and on-demand structured change details. Support
+action, entity, actor UUID and inclusive organization-local date filters. Preserve
+existing audit writes, indexes and records; no migration, export or automatic deletion.
 
-Later-release route (not implemented in v1):
-
-```text
-/admin/audit
-```
-
-Potential filters:
-
-```text
-action
-entity_type
-performed_by
-date range
-```
-
-Do not expose secrets or sensitive values.
+Status: locally implemented and tested. All 954 backend, 503 frontend and 11 production
+Chromium workflows pass. Ruff/format, frontend/E2E TypeScript, ESLint, Alembic and
+Turbopack production build pass. Audit screenshots at 360/768/1024/1440 pixels were
+inspected without overflow. Temporary resources were cleaned up and private configuration
+preserved. Review/commit/push and hosted CI await a separate request.
+See PHASE_18_REPORT.md for the final implementation and validation status.
 
 ---
 

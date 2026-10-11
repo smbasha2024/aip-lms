@@ -226,7 +226,7 @@ Administrators can:
 - Approve/reject applications when required.
 - Cancel their own pending applications; cancellation on behalf is deferred.
 - View reports.
-- Audit records are created for critical actions; the audit viewer is deferred beyond v1.
+- Audit records are created for critical actions; the administrator audit viewer is approved for Phase 18.
 
 # 5. Functional Requirements
 
@@ -2101,8 +2101,8 @@ corresponding complete contracts. They are target behavior, not implemented feat
 13. Application date filters mean inclusive leave-period overlap. APIs use /api/v1,
     resource responses directly and the standard error body from API_SPEC.md.
 14. Departments have read lookup only in v1; approved seed/operations processes manage
-    them. Audit creation is required; audit viewer, Settings, exports and department
-    CRUD are later-release features. Navigation exposes only implemented functionality.
+    them. Audit creation is required; Phase 18 includes the administrator audit viewer.
+    Settings, exports and department CRUD remain later-release features. Navigation exposes only implemented functionality.
 15. Phase 1 is foundation only; Phase 2 is database foundation; Phase 3 is authentication.
     The phrase "later release" is distinct from numbered implementation phases.
 
@@ -2126,3 +2126,13 @@ transaction/concurrency verification, migration verification, primary E2E, respo
 and accessibility checks, complete setup documentation, and no committed secrets.
 
 # End of Requirements
+
+
+## Phase 18 scope extension — Audit Log Viewer
+
+The user approved the previously deferred read-only audit viewer. This approval
+supersedes earlier audit-viewer deferral statements only. Settings, department CRUD,
+exports, IP-based compliance tooling, and automatic retention deletion remain deferred.
+API_SPEC.md owns the audit-read contract; access is restricted to ADMINISTRATOR.
+Existing records, audit creation transactions and retention are preserved. Production
+retention and any purge mechanism need separate review; Phase 18 authorizes no deletion.

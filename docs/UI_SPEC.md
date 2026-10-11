@@ -37,8 +37,8 @@ precedence chain. Historical examples are not implementation contracts.
 Use /api/v1 and API snake_case. Roles use ADMINISTRATOR. UUID employee_id differs from
 human employee_code. Logout revokes a server session. A single full name and optional
 phone are supported. Allocations belong to employee/type/year balances. Regional
-calendars, half-day, automatic approval, exports, Settings, department CRUD and audit
-viewer are later-release work. No navigation to unsupported controls.
+calendars, half-day, automatic approval, exports, Settings and department CRUD are
+later-release work. The administrator audit viewer is approved for Phase 18. No navigation to unsupported controls.
 
 ---
 
@@ -252,6 +252,7 @@ Dates sent to the API are always `YYYY-MM-DD`.
 | `/admin/leave-balances` | Leave Balance Management | — | — | ✓ |
 | `/admin/leave-applications` | All Leave Applications | — | — | ✓ |
 | `/admin/holidays` | Holiday Management | — | — | ✓ |
+| `/admin/audit` | Audit Log | — | — | ✓ |
 | `/forbidden` | 403 page | ✓ | ✓ | ✓ |
 
 ## 5.2 Guards (`features/auth/AuthGate`, `lib/permissions.ts`)
@@ -282,6 +283,7 @@ Sidebar (≥ `lg`, fixed 240 px) / top-bar hamburger drawer (< `lg`).
 | Admin | Leave Balances | `/admin/leave-balances` | ADMINISTRATOR |
 | Admin | All Applications | `/admin/leave-applications` | ADMINISTRATOR |
 | Admin | Holiday Management | `/admin/holidays` | ADMINISTRATOR |
+| Admin | Audit Log | `/admin/audit` | ADMINISTRATOR |
 
 Top bar (all screens): hamburger (< `lg`), app name, **notification bell** with unread badge (§13), **user menu** (name, employee code, role; items: My Profile, Logout). The active nav item has `aria-current="page"`.
 
@@ -997,7 +999,7 @@ Tooling: Vitest + React Testing Library + MSW for unit/component tests; Playwrig
 
 # 18. Out of Scope for v1
 
-Dark mode, internationalization, change/forgot-password, SSO, profile editing by employees, half-day UI (pending API), multi-level approvals, email/WhatsApp/push, attendance, payroll, calendar sync (Outlook/Google), Excel/PDF export, AI assistant, advanced analytics dashboards, audit-log viewer, bulk operations. (See `REQUIREMENTS.md` §15–§16.)
+Dark mode, internationalization, change/forgot-password, SSO, profile editing by employees, half-day UI (pending API), multi-level approvals, email/WhatsApp/push, attendance, payroll, calendar sync (Outlook/Google), Excel/PDF export, AI assistant, advanced analytics dashboards, bulk operations. (See `REQUIREMENTS.md` §15–§16.)
 
 ---
 
@@ -1021,7 +1023,7 @@ contracts. Do not implement disabled placeholder fields or TODO-based fabricated
 | G-10 | Administrator approve/reject override, excluding self |
 | G-11 | Single required reason; separate application remarks deferred |
 
-No department CRUD, audit viewer, Settings or export navigation in v1. Implementation
+Phase 18 adds administrator audit navigation. Department CRUD, Settings and exports remain deferred. Implementation
 phase availability is distinct from specification completeness; hide unfinished
 navigation until the corresponding backend/frontend slice is delivered.
 
@@ -1084,3 +1086,21 @@ Refresh /auth/me on window focus and at organizational midnight while visible. B
 submission validation always wins if the preview became stale across midnight.
 
 # End of UI_SPEC.md
+
+
+## Phase 18 scope extension — Audit Log Viewer
+
+The user approved the previously deferred read-only audit viewer. This approval
+supersedes earlier audit-viewer deferral statements only. Settings, department CRUD,
+exports, IP-based compliance tooling, and automatic retention deletion remain deferred.
+API_SPEC.md owns the audit-read contract; access is restricted to ADMINISTRATOR.
+Existing records, audit creation transactions and retention are preserved. Production
+retention and any purge mechanism need separate review; Phase 18 authorizes no deletion.
+
+Route `/admin/audit` appears only in administrator navigation. Provide action/entity
+selects, actor UUID input, local date bounds, clear filters, pagination, loading,
+empty, retry and forbidden states. Detail opens on demand and renders scalar
+previous/current values as escaped text, with an explicit redaction notice. Actor
+identity uses current name/code; System and Unavailable actor are distinct. No edit,
+delete or export controls. Responsive cards, native labels and keyboard controls
+are required. API errors use safe messages; details cannot expose IP addresses.

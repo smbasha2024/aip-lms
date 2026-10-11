@@ -8,6 +8,7 @@ from app.api.admin_employees import router as admin_employee_router
 from app.api.admin_holidays import router as admin_holiday_router
 from app.api.admin_leave_types import router as admin_leave_type_router
 from app.api.approvals import router as approval_router
+from app.api.audit import router as audit_router
 from app.api.auth import router as auth_router
 from app.api.calendar import router as calendar_router
 from app.api.employees import router as employee_router
@@ -72,4 +73,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(approval_router)
     app.include_router(notification_router)
     app.include_router(report_router)
+    app.include_router(audit_router)
     return app

@@ -24,7 +24,13 @@ export async function teamFlow(page: Page, request: APIRequestContext, code: str
   await expect(panel.locator("dl > div").filter({ has: page.getByText(code === "MGR001" ? "Pending approvals" : "Pending applications", { exact: true }) }).locator("dd")).toHaveText(String(count));
   if (code === "MGR001") {
     expect(dashboard.manager_summary!.team_size).toBe(reports.total);
-    expect(count).toBe(queue.total);
+    // Other workflows can process requests after the dashboard snapshot was read.
+    // Compare fresh server reads rather than treating separate requests as one snapshot.
+    await expect.poll(async () => {
+      const latestDashboard: DashboardResponse = await (await request.get(`${base}/dashboard?year=${dashboard.year}`, { headers })).json();
+      const latestQueue: ApplicationPage = await (await request.get(`${base}/leave/approvals/pending`, { headers })).json();
+      return latestDashboard.manager_summary!.pending_approval_count - latestQueue.total;
+    }).toBe(0);
   }
   await page.getByRole("navigation", { name: "Main navigation" }).getByRole("link", { name: "My Team", exact: true }).click();
   await expect(page.getByRole("heading", { name: "My Team", exact: true })).toBeVisible();

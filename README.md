@@ -506,5 +506,22 @@ checks. Backend regression passed 874 cases; the final focused run covers all ad
 dashboard cases (884 distinct backend cases overall). The user built with Turbopack outside
 the sandbox; the compiled test API origin and production runtime were verified. Eight
 manager/administrator dashboard screenshots at 360/768/1024/1440 pixels were inspected
-without a layout defect. See `docs/PHASE_17_REPORT.md` for exact results. Review/commit and
-hosted CI remain pending. No migration, dependency or private environment change is required.
+without a layout defect. See `docs/PHASE_17_REPORT.md` for exact results. Review, commit,
+push and hosted CI completed for commit `59fc83a` (run `38074789522`). No migration, dependency or private environment change is required.
+
+
+## Phase 18 — administrator audit viewer
+
+Administrators can open `/admin/audit` to filter critical-action records by action,
+entity, actor employee UUID and organization-local date range. Entries load in
+bounded pages; expanding View changes fetches sanitized previous/current values.
+Free-text reasons, contact details, credentials, nested/unknown fields and IP addresses
+are excluded. Existing records and atomic audit writes are preserved. No export or
+automatic deletion is provided. See `docs/PHASE_18_REPORT.md`.
+
+Phase 18 is locally implemented and tested: 954 backend, 503 frontend and 11
+production Chromium workflows pass, along with Ruff/format, ESLint, frontend/E2E
+TypeScript, Alembic and the Turbopack build. Four responsive audit screenshots were
+inspected without a layout defect. Temporary test resources were cleaned up.
+Review/commit/push and hosted CI remain pending. No dependency, migration or
+private environment change.

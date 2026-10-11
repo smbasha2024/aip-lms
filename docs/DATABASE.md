@@ -256,7 +256,7 @@ safe JSON metadata. Application audit values include old/new status and actor; b
 adjustments include amount, reason and old/new counters. Never store initial passwords,
 hashes, tokens, session hashes or unrestricted request bodies in audit JSON.
 Audit creation is mandatory for employee/account, leave, balance, leave-type and holiday
-writes and participates in their transaction. An audit viewer is a later release,
+writes and participates in their transaction. The read-only administrator audit viewer is approved for Phase 18,
 independent of mandatory audit creation. Production retention policy requires a separate
 review; no destructive retention job is authorized by this schema.
 
@@ -335,3 +335,13 @@ passwords, roles or balances. Seed departments, EMP001/MGR001/ADM001, reporting 
 EARNED/PRIVILEGE/SICK/PATERNITY/MATERNITY/LOP, current-year balances and holidays.
 Never load fixtures from a real production dump. Test data is independently created,
 not dependent on manual development rows.
+
+
+## Phase 18 scope extension — Audit Log Viewer
+
+The user approved the previously deferred read-only audit viewer. This approval
+supersedes earlier audit-viewer deferral statements only. Settings, department CRUD,
+exports, IP-based compliance tooling, and automatic retention deletion remain deferred.
+API_SPEC.md owns the audit-read contract; access is restricted to ADMINISTRATOR.
+Existing records, audit creation transactions and retention are preserved. Production
+retention and any purge mechanism need separate review; Phase 18 authorizes no deletion.

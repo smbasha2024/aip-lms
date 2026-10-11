@@ -1,4 +1,5 @@
 const messages: Record<string, string> = {
+  AUDIT_LOG_NOT_FOUND: "Audit entry could not be found.",
   HOLIDAY_DATE_EXISTS: "A holiday already exists on this date, including inactive holidays.",
   LEAVE_BALANCE_ALREADY_EXISTS: "A balance already exists for this employee, leave type and year.",
   LEAVE_BALANCE_NOT_FOUND: "Leave balance could not be found.",

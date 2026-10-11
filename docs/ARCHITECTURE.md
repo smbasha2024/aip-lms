@@ -2332,3 +2332,17 @@ Use npm with package-lock; backend requirements.txt plus requirements-dev.txt wi
 pins. Use pytest/httpx and frontend Vitest/Testing Library/MSW/Playwright. Auth support
 libraries (Argon2id) must be available in Phase 2 for seeded account hashes. No duplicate
 framework, ORM, form/state or migration stacks. Deployment platform is deferred.
+
+
+## Phase 18 scope extension — Audit Log Viewer
+
+The user approved the previously deferred read-only audit viewer. This approval
+supersedes earlier audit-viewer deferral statements only. Settings, department CRUD,
+exports, IP-based compliance tooling, and automatic retention deletion remain deferred.
+API_SPEC.md owns the audit-read contract; access is restricted to ADMINISTRATOR.
+Existing records, audit creation transactions and retention are preserved. Production
+retention and any purge mechanism need separate review; Phase 18 authorizes no deletion.
+
+Read flow: router role guard → audit service authorization and safe projection →
+audit repository bounded SQL queries → existing AuditLog model. Frontend page →
+feature → query hook → typed service → API client. No raw audit JSON reaches the UI.
