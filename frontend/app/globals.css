@@ -42,9 +42,16 @@ body { margin: 0; font-family: var(--font-inter), system-ui, sans-serif; color: 
 h1, h2, h3 { font-family: var(--font-display); }
 
 button:not(:disabled), summary { cursor: pointer; }
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+/* Focus (UI_SPEC.md §4.2): buttons, links and summaries keep a clear offset outline; form fields use a single
+   brand border plus a soft blue glow instead (no second rectangle around the field). */
+button:focus-visible, a:focus-visible, summary:focus-visible {
   outline: 2px solid var(--color-brand-600); outline-offset: 3px;
 }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--color-brand-600); box-shadow: 0 0 0 4px rgb(19 99 198 / 0.18);
+}
+input[type="checkbox"]:focus, input[type="radio"]:focus { box-shadow: none; }
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { box-shadow: 0 0 0 4px rgb(19 99 198 / 0.25); }
 dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
 
 /* Shared presentation classes (UI_SPEC.md §4.5–§4.6). Styling only; behavior stays in components. */

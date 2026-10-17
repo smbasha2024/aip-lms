@@ -184,7 +184,7 @@ white on a cool light background.
 | Spacing | 4px scale; page padding `p-4 md:p-6 lg:px-7`; card padding `p-4 md:p-5` |
 | Shadow | cards: border only (no shadow) except dialogs/menus (`shadow-lg`, navy-tinted) |
 | Controls | Buttons and inputs 44px tall; primary, secondary (white with brand border), ghost, danger variants |
-| Focus | Always visible: 2px ring in `brand-600` with offset (3px) |
+| Focus | Always visible. Buttons, links and summaries: 2px `brand-600` outline with 3px offset. Form fields (inputs, selects, textareas): one `brand-600` border plus a soft 4px blue glow, with no offset outline (avoids a double border) |
 
 Dark mode is out of scope for v1. All text/background pairs must meet WCAG AA contrast (4.5:1).
 
