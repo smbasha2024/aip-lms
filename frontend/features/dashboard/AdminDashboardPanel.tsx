@@ -5,9 +5,9 @@ import { DashboardActions, DashboardCounts } from "./DashboardSummary";
 export function AdminDashboardPanel({ summary, year }: { summary: AdminSummary | null; year: number }) {
   const { user } = useAuth();
   if (user?.role !== "ADMINISTRATOR") return null;
-  return <section aria-labelledby="organization-workspace-title" className="space-y-4 rounded border bg-white p-5"><h2 id="organization-workspace-title" className="text-xl font-semibold">Organization workspace</h2>
-    <p className="text-sm text-slate-600">Employee totals include all employment statuses; active employees use employment status. Application counts cover {year}, including your own applications.</p>
-    {summary === null ? <p role="status">Organization summary is unavailable.</p> : <DashboardCounts items={[
+  return <section aria-labelledby="organization-workspace-title" className="card space-y-4 p-5"><h2 id="organization-workspace-title" className="section-title">Organization workspace</h2>
+    <p className="text-sm text-muted">Employee totals include all employment statuses; active employees use employment status. Application counts cover {year}, including your own applications.</p>
+    {summary === null ? <p role="status" className="rounded-[10px] bg-neutral-bg p-3 text-sm text-neutral-fg">Organization summary is unavailable.</p> : <DashboardCounts items={[
       { label: "Total employees", value: summary.total_employees },
       { label: "Active employees", value: summary.active_employees },
       { label: "Pending applications", value: summary.pending_application_count },
