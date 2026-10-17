@@ -2096,6 +2096,31 @@ restore/persistence and three-engine browser checks; see
 
 ---
 
+## Approved disposable Render demo
+
+The user selected a free prospect demo, accepting cold starts and the 30-day
+PostgreSQL expiry. `render.yaml` describes two Docker web services and a separate
+synthetic database; see [RENDER_DEMO.md](RENDER_DEMO.md). Render terminates public
+HTTPS on `lms.aiproxybots.com` and `lms-api.aiproxybots.com`. GoDaddy DNS and the
+existing Render website remain in place. The standalone frontend uses Turbopack.
+
+A dedicated guarded demo entrypoint serializes migration/check/fixture provisioning
+in one PostgreSQL transaction before starting one API worker. Runtime settings stay
+production; only the explicit synthetic fixture operation uses development fixture
+settings. The seed command's production prohibition and normal app startup remain
+unchanged. One worker owns the existing login window; this demo cannot scale without
+shared limiting and requires live verification of Render client-IP handling.
+Restart/overlapping-deploy limiter state is a documented demo limitation.
+
+Free-tier owner-role usage, startup migrations, encrypted but unverified internal
+DB TLS and synthetic provisioning do not satisfy real-data production gates.
+No schema or REST contract change is introduced. Local Docker builds, initialization,
+regression and HTTPS browser validation passed; see the
+[Render validation report](RENDER_DEMO_VALIDATION_REPORT.md). Actual Render hosting,
+DNS, client-IP handling and CD remain unverified; this is not a live deployment claim.
+
+---
+
 # 50. Environment Separation
 
 At minimum, the system should support:

@@ -1,0 +1,5 @@
+{
+  "extends": "../staging/tsconfig.json",
+  "include": ["./**/*.ts", "../e2e/page-errors.ts"],
+  "exclude": []
+}
