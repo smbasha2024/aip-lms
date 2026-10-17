@@ -2200,6 +2200,21 @@ and release checks.
 
 # 26. Phase 20 — Documentation and Release Readiness
 
+## Subsequent approved free Render demo slice
+
+The user selected Render for prospect demonstrations and accepted free-service
+cold starts and the free database's 30-day expiry. Configuration is prepared on
+`feature/render-free-demo`. Local validation passed: 999 unique backend cases across
+regression/targeted runs, 513 frontend tests, nine browser checks, official Blueprint
+schema validation and both Docker builds. See the
+[validation report](RENDER_DEMO_VALIDATION_REPORT.md). No actual Render hosting is claimed.
+`render.yaml`, a dedicated API Dockerfile/startup procedure and
+[RENDER_DEMO.md](RENDER_DEMO.md) cover synthetic initialization, database guards,
+custom origins, GoDaddy CNAMEs and CI-gated `main` deployment. No application
+feature, schema or dependency change is included. Local review found no blocking
+code issues; hosted CI, live Render/DNS/CD checks and protected PR merges remain.
+The paths are not available on `main` until those merges complete.
+
 ## Subsequent approved local staging slice
 
 Following Phase 20, the user selected local Docker staging first. Deployment files,
