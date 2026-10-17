@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Ubuntu } from "next/font/google";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const ubuntu = Ubuntu({ subsets: ["latin"], weight: ["500", "700"], variable: "--font-ubuntu" });
 import type { ReactNode } from "react";
 import { Providers } from "./providers";
 import "./globals.css";
@@ -14,5 +15,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return <html lang="en"><body className={inter.variable}><Providers>{children}</Providers></body></html>;
+  return <html lang="en" className={`${inter.variable} ${ubuntu.variable}`}><body><Providers>{children}</Providers></body></html>;
 }
