@@ -58,13 +58,13 @@ export function LoginForm() {
           <Mail aria-hidden size={17} className="pointer-events-none absolute left-3.5 top-3.5 text-muted" />
           <input {...form.register("username")} id="username" autoComplete="username" autoFocus aria-required="true"
             aria-invalid={!!form.formState.errors.username} aria-describedby={form.formState.errors.username ? "username-error" : undefined}
-            data-testid="login-username" maxLength={255} className="field-input pl-10" /></div>
+            data-testid="login-username" maxLength={255} className="field-input w-full pl-10" /></div>
           {form.formState.errors.username && <p id="username-error" className="field-error">{form.formState.errors.username.message}</p>}</div>
         <div><label htmlFor="password" className="field-label">Password *</label><div className="relative">
           <LockKeyhole aria-hidden size={17} className="pointer-events-none absolute left-3.5 top-3.5 text-muted" />
           <input {...form.register("password")} id="password" type={visible ? "text" : "password"} autoComplete="current-password" aria-required="true"
             aria-invalid={!!form.formState.errors.password} aria-describedby={form.formState.errors.password ? "password-error" : undefined}
-            data-testid="login-password" maxLength={128} className="field-input pl-10 pr-12" />
+            data-testid="login-password" maxLength={128} className="field-input w-full pl-10 pr-12" />
           <button type="button" aria-label={visible ? "Hide password" : "Show password"} aria-pressed={visible} onClick={() => setVisible(!visible)}
             className="absolute right-1 top-1 rounded-lg p-2 text-muted hover:bg-brand-50 hover:text-brand-700">{visible ? <EyeOff aria-hidden size={18} /> : <Eye aria-hidden size={18} />}</button></div>
           {form.formState.errors.password && <p id="password-error" className="field-error">{form.formState.errors.password.message}</p>}</div>

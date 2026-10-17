@@ -24,12 +24,12 @@ function NotificationItem({ item, timezone, compact, onNavigate }: { item: Notif
       onSettled: () => { submitting.current = false; },
     });
   }
-  const content = <><div className="flex items-start gap-2"><Icon aria-hidden size={20} className="mt-0.5 shrink-0"/><span className="min-w-0 flex-1 break-words font-semibold">{item.title}</span>{!item.is_read && <span className="shrink-0 text-xs font-semibold text-blue-800"><span aria-hidden>● </span>Unread</span>}</div>
-    <p className={`mt-2 whitespace-pre-wrap break-words text-sm text-slate-700 ${compact ? "line-clamp-2" : ""}`}>{item.message}</p>
-    <time dateTime={item.created_at} title={eventTime(item.created_at, timezone)} className="mt-2 block text-xs text-slate-600">{compact ? formatDistanceToNow(parseISO(item.created_at), { addSuffix: true }) : eventTime(item.created_at, timezone)}</time></>;
-  return <li className={`rounded-lg border ${item.is_read ? "bg-white" : "border-blue-200 bg-blue-50"}`}>
+  const content = <><div className="flex items-start gap-2"><Icon aria-hidden size={20} className="mt-0.5 shrink-0"/><span className="min-w-0 flex-1 break-words font-semibold">{item.title}</span>{!item.is_read && <span className="shrink-0 text-xs font-semibold text-brand-700"><span aria-hidden>● </span>Unread</span>}</div>
+    <p className={`mt-2 whitespace-pre-wrap break-words text-sm text-ink ${compact ? "line-clamp-2" : ""}`}>{item.message}</p>
+    <time dateTime={item.created_at} title={eventTime(item.created_at, timezone)} className="mt-2 block text-xs text-muted">{compact ? formatDistanceToNow(parseISO(item.created_at), { addSuffix: true }) : eventTime(item.created_at, timezone)}</time></>;
+  return <li className={`rounded-lg border border-line ${item.is_read ? "bg-white" : "border-brand-100 bg-brand-50"}`}>
     {href ? <Link href={href} onClick={() => { read(); onNavigate?.(); }} className="block rounded-lg p-4 focus-visible:outline-2 focus-visible:outline-blue-700">{content}</Link>
       : <button type="button" onClick={read} disabled={mark.isPending} className="block w-full rounded-lg p-4 text-left disabled:opacity-60">{content}</button>}
-    {!item.is_read && <button type="button" disabled={mark.isPending} onClick={read} className="mb-3 ml-4 rounded border bg-white px-3 py-2 text-sm text-blue-700 disabled:opacity-60">{mark.isPending ? "Marking as read…" : "Mark as read"}</button>}
+    {!item.is_read && <button type="button" disabled={mark.isPending} onClick={read} className="btn btn-secondary mb-3 ml-4">{mark.isPending ? "Marking as read…" : "Mark as read"}</button>}
   </li>;
 }

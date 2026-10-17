@@ -15,13 +15,13 @@ export function HolidayCalendar({ year, month, today, holidays, select, navigate
     const index=year*12+month-1+delta;const nextYear=Math.floor(index/12);const nextMonth=index%12+1;
     if(nextYear>=1900&&nextYear<=9999) navigate(nextYear,nextMonth);
   }
-  return <section aria-label="Holiday calendar" className="rounded-lg border border-slate-200 bg-white p-3 sm:p-5">
-    <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="text-xl font-semibold">{format(first,"MMMM yyyy")}</h2>
-      <div className="flex gap-2"><button disabled={year===1900&&month===1} onClick={()=>move(-1)} aria-label="Previous month" className="rounded border px-3 py-2 disabled:opacity-40">←</button>
-      <button onClick={()=>navigate(Number(today.slice(0,4)),Number(today.slice(5,7)))} className="rounded border px-3 py-2">Today</button>
-      <button disabled={year===9999&&month===12} onClick={()=>move(1)} aria-label="Next month" className="rounded border px-3 py-2 disabled:opacity-40">→</button></div></header>
-    <p className="mb-4 text-sm text-slate-600">● Mandatory / ○ Optional</p>
-    <div className="grid grid-cols-7 gap-1">{WEEKDAYS.map(day=><span key={day} className="py-2 text-center text-xs font-semibold text-slate-600">{day}</span>)}
+  return <section aria-label="Holiday calendar" className="rounded-[14px] border border-line bg-white p-3 sm:p-5">
+    <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="section-title">{format(first,"MMMM yyyy")}</h2>
+      <div className="flex gap-2"><button disabled={year===1900&&month===1} onClick={()=>move(-1)} aria-label="Previous month" className="btn btn-secondary">←</button>
+      <button onClick={()=>navigate(Number(today.slice(0,4)),Number(today.slice(5,7)))} className="btn btn-secondary">Today</button>
+      <button disabled={year===9999&&month===12} onClick={()=>move(1)} aria-label="Next month" className="btn btn-secondary">→</button></div></header>
+    <p className="mb-4 text-sm text-muted">● Mandatory / ○ Optional</p>
+    <div className="grid grid-cols-7 gap-1">{WEEKDAYS.map(day=><span key={day} className="py-2 text-center text-xs font-semibold text-muted">{day}</span>)}
       {Array.from({length:getISODay(first)-1},(_,index)=><span key={`empty-${index}`} aria-hidden />)}
       {days.map((day,index)=>{const key=format(day,"yyyy-MM-dd");const holiday=byDate.get(key);const weekend=getISODay(day)>=6;
         return <button key={key} ref={element=>{refs.current[index]=element;}} type="button"
@@ -29,9 +29,9 @@ export function HolidayCalendar({ year, month, today, holidays, select, navigate
           aria-current={key===today ? "date" : undefined} onClick={()=>holiday&&select(holiday)}
           onKeyDown={event=>{const delta:Record<string,number>={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7};
             if(event.key in delta){event.preventDefault();const target=index+delta[event.key];if(target>=0&&target<days.length) refs.current[target]?.focus();}}}
-          className={`min-h-24 min-w-0 rounded border p-1 text-left align-top sm:p-2 ${weekend ? "bg-slate-50" : "bg-white"} ${key===today ? "border-blue-600 ring-1 ring-blue-600" : "border-slate-200"}`}>
-          <span className="block text-sm">{format(day,"d")}</span>{holiday&&<span title={`${holiday.name} (${holiday.is_optional ? "Optional" : "Mandatory"})`} className={`mt-2 block truncate text-xs ${showStatus && holiday.status === "INACTIVE" ? "text-slate-600" : "text-blue-800"}`}>{showStatus && holiday.status === "INACTIVE" ? "Inactive · " : ""}{holiday.is_optional ? "○" : "●"} {holiday.name}</span>}
+          className={`min-h-24 min-w-0 rounded border p-1 text-left align-top sm:p-2 border-line ${weekend ? "bg-canvas" : "bg-white"} ${key===today ? "border-brand-600 ring-1 ring-brand-600" : "border-line"}`}>
+          <span className="block text-sm">{format(day,"d")}</span>{holiday&&<span title={`${holiday.name} (${holiday.is_optional ? "Optional" : "Mandatory"})`} className={`mt-2 block truncate text-xs ${showStatus && holiday.status === "INACTIVE" ? "text-muted" : "text-brand-700"}`}>{showStatus && holiday.status === "INACTIVE" ? "Inactive · " : ""}{holiday.is_optional ? "○" : "●"} {holiday.name}</span>}
         </button>;})}
-    </div><p className="mt-3 text-xs text-slate-600">Use arrow keys to move between dates. Select a holiday to view details.</p>
+    </div><p className="mt-3 text-xs text-muted">Use arrow keys to move between dates. Select a holiday to view details.</p>
   </section>;
 }
