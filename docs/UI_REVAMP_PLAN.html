@@ -166,7 +166,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em
 
 /* Shell mock */
 .shell { display: grid; grid-template-columns: 240px 1fr; min-width: 1100px; height: 900px; }
-.side { background: var(--side-gradient); color: #E6EFFB; display: flex; flex-direction: column; padding: 18px 14px; gap: 18px; overflow: hidden; }
+.side { background: var(--side-solid); color: #E6EFFB; display: flex; flex-direction: column; padding: 18px 14px; gap: 18px; overflow: hidden; }
 .side .lockup { padding: 2px 6px 14px; border-bottom: 1px solid rgba(255,255,255,0.18); }
 .side .lockup .tile { width: 40px; height: 40px; border-radius: 11px; }
 .side .lockup .tile img { width: 36px; }
@@ -301,7 +301,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em
 .pbody .welcome h1 { font-size: 19px; }
 .pbody .bal { padding: 14px; gap: 10px; }
 .pbody .bal-main b { font-size: 28px; }
-.pdrawer { flex: 1; background: var(--side-gradient); padding: 16px 14px; display: flex; flex-direction: column; gap: 16px; color: #E6EFFB; }
+.pdrawer { flex: 1; background: var(--side-solid); padding: 16px 14px; display: flex; flex-direction: column; gap: 16px; color: #E6EFFB; }
 
 /* Sidebar options */
 .opts { display: grid; grid-template-columns: repeat(3, 248px); gap: 20px; padding: 24px; min-width: 840px; justify-content: center; }
@@ -311,6 +311,7 @@ code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.88em
 .opt .cap b { display: block; color: var(--app-ink); font-size: 14px; }
 .opt.navy .side { background: var(--navy-900); }
 .opt.solid .side { background: var(--side-solid); }
+.opt.grad .side { background: var(--side-gradient); }
 
 /* Phases */
 .phases { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); overflow: hidden; }
@@ -437,13 +438,13 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     </header>
     <div class="swatches">
       <div class="sw"><div class="tone" style="background:#1363C6"></div><div class="info"><b>Brand Blue</b><span>Primary buttons, links, active states</span><span class="hex">#1363C6 · site --primary</span></div></div>
-      <div class="sw"><div class="tone" style="background:#0F4FA0"></div><div class="info"><b>Brand Blue Deep</b><span>Hover, pressed, sidebar top, mobile bar</span><span class="hex">#0F4FA0 · derived</span></div></div>
+      <div class="sw"><div class="tone" style="background:#0F4FA0"></div><div class="info"><b>Brand Blue Deep</b><span>Hover, pressed, sidebar, mobile bar</span><span class="hex">#0F4FA0 · derived</span></div></div>
       <div class="sw"><div class="tone" style="background:#15ACE1"></div><div class="info"><b>Sky</b><span>Accents, active nav marker, gradients</span><span class="hex">#15ACE1 · site --secondary</span></div></div>
       <div class="sw"><div class="tone" style="background:#14183E"></div><div class="info"><b>Navy</b><span>Toasts, headline text</span><span class="hex">#14183E · site --dark</span></div></div>
       <div class="sw"><div class="tone" style="background:#1A2A6C"></div><div class="info"><b>Indigo Navy</b><span>Gradient start for hero bands</span><span class="hex">#1A2A6C · site gradient</span></div></div>
       <div class="sw"><div class="tone" style="background:#8CC63F"></div><div class="info"><b>Logo Lime</b><span>Small highlights on navy only</span><span class="hex">#8CC63F · from logo</span></div></div>
       <div class="sw"><div class="tone" style="background:#F4F7FE;border-bottom:1px solid #DCE3F0"></div><div class="info"><b>Cloud</b><span>App page background</span><span class="hex">#F4F7FE · site --light</span></div></div>
-      <div class="sw"><div class="tone" style="background:linear-gradient(120deg,#1A2A6C,#1363C6 62%,#15ACE1)"></div><div class="info"><b>Brand Gradient</b><span>Login panel and welcome band (diagonal), sidebar (vertical)</span><span class="hex">#1A2A6C → #1363C6 → #15ACE1</span></div></div>
+      <div class="sw"><div class="tone" style="background:linear-gradient(120deg,#1A2A6C,#1363C6 62%,#15ACE1)"></div><div class="info"><b>Brand Gradient</b><span>Login panel and welcome band only</span><span class="hex">#1A2A6C → #1363C6 → #15ACE1</span></div></div>
     </div>
     <p class="note"><b>Accessibility check.</b> Brand Blue on white has a contrast of about 5.8:1, so it passes WCAG AA for text and buttons. Sky (about 2.6:1) and Lime fail as text on white, so they are used only for fills, markers and accents, or on navy. Status colors keep their text label as well as their color, as <code>UI_SPEC.md</code> §4.3 requires.</p>
   </section>
@@ -561,7 +562,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     <header>
       <p class="eyebrow">Sample screen 3 · /dashboard</p>
       <h2>Home page, sidebar menu and top bar</h2>
-      <p class="lede">This is the manager view. The brand-blue sidebar shows the existing menu items under the group headings from UI_SPEC §5.3 and gives each an icon. The welcome band, quick actions, totals, balance cards, recent applications and holidays show the same data the dashboard API returns today.</p>
+      <p class="lede">This is the manager view. The Brand Blue Deep sidebar shows the existing menu items under the group headings from UI_SPEC §5.3 and gives each an icon. The welcome band, quick actions, totals, balance cards, recent applications and holidays show the same data the dashboard API returns today.</p>
     </header>
     <div class="frame">
       <div class="frame-bar"><i></i><i></i><i></i><span class="url">/dashboard</span><span class="sample-tag" style="margin-left:auto">Mockup · sample data</span></div>
@@ -677,7 +678,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
       </div>
     </div>
     <div class="callouts">
-      <div><span class="num">1</span><span><b>Sidebar</b> uses a vertical brand-blue gradient and shows the Leave, Team and Admin headings already defined in UI_SPEC §5.3. Menu items, order, role filtering and links are unchanged. The active item gets a white tint and marker, and keeps <code>aria-current</code>.</span></div>
+      <div><span class="num">1</span><span><b>Sidebar</b> is solid Brand Blue Deep and shows the Leave, Team and Admin headings already defined in UI_SPEC §5.3. Menu items, order, role filtering and links are unchanged. The active item gets a white tint and marker, and keeps <code>aria-current</code>.</span></div>
       <div><span class="num">2</span><span><b>Pending approvals count</b> becomes a lime pill. It is the same number from the same query.</span></div>
       <div><span class="num">3</span><span><b>Top bar</b> gains a breadcrumb label and an initials avatar on the existing user menu (name, code, role, My Profile, Logout).</span></div>
       <div><span class="num">4</span><span><b>Balance cards</b> show the API's "available" figure large. The bar segment widths come from the used, pending and available values the API returns. No derived totals are displayed.</span></div>
@@ -822,7 +823,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   <section class="section" id="sidebar-options">
     <header>
       <p class="eyebrow">Sidebar color · revised</p>
-      <h2>Brand blue instead of navy</h2>
+      <h2>Brand Blue Deep instead of navy</h2>
       <p class="lede">Navy is kept here only for comparison. Both blue options keep white text above 4.5:1 contrast. The sky marker is replaced with white, because sky does not show up against blue.</p>
     </header>
     <div class="frame">
@@ -833,10 +834,10 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
               <div class="navgroup"><h4>Team</h4><span class="navitem"><svg class="ico"><use href="#i-check"/></svg>Pending Approvals<span class="count">3</span></span></div></aside><p class="cap"><b>Previous · Navy</b>#14183E. Too dark.</p></div>
           <div class="opt solid"><aside class="side"><div class="navgroup"><span class="navitem active"><svg class="ico"><use href="#i-dash"/></svg>Dashboard</span><span class="navitem"><svg class="ico"><use href="#i-bell"/></svg>Notifications</span></div>
               <div class="navgroup"><h4>Leave</h4><span class="navitem"><svg class="ico"><use href="#i-plus"/></svg>Apply Leave</span><span class="navitem"><svg class="ico"><use href="#i-wallet"/></svg>Leave Balance</span></div>
-              <div class="navgroup"><h4>Team</h4><span class="navitem"><svg class="ico"><use href="#i-check"/></svg>Pending Approvals<span class="count">3</span></span></div></aside><p class="cap"><b>Option A · Brand Blue Deep</b>Solid #0F4FA0.</p></div>
-          <div class="opt"><aside class="side"><div class="navgroup"><span class="navitem active"><svg class="ico"><use href="#i-dash"/></svg>Dashboard</span><span class="navitem"><svg class="ico"><use href="#i-bell"/></svg>Notifications</span></div>
+              <div class="navgroup"><h4>Team</h4><span class="navitem"><svg class="ico"><use href="#i-check"/></svg>Pending Approvals<span class="count">3</span></span></div></aside><p class="cap"><b>Option A · Brand Blue Deep ✓</b>Solid #0F4FA0.</p></div>
+          <div class="opt grad"><aside class="side"><div class="navgroup"><span class="navitem active"><svg class="ico"><use href="#i-dash"/></svg>Dashboard</span><span class="navitem"><svg class="ico"><use href="#i-bell"/></svg>Notifications</span></div>
               <div class="navgroup"><h4>Leave</h4><span class="navitem"><svg class="ico"><use href="#i-plus"/></svg>Apply Leave</span><span class="navitem"><svg class="ico"><use href="#i-wallet"/></svg>Leave Balance</span></div>
-              <div class="navgroup"><h4>Team</h4><span class="navitem"><svg class="ico"><use href="#i-check"/></svg>Pending Approvals<span class="count">3</span></span></div></aside><p class="cap"><b>Option B · Brand Gradient ✓</b>#0F4FA0 → #1363C6 → #1C86D6, top to bottom.</p></div>
+              <div class="navgroup"><h4>Team</h4><span class="navitem"><svg class="ico"><use href="#i-check"/></svg>Pending Approvals<span class="count">3</span></span></div></aside><p class="cap"><b>Option B · Brand Gradient</b>#0F4FA0 → #1363C6 → #1C86D6, top to bottom.</p></div>
         </div>
       </div>
     </div>
@@ -853,7 +854,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
         <thead><tr><th>Element</th><th>Today</th><th>Proposed</th></tr></thead>
         <tbody>
           <tr><td>Brand</td><td>Text "Employee Leave Management" only</td><td>AIProxys logo and wordmark in the sidebar, login, loader and mobile bar</td></tr>
-          <tr><td>Sidebar</td><td>White, flat list of 16 links</td><td>Brand-blue gradient, with the §5.3 group headings shown, icons, white active marker</td></tr>
+          <tr><td>Sidebar</td><td>White, flat list of 16 links</td><td>Solid Brand Blue Deep, with the §5.3 group headings shown, icons, white active marker</td></tr>
           <tr><td>Login</td><td>Small white card on grey</td><td>Split brand panel and form, gradient, feature bullets</td></tr>
           <tr><td>Dashboard</td><td>Bordered boxes, text-link quick actions</td><td>Gradient welcome band, icon action tiles, balance cards with bars</td></tr>
           <tr><td>Color</td><td>Tailwind <code>blue-600</code> and <code>slate</code></td><td>Brand Blue #1363C6, Navy #14183E, Sky #15ACE1, Cloud background</td></tr>
@@ -874,7 +875,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     <div class="phases">
       <div class="ph"><span class="id">R0</span><div class="bd"><h3>Update the UI spec first</h3><p>UI_SPEC.md owns presentation, and today it pins <code>blue-600</code>, <code>slate</code> and a 400px login card (§4.2, §4.3, §9.1), and Inter is its only font. We update those sections to the new tokens, login layout and nav headings before any code changes, as AGENTS.md §8 requires.</p><p class="files">docs/UI_SPEC.md</p></div></div>
       <div class="ph"><span class="id">R1</span><div class="bd"><h3>Design tokens and foundation</h3><p>Brand colors and fonts go into Tailwind v4 <code>@theme</code>, with Ubuntu loaded via <code>next/font</code>. We add the logo asset and shared classes for buttons, cards, fields, badges, tables and dialogs, and update the focus ring color.</p><p class="files">app/globals.css · app/layout.tsx · public/brand/</p></div></div>
-      <div class="ph"><span class="id">R2</span><div class="bd"><h3>App shell</h3><p>Brand-blue 240px sidebar with the §5.3 group headings and icons, top bar, user menu, mobile drawer and notification bell styling. Nav links, role filtering and focus trapping stay as they are.</p><p class="files">components/layout/AppShell.tsx · features/notifications/NotificationBell.tsx · lib/permissions.ts (adds an icon per item only)</p></div></div>
+      <div class="ph"><span class="id">R2</span><div class="bd"><h3>App shell</h3><p>Brand Blue Deep 240px sidebar with the §5.3 group headings and icons, top bar, user menu, mobile drawer and notification bell styling. Nav links, role filtering and focus trapping stay as they are.</p><p class="files">components/layout/AppShell.tsx · features/notifications/NotificationBell.tsx · lib/permissions.ts (adds an icon per item only)</p></div></div>
       <div class="ph"><span class="id">R3</span><div class="bd"><h3>Login, loader and system pages</h3><p>Split login, branded workspace loader, and the Forbidden and Not Found pages.</p><p class="files">features/auth/LoginForm.tsx · app/page.tsx · app/forbidden · app/not-found.tsx · components/common/*</p></div></div>
       <div class="ph"><span class="id">R4</span><div class="bd"><h3>Dashboards</h3><p>Employee dashboard plus the manager and administrator panels.</p><p class="files">features/dashboard/*</p></div></div>
       <div class="ph"><span class="id">R5</span><div class="bd"><h3>Employee screens</h3><p>Apply Leave, Leave Balance, My Leave Applications, application detail and timeline, Cancel dialog, Holidays, Notifications and Profile.</p><p class="files">features/leave/* · features/holidays/HolidayScreen, HolidayCalendar, HolidayList · features/notifications/* · features/employees/EmployeeProfileCard</p></div></div>
@@ -892,7 +893,7 @@ a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
     </header>
     <div class="decisions">
       <div class="dec"><h3>1. A separate public landing page?</h3><p>Today <code>/</code> only redirects to the dashboard or to login. A marketing-style landing page would be a new route, which is a behavior change.</p><p class="rec"><b>Recommended:</b> no. The branded split login serves as the landing page.</p></div>
-      <div class="dec"><h3>2. Sidebar color</h3><p>Navy was too dark. The options are a solid Brand Blue Deep or a vertical brand gradient, compared side by side above the summary table.</p><p class="rec"><b>Recommended:</b> the vertical brand gradient. It is one token, so switching to solid later is a one-line change.</p></div>
+      <div class="dec"><h3>2. Sidebar color</h3><p>Navy was too dark. The options are a solid Brand Blue Deep or a vertical brand gradient, compared side by side above the summary table.</p><p class="rec"><b>Chosen:</b> solid Brand Blue Deep (#0F4FA0). It is one token, so a change later is one line.</p></div>
       <div class="dec"><h3>3. Logo file</h3><p>The site logo is a 576×508 PNG with a white background, and it is detailed, so it gets muddy below 40px.</p><p class="rec"><b>Recommended:</b> share a transparent PNG or SVG and, if one exists, a simplified icon mark. Until then we use the white tile.</p></div>
       <div class="dec"><h3>4. Product name in the app</h3><p>The UI says "Employee Leave Management" today. The proposal shows "AIProxys" with "Leave Management" under it. Page titles stay unchanged either way.</p><p class="rec"><b>Recommended:</b> "AIProxys · Leave Management".</p></div>
       <div class="dec"><h3>5. Body font</h3><p>The website uses Open Sans for body text. Keeping Inter means fewer changes and better number alignment in tables.</p><p class="rec"><b>Recommended:</b> Ubuntu for headings and Inter for body.</p></div>

@@ -174,7 +174,7 @@ white on a cool light background.
 | Sky accent | `sky-brand` #15ACE1: fills, markers and gradients only, never body text on white (contrast < 4.5:1) |
 | Navy | `navy-900` #14183E: toasts, headline ink. `navy-800` #1A2A6C: gradient start |
 | Lime accent | `lime-brand` #8CC63F, from the logo: small highlights on blue/navy only (e.g. sidebar count pill with navy text) |
-| Sidebar | Vertical gradient `#0F4FA0 → #1363C6 → #1C86D6` (one token, `--sidebar-bg`) |
+| Sidebar | Solid Brand Blue Deep `#0F4FA0` (one token, `--sidebar-bg`); white text ≈ 7.9:1 contrast |
 | Hero gradient | `linear-gradient(120deg, #1A2A6C, #1363C6 62%, #15ACE1)`: login brand panel and dashboard welcome band only |
 | Neutrals | Page bg `#F4F7FE`; `white` surfaces; borders `#DCE3F0`; body text `#1B2340`; muted text `#5B6582` |
 | Danger | text `#A4262C` / bg `#FDE7E9`; solid destructive button `#B42318` |
@@ -318,7 +318,7 @@ Top bar (all screens): hamburger (< `lg`), app name, **notification bell** with 
 
 ## 5.4 Navigation visual treatment
 
-- Sidebar and mobile drawer use the `--sidebar-bg` brand gradient (§4.2) with the wordmark
+- Sidebar, mobile drawer and mobile top bar use the solid `--sidebar-bg` Brand Blue Deep (§4.2) with the wordmark
   lockup (§4.6) at the top. The drawer keeps its existing dialog, focus-trap and close behavior.
 - Group headings from the §5.3 table (Leave, Team, Admin) are shown as small uppercase
   labels. Items marked "—" have no heading. Navigation items not listed in §5.3 (Notifications,
