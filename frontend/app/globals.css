@@ -49,12 +49,14 @@ dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
 
 /* Shared presentation classes (UI_SPEC.md §4.5–§4.6). Styling only; behavior stays in components. */
 @layer components {
+  /* inline-block (not flex) so a button's text content and innerText stay exactly as before the revamp. */
   .btn {
-    display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem;
-    min-height: 2.75rem; padding: 0 1.125rem; border-radius: 0.625rem; border: 1px solid transparent;
-    font-size: 0.875rem; font-weight: 600; line-height: 1.25; white-space: nowrap;
+    display: inline-block; text-align: center; vertical-align: middle;
+    min-height: 2.75rem; padding: 0.6875rem 1.125rem; border-radius: 0.625rem; border: 1px solid transparent;
+    font-size: 0.875rem; font-weight: 600; line-height: 1.25rem; white-space: nowrap;
     transition: background-color 150ms, border-color 150ms, color 150ms;
   }
+  .btn > svg { display: inline-block; vertical-align: -0.2em; }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
   .btn-primary { background: var(--color-brand-600); color: #fff; box-shadow: 0 1px 2px rgb(20 24 62 / 0.2); }
   .btn-primary:hover:not(:disabled) { background: var(--color-brand-700); }
