@@ -20,7 +20,7 @@ export function TeamMonthGrid({ days, today, select }: { days: CalendarDay[]; to
         <div className="min-h-40 space-y-1"><button ref={element => { buttons.current[dayIndex] = element; }} type="button" aria-current={day.date === today ? "date" : undefined}
           aria-haspopup="dialog" aria-label={`${label}, ${day.applications.length} leave applications${day.holiday ? `, ${day.holiday.name}` : ""}; view day details`}
           onClick={() => select(day.date)} onKeyDown={event => { const deltas: Record<string, number> = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }; if (event.key in deltas) { event.preventDefault(); buttons.current[dayIndex + deltas[event.key]]?.focus(); } }}
-          className="min-h-11 w-full rounded px-2 text-left font-medium hover:bg-slate-200 focus-visible:outline-2 focus-visible:outline-blue-700"><time dateTime={day.date}>{format(date, "d")}</time></button>
+          className="min-h-11 w-full rounded px-2 text-left font-medium hover:bg-[#e6ecf7] focus-visible:outline-2 focus-visible:outline-brand-700"><time dateTime={day.date}>{format(date, "d")}</time></button>
           {day.holiday && <p title={day.holiday.name} className="truncate px-1 text-xs text-brand-800">{day.holiday.is_optional ? "○" : "●"} {day.holiday.name}</p>}
           {day.applications.slice(0, 3).map(row => <LeaveChip key={row.application_id} row={row}/>)}
           {day.applications.length > 3 && <button type="button" aria-haspopup="dialog" onClick={() => select(day.date)} aria-label={`${day.applications.length - 3} more leave applications on ${label}`} className="min-h-11 w-full rounded px-1 text-left text-xs text-brand-700 underline">+{day.applications.length - 3} more</button>}

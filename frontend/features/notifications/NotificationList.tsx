@@ -28,7 +28,7 @@ function NotificationItem({ item, timezone, compact, onNavigate }: { item: Notif
     <p className={`mt-2 whitespace-pre-wrap break-words text-sm text-ink ${compact ? "line-clamp-2" : ""}`}>{item.message}</p>
     <time dateTime={item.created_at} title={eventTime(item.created_at, timezone)} className="mt-2 block text-xs text-muted">{compact ? formatDistanceToNow(parseISO(item.created_at), { addSuffix: true }) : eventTime(item.created_at, timezone)}</time></>;
   return <li className={`rounded-lg border border-line ${item.is_read ? "bg-white" : "border-brand-100 bg-brand-50"}`}>
-    {href ? <Link href={href} onClick={() => { read(); onNavigate?.(); }} className="block rounded-lg p-4 focus-visible:outline-2 focus-visible:outline-blue-700">{content}</Link>
+    {href ? <Link href={href} onClick={() => { read(); onNavigate?.(); }} className="block rounded-lg p-4 focus-visible:outline-2 focus-visible:outline-brand-700">{content}</Link>
       : <button type="button" onClick={read} disabled={mark.isPending} className="block w-full rounded-lg p-4 text-left disabled:opacity-60">{content}</button>}
     {!item.is_read && <button type="button" disabled={mark.isPending} onClick={read} className="btn btn-secondary mb-3 ml-4">{mark.isPending ? "Marking as read…" : "Mark as read"}</button>}
   </li>;

@@ -53,10 +53,11 @@ dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
   .btn {
     display: inline-block; text-align: center; vertical-align: middle;
     min-height: 2.75rem; padding: 0.6875rem 1.125rem; border-radius: 0.625rem; border: 1px solid transparent;
-    font-size: 0.875rem; font-weight: 600; line-height: 1.25rem; white-space: nowrap;
+    font-size: 0.875rem; font-weight: 600; line-height: 1.25rem;
     transition: background-color 150ms, border-color 150ms, color 150ms;
   }
   .btn > svg { display: inline-block; vertical-align: -0.2em; }
+  td .btn { padding-inline: 0.75rem; font-size: 0.8125rem; }
   .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.55; cursor: not-allowed; }
   .btn-primary { background: var(--color-brand-600); color: #fff; box-shadow: 0 1px 2px rgb(20 24 62 / 0.2); }
   .btn-primary:hover:not(:disabled) { background: var(--color-brand-700); }
