@@ -4,7 +4,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { Check, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
-import { BrandLockup } from "@/components/common/BrandLogo";
+import { BrandLockup, BrandLogo } from "@/components/common/BrandLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { safeReturnTo } from "@/lib/permissions";
 import { ApiError } from "@/lib/api-client";
@@ -40,7 +40,7 @@ export function LoginForm() {
   if (auth.loading || auth.user) return <p role="status" className="grid min-h-screen place-items-center bg-canvas p-8 text-center text-muted">Checking your session…</p>;
   if (auth.error) return <main className="grid min-h-screen place-items-center bg-canvas p-8"><div className="card w-full max-w-sm space-y-4 p-6 text-center"><p role="alert" className="text-ink">Unable to restore your session.</p>
     <div className="flex flex-wrap justify-center gap-3"><button onClick={() => void auth.retry()} className="btn btn-primary">Retry</button><button onClick={() => void auth.signOut()} className="btn btn-secondary">Sign out on this device</button></div></div></main>;
-  return <main className="grid min-h-screen grid-rows-[auto_1fr] bg-white md:grid-cols-[1fr_1fr] md:grid-rows-1 lg:grid-cols-[1.05fr_1fr]">
+  return <main className="grid min-h-screen grid-rows-[auto_1fr] bg-canvas md:grid-cols-[1fr_1fr] md:grid-rows-1 lg:grid-cols-[1.05fr_1fr]">
     <aside aria-label="About AIProxys Leave Management" className="hero-gradient hero-rings flex flex-col justify-between gap-6 px-6 py-6 md:px-10 md:py-10 lg:px-13 lg:py-12">
       <div><BrandLockup subtitleClassName="text-white/85" />
         <div className="hidden md:block"><h2 className="mt-10 max-w-[14ch] font-display text-3xl lg:text-4xl font-bold leading-tight text-white">Plan time off with confidence.</h2>
@@ -49,9 +49,12 @@ export function LoginForm() {
             <li key={text} className="flex items-center gap-2.5"><span className="grid h-6.5 w-6.5 place-items-center rounded-lg bg-white/15"><Check aria-hidden size={15} className="text-lime-brand" /></span>{text}</li>)}</ul></div></div>
       <p className="hidden text-xs text-white/70 md:block">© {new Date().getFullYear()} AIProxys · Smart AI Agents</p>
     </aside>
-    <div className="flex justify-center px-4 pb-10 pt-8 sm:px-8 md:items-center md:p-10 lg:p-12">
-    <section className="w-full max-w-[400px]" aria-labelledby="sign-in-title">
-      <h1 id="sign-in-title" className="font-display text-[1.75rem] font-bold text-ink">Sign in</h1><p className="mb-6 mt-1.5 text-muted">Access your employee workspace.</p>
+    <div className="flex items-start justify-center px-4 py-8 sm:items-center sm:px-8 md:p-10 lg:p-12">
+    <section className="card w-full max-w-[440px] p-6 shadow-xl shadow-navy-900/5 sm:p-8" aria-labelledby="sign-in-title">
+      <div className="mb-6 flex flex-col items-center border-b border-line pb-6 text-center">
+        <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl border border-line bg-white shadow-sm"><BrandLogo size={54} /></span>
+        <p className="mt-3 font-display text-2xl font-bold text-brand-700">AIProxys</p></div>
+      <h1 id="sign-in-title" className="text-center font-display text-[1.75rem] font-bold text-ink">Sign in</h1><p className="mb-6 mt-1.5 text-center text-muted">Access your employee workspace.</p>
       {(error || auth.notice || expired) && <p role="alert" className="mb-5 rounded-[10px] border border-[#f1b7bb] bg-bad-bg p-3 text-sm text-bad-fg">{error || auth.notice || "Your session has expired. Please sign in again."}</p>}
       <form onSubmit={form.handleSubmit(submit)} noValidate className="space-y-5">
         <div><label htmlFor="username" className="field-label">Email or Employee ID *</label><div className="relative">

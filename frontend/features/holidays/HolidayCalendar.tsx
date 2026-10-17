@@ -1,7 +1,9 @@
 "use client";
 import { useRef } from "react";
 import { eachDayOfInterval, startOfMonth, endOfMonth, getISODay, format, parseISO } from "date-fns";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Holiday } from "@/types/employee";
+import { CardHeader } from "@/components/common/CardHeader";
 export const WEEKDAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
 export function HolidayCalendar({ year, month, today, holidays, select, navigate, showStatus = false }: {
   year: number; month: number; today: string; holidays: Holiday[]; showStatus?: boolean;
@@ -15,23 +17,33 @@ export function HolidayCalendar({ year, month, today, holidays, select, navigate
     const index=year*12+month-1+delta;const nextYear=Math.floor(index/12);const nextMonth=index%12+1;
     if(nextYear>=1900&&nextYear<=9999) navigate(nextYear,nextMonth);
   }
-  return <section aria-label="Holiday calendar" className="rounded-[14px] border border-line bg-white p-3 sm:p-5">
-    <header className="mb-4 flex flex-wrap items-center justify-between gap-3"><h2 className="section-title">{format(first,"MMMM yyyy")}</h2>
-      <div className="flex gap-2"><button disabled={year===1900&&month===1} onClick={()=>move(-1)} aria-label="Previous month" className="btn btn-secondary">←</button>
+  const leading=getISODay(first)-1; const trailing=(7-((leading+days.length)%7))%7;
+  return <section aria-label="Holiday calendar" className="card overflow-hidden">
+    <CardHeader icon={CalendarDays} action={<div className="flex gap-1.5"><button disabled={year===1900&&month===1} onClick={()=>move(-1)} aria-label="Previous month" className="btn btn-secondary px-3"><ChevronLeft aria-hidden size={18}/></button>
       <button onClick={()=>navigate(Number(today.slice(0,4)),Number(today.slice(5,7)))} className="btn btn-secondary">Today</button>
-      <button disabled={year===9999&&month===12} onClick={()=>move(1)} aria-label="Next month" className="btn btn-secondary">→</button></div></header>
-    <p className="mb-4 text-sm text-muted">● Mandatory / ○ Optional</p>
-    <div className="grid grid-cols-7 gap-1">{WEEKDAYS.map(day=><span key={day} className="py-2 text-center text-xs font-semibold text-muted">{day}</span>)}
-      {Array.from({length:getISODay(first)-1},(_,index)=><span key={`empty-${index}`} aria-hidden />)}
-      {days.map((day,index)=>{const key=format(day,"yyyy-MM-dd");const holiday=byDate.get(key);const weekend=getISODay(day)>=6;
+      <button disabled={year===9999&&month===12} onClick={()=>move(1)} aria-label="Next month" className="btn btn-secondary px-3"><ChevronRight aria-hidden size={18}/></button></div>}>{format(first,"MMMM yyyy")}</CardHeader>
+    <div className="p-3 sm:p-5">
+    <p className="mb-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted"><span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded bg-brand-600" />Mandatory</span>
+      <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded border-2 border-dashed border-[#c27c00] bg-warn-bg" />Optional</span>
+      <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded border border-line bg-[#f2f5fb]" />Weekend</span>
+      <span className="inline-flex items-center gap-1.5"><span aria-hidden="true" className="h-3 w-3 rounded-full bg-brand-600 ring-2 ring-brand-100" />Today</span></p>
+    <div className="overflow-hidden rounded-xl border border-line">
+    <div className="grid grid-cols-7 bg-[#eef4fc]">{WEEKDAYS.map((day,index)=><span key={day} className={`py-2 text-center text-[11px] font-bold uppercase tracking-wider ${index>=5 ? "text-[#6d4bd8]" : "text-brand-800"}`}>{day}</span>)}</div>
+    <div className="grid grid-cols-7 gap-px border-t border-line bg-line">
+      {Array.from({length:leading},(_,index)=><span key={`empty-${index}`} aria-hidden className="min-h-24 bg-[#f7f9fd]" />)}
+      {days.map((day,index)=>{const key=format(day,"yyyy-MM-dd");const holiday=byDate.get(key);const weekend=getISODay(day)>=6;const isToday=key===today;
+        const inactive=showStatus&&holiday?.status==="INACTIVE";
         return <button key={key} ref={element=>{refs.current[index]=element;}} type="button"
           aria-label={`${format(day,"EEEE, dd MMMM yyyy")}${holiday ? `, ${holiday.name}, ${holiday.is_optional ? "Optional" : "Mandatory"}${showStatus ? `, ${holiday.status === "ACTIVE" ? "Active" : "Inactive"}` : ""}` : ""}`}
-          aria-current={key===today ? "date" : undefined} onClick={()=>holiday&&select(holiday)}
+          aria-current={isToday ? "date" : undefined} onClick={()=>holiday&&select(holiday)}
           onKeyDown={event=>{const delta:Record<string,number>={ArrowLeft:-1,ArrowRight:1,ArrowUp:-7,ArrowDown:7};
             if(event.key in delta){event.preventDefault();const target=index+delta[event.key];if(target>=0&&target<days.length) refs.current[target]?.focus();}}}
-          className={`min-h-24 min-w-0 rounded border p-1 text-left align-top sm:p-2 border-line ${weekend ? "bg-canvas" : "bg-white"} ${key===today ? "border-brand-600 ring-1 ring-brand-600" : "border-line"}`}>
-          <span className="block text-sm">{format(day,"d")}</span>{holiday&&<span title={`${holiday.name} (${holiday.is_optional ? "Optional" : "Mandatory"})`} className={`mt-2 block truncate text-xs ${showStatus && holiday.status === "INACTIVE" ? "text-muted" : "text-brand-700"}`}>{showStatus && holiday.status === "INACTIVE" ? "Inactive · " : ""}{holiday.is_optional ? "○" : "●"} {holiday.name}</span>}
+          className={`relative flex min-h-24! min-w-0 flex-col items-center justify-center gap-1.5 p-1.5 text-center transition-colors focus-visible:z-10 sm:p-2 ${holiday&&!inactive ? (holiday.is_optional ? "bg-[#fffaf0] hover:bg-warn-bg" : "bg-brand-50 hover:bg-[#dfeafa]") : weekend ? "bg-[#f2f5fb] hover:bg-[#e9eef8]" : "bg-white hover:bg-[#f6f9fe]"} ${holiday ? "cursor-pointer" : "cursor-default"}`}>
+          <span className={`grid h-7 w-7 place-items-center rounded-full text-sm ${isToday ? "bg-brand-600 font-bold text-white ring-2 ring-brand-100" : weekend ? "font-medium text-[#6d4bd8]" : "font-medium text-ink"}`}>{format(day,"d")}</span>
+          {holiday&&<span title={`${holiday.name} (${holiday.is_optional ? "Optional" : "Mandatory"})`} className={`block w-full truncate rounded-md px-1.5 py-0.5 text-[11px] font-semibold ${inactive ? "border border-dashed border-line bg-white text-muted" : holiday.is_optional ? "border border-dashed border-[#c27c00] bg-warn-bg text-warn-fg" : "bg-brand-600 text-white"}`}>{inactive ? "Inactive · " : ""}{holiday.is_optional ? "○" : "●"} {holiday.name}</span>}
         </button>;})}
-    </div><p className="mt-3 text-xs text-muted">Use arrow keys to move between dates. Select a holiday to view details.</p>
-  </section>;
+      {Array.from({length:trailing},(_,index)=><span key={`tail-${index}`} aria-hidden className="min-h-24 bg-[#f7f9fd]" />)}
+    </div></div>
+    <p className="mt-3 text-xs text-muted">Use arrow keys to move between dates. Select a holiday to view details.</p>
+  </div></section>;
 }

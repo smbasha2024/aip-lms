@@ -14,7 +14,7 @@ export function DayDetails({ day, close }: { day: CalendarDay; close: () => void
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
   }
   return <dialog ref={ref} tabIndex={-1} aria-labelledby={title} onKeyDown={trap} onCancel={event => { event.preventDefault(); close(); }} onClick={event => { if (event.target !== ref.current) return; const rect = ref.current.getBoundingClientRect(); if (event.clientX < rect.left || event.clientX > rect.right || event.clientY < rect.top || event.clientY > rect.bottom) close(); }}
-    className="m-0 h-dvh max-h-dvh w-full max-w-none overflow-y-auto border bg-white p-5 backdrop:bg-black/40 md:m-auto md:h-auto md:max-h-[calc(100dvh-2rem)] md:w-[calc(100%-2rem)] md:max-w-2xl md:rounded-2xl border-line">
+    className="m-0 h-dvh max-h-dvh w-full max-w-none overflow-y-auto border bg-white p-5 backdrop:bg-black/40 md:m-auto md:h-fit md:max-h-[calc(100dvh-2rem)] md:w-[calc(100%-2rem)] md:max-w-2xl md:rounded-2xl border-line">
     <h2 id={title} className="section-title">{format(parseISO(day.date), "EEEE, dd MMMM yyyy")}</h2>
     {day.weekend && <p className="mt-3 text-muted">Weekend</p>}
     {day.holiday && <section aria-label="Holiday details" className="mt-4 space-y-2 rounded border border-brand-100 bg-brand-50 p-4"><h3 className="break-words font-semibold">{day.holiday.name}</h3><p>{day.holiday.is_optional ? "Optional holiday" : "Mandatory holiday"}</p><p className="whitespace-pre-wrap break-words">{day.holiday.description ?? "No description provided."}</p></section>}

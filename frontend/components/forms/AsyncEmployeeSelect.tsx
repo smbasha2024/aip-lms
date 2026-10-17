@@ -4,7 +4,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useEmployees } from "@/hooks/use-admin-employees";
 import { useDirectReports } from "@/hooks/use-team";
 import { QueryError } from "@/components/common/QueryState";
-export function AsyncEmployeeSelect({ value, onChange, managers = false, excludeId, initialLabel = "", label = "Employee" }: { value: string; onChange: (id: string) => void; managers?: boolean; excludeId?: string; initialLabel?: string; label?: string }) {
+import { Info } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+export function AsyncEmployeeSelect({ value, onChange, managers = false, excludeId, initialLabel = "", label = "Employee", labelIcon: LabelIcon }: { value: string; onChange: (id: string) => void; managers?: boolean; excludeId?: string; initialLabel?: string; label?: string; labelIcon?: LucideIcon }) {
   const id = useId(); const [search, setSearch] = useState(""); const [debounced, setDebounced] = useState(""); const [open, setOpen] = useState(false); const [active, setActive] = useState(-1); const [selected, setSelected] = useState({ id: "", label: "" });
   useEffect(() => { const timer = setTimeout(() => { setDebounced(search.trim()); setActive(-1); }, 300); return () => clearTimeout(timer); }, [search]);
   const { user } = useAuth(); const organization = user?.role === "ADMINISTRATOR";
@@ -19,7 +21,9 @@ export function AsyncEmployeeSelect({ value, onChange, managers = false, exclude
   const pending = query.isPending || managers && administrators.isPending;
   const failed = query.isError || managers && administrators.isError;
   function choose(index: number) { const employee = options[index]; if (employee) { setSelected({ id: employee.employee_id, label: `${employee.name} (${employee.employee_code})` }); onChange(employee.employee_id); setOpen(false); } }
-  return <div><label htmlFor={id}>{label}</label><p className="text-xs text-muted">{managers ? "Search active managers and administrators. Only top-level managers and administrators may omit a manager." : organization ? "Search organization employees." : "Search your current direct reports."}</p><input id={id} role="combobox" aria-autocomplete="list" aria-controls={`${id}-options`} aria-expanded={open} aria-activedescendant={open && options[active] ? `${id}-${active}` : undefined} value={search} maxLength={200} placeholder="Search name, email or code" onFocus={() => setOpen(true)} onChange={event => { setSearch(event.target.value); setOpen(true); }} onKeyDown={event => {
+  const help = managers ? "Search active managers and administrators. Only top-level managers and administrators may omit a manager." : organization ? "Search organization employees." : "Search your current direct reports.";
+  // Help text: visible as a hover/focus tooltip on the info icon; kept in the DOM (visually hidden) and linked to the input.
+  return <div><div className="flex items-center gap-1.5"><label htmlFor={id} className={LabelIcon ? "flex items-center gap-2 font-medium" : undefined}>{LabelIcon && <LabelIcon aria-hidden size={16} className="text-brand-600" />}{label}</label><span aria-hidden="true" data-tip={help} className="help-tip"><Info size={14} /></span></div><p id={`${id}-help`} className="sr-only">{help}</p><input id={id} aria-describedby={`${id}-help`} role="combobox" aria-autocomplete="list" aria-controls={`${id}-options`} aria-expanded={open} aria-activedescendant={open && options[active] ? `${id}-${active}` : undefined} value={search} maxLength={200} placeholder="Search name, email or code" onFocus={() => setOpen(true)} onChange={event => { setSearch(event.target.value); setOpen(true); }} onKeyDown={event => {
     if (event.key === "Escape") setOpen(false);
     if (event.key === "ArrowDown" || event.key === "ArrowUp") { event.preventDefault(); setOpen(true); setActive(index => Math.max(0, Math.min(options.length - 1, index + (event.key === "ArrowDown" ? 1 : -1)))); }
     if (event.key === "Enter" && open) { event.preventDefault(); choose(Math.max(0, active)); }

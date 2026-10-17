@@ -1,14 +1,15 @@
 "use client";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { Power } from "lucide-react";
 import type { Employee } from "@/types/employee";
 import { useAuth } from "@/hooks/use-auth";
 import { useEmployeeMutation } from "@/hooks/use-admin-employees";
 import { ApiError } from "@/lib/api-client";
-export function EmployeeStatusAction({ employee }: { employee: Employee }) {
+export function EmployeeStatusAction({ employee, menuItem = false }: { employee: Employee; menuItem?: boolean }) {
   const { user } = useAuth(); const [open, setOpen] = useState(false); const [notice, setNotice] = useState("");
   if (!["ACTIVE", "INACTIVE"].includes(employee.status) || employee.employee_id === user?.employee_id) return null;
   const label = employee.status === "ACTIVE" ? "Deactivate" : "Activate";
-  return <><button type="button" onClick={() => { setNotice(""); setOpen(true); }} className="btn btn-secondary">{label}</button>{notice && <p role="status">{notice}</p>}{open && <StatusDialog employee={employee} label={label} close={() => setOpen(false)} success={() => { setOpen(false); setNotice(`Employee ${label.toLowerCase()}d.`); }}/>}</>;
+  return <><button type="button" onClick={() => { setNotice(""); setOpen(true); }} className={menuItem ? `inline-flex min-h-11 items-center gap-2.5 rounded-lg border-t border-line px-2.5 text-left text-sm font-medium ${label === "Deactivate" ? "text-warn-fg hover:bg-warn-bg" : "text-ok-fg hover:bg-ok-bg"}` : "btn btn-secondary"}>{menuItem && <Power aria-hidden size={16} />}{label}</button>{notice && <p role="status">{notice}</p>}{open && <StatusDialog employee={employee} label={label} close={() => setOpen(false)} success={() => { setOpen(false); setNotice(`Employee ${label.toLowerCase()}d.`); }}/>}</>;
 }
 function StatusDialog({ employee, label, close, success }: { employee: Employee; label: string; close: () => void; success: () => void }) {
   const ref = useRef<HTMLDialogElement>(null); const latch = useRef(false); const title = useId();

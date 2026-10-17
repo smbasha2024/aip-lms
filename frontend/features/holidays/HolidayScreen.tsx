@@ -9,6 +9,8 @@ import { YearSelect } from "@/components/common/YearSelect";
 import { calendarDate } from "@/lib/format";
 import { HolidayCalendar } from "./HolidayCalendar";
 import { HolidayList } from "./HolidayList";
+import { CalendarDays } from "lucide-react";
+import { CardHeader } from "@/components/common/CardHeader";
 function subscribe(callback:()=>void) { const media=window.matchMedia?.("(max-width: 767px)");media?.addEventListener("change",callback);return ()=>media?.removeEventListener("change",callback); }
 function mobileSnapshot() { return window.matchMedia?.("(max-width: 767px)").matches??false; }
 export function HolidayScreen() {
@@ -30,7 +32,7 @@ export function HolidayScreen() {
     {selection.year===null || !validMonth ? <p role="alert">Select a year between 1900 and 9999 and a month between 1 and 12.</p> : query.isPending ? <QueryLoading/> : query.isError ? <QueryError error={query.error} retry={()=>void query.refetch()}/> : <>
       {shown.length===0&&<p className="rounded-[14px] border bg-white p-5 border-line">No holidays have been published for {selection.year}{month!==null ? ` in the selected month` : ""}.</p>}
       {view==="calendar" ? <HolidayCalendar year={selection.year} month={calendarMonth} today={today} holidays={all} select={holiday=>selectId(holiday.holiday_id)} navigate={navigate}/> : <HolidayList holidays={shown} select={holiday=>selectId(holiday.holiday_id)} grouped={month===null}/>}
-      {selected&&<section aria-label="Holiday details" className="rounded-[14px] border border-brand-100 bg-white p-5"><h2 className="break-words section-title">{selected.name}</h2><p className="mt-2">{calendarDate(selected.holiday_date)} · {selected.is_optional ? "Optional" : "Mandatory"}</p><p className="mt-3 break-words">{selected.description??"No description provided."}</p><button onClick={()=>selectId(null)} className="btn btn-secondary mt-4">Close details</button></section>}
+      {selected&&<section aria-label="Holiday details" className="card overflow-hidden"><CardHeader icon={CalendarDays}>{selected.name}</CardHeader><div className="px-5 pb-5 pt-1"><p className="mt-2">{calendarDate(selected.holiday_date)} · {selected.is_optional ? "Optional" : "Mandatory"}</p><p className="mt-3 break-words">{selected.description??"No description provided."}</p><button onClick={()=>selectId(null)} className="btn btn-secondary mt-4">Close details</button></div></section>}
     </>}
   </section>;
 }

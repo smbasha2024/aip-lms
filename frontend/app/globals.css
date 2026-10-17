@@ -111,13 +111,11 @@ dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
   /* Data tables (R7.1): visible caption as card title, tinted brand header, zebra rows and hover. */
   .data-table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
   .data-table > caption.table-title {
-    caption-side: top; text-align: left; padding: 1rem 1rem 0.875rem; color: var(--color-ink);
-    font-family: var(--font-display); font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--color-line);
+    caption-side: top; text-align: left; padding: 0.75rem 1.25rem; color: var(--color-ink);
+    font-family: var(--font-display); font-size: 1rem; font-weight: 700;
+    background: linear-gradient(90deg, #e3edfa 0%, #f3f7fd 100%); border-bottom: 1px solid var(--color-brand-100);
   }
-  .data-table > caption.table-title::before {
-    content: ""; display: inline-block; width: 0.25rem; height: 1rem; margin-right: 0.625rem; border-radius: 9999px;
-    background: var(--color-brand-600); vertical-align: -0.15em;
-  }
+  .data-table > caption.table-title > .card-icon { display: inline-grid; margin-right: 0.75rem; vertical-align: middle; }
   .data-table thead th {
     background: #eef4fc; color: var(--color-brand-800); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em;
     text-transform: uppercase; border-bottom: 1px solid var(--color-brand-100); vertical-align: bottom;
@@ -128,6 +126,83 @@ dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
   .data-table tbody > tr:hover > * { background: #f1f6fd; }
   .data-table tbody > tr > :first-child { font-weight: 600; color: var(--color-ink); }
   .table-hint { padding: 0.625rem 1rem; border-top: 1px solid var(--color-line); background: #fafcff; font-size: 0.75rem; color: var(--color-muted); }
+
+  /* Card header band (R7.2): light brand band flush with the card's top corners, icon tile before the title. */
+  .card-header {
+    display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1.25rem;
+    background: linear-gradient(90deg, #e3edfa 0%, #f3f7fd 100%); border-bottom: 1px solid var(--color-brand-100);
+  }
+  .card-icon {
+    display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: 0.625rem;
+    background: #c9dcf5; color: var(--color-brand-800);
+  }
+
+  /* Metric tones: each figure type gets its own tint, border and icon color. */
+  .tone-brand  { --tone-bg: #eef4fc; --tone-border: #d5e5f9; --tone-accent: #1363c6; --tone-fg: #0c3f80; }
+  .tone-sky    { --tone-bg: #eaf8fd; --tone-border: #c4ebf8; --tone-accent: #0b87b5; --tone-fg: #0a5a7a; }
+  .tone-slate  { --tone-bg: #f2f4f8; --tone-border: #dfe3ec; --tone-accent: #4a5470; --tone-fg: #2d3550; }
+  .tone-amber  { --tone-bg: #fff7e6; --tone-border: #fbe2a8; --tone-accent: #c27c00; --tone-fg: #6e4700; }
+  .tone-green  { --tone-bg: #e9f7ef; --tone-border: #c3e8d1; --tone-accent: #1e8e4e; --tone-fg: #12613a; }
+  .tone-red    { --tone-bg: #fdecee; --tone-border: #f6c7cb; --tone-accent: #c2352f; --tone-fg: #9a2228; }
+  .tone-violet { --tone-bg: #f3effd; --tone-border: #ddd3f7; --tone-accent: #6d4bd8; --tone-fg: #47299e; }
+  .tone-teal   { --tone-bg: #e8f7f5; --tone-border: #bfe7e1; --tone-accent: #0f8a7a; --tone-fg: #0b6359; }
+  .tone-rose   { --tone-bg: #fdeef4; --tone-border: #f6cadb; --tone-accent: #c8336f; --tone-fg: #95214f; }
+  .tone-magenta { --tone-bg: #faeefc; --tone-border: #ecc9f2; --tone-accent: #a33ab8; --tone-fg: #772287; }
+  .tone-indigo { --tone-bg: #eef0fb; --tone-border: #d3d8f4; --tone-accent: #4054b2; --tone-fg: #2c3a85; }
+  .stat { background: var(--tone-bg); border: 1px solid var(--tone-border); border-radius: 0.875rem; padding: 0.875rem 1rem; text-align: center; }
+  .stat > dt { display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.8125rem; font-weight: 600; color: var(--tone-fg); }
+  .stat > dd { margin-top: 0.375rem; font-family: var(--font-display); font-size: 1.625rem; font-weight: 700; line-height: 1.1; color: var(--tone-fg); font-variant-numeric: tabular-nums; }
+  .stat-icon { display: grid; place-items: center; flex: none; width: 1.75rem; height: 1.75rem; border-radius: 0.5rem; background: var(--tone-accent); color: #fff; }
+  /* Leave type identity: a stable tone per leave type (derived from its name, never hardcoded). */
+  .lt-dot { display: inline-block; flex: none; width: 0.625rem; height: 0.625rem; border-radius: 9999px; background: var(--tone-accent); margin-right: 0.5rem; vertical-align: 0.05em; }
+  .lt-tag { display: inline-block; padding: 0.125rem 0.5rem; border-radius: 0.375rem; font-size: 0.6875rem; font-weight: 700; background: var(--tone-bg); color: var(--tone-fg); border: 1px solid var(--tone-border); }
+  .lt-card { border-top: 4px solid var(--tone-accent); }
+  .lt-label { display: inline-flex; align-items: flex-start; }
+  .lt-select { border-left: 4px solid var(--tone-accent); }
+  .lt-label > .lt-dot { margin-top: 0.35em; }
+
+  /* Icon row actions with a styled tooltip (R7.3). Tone classes supply the colors. */
+  .icon-action {
+    position: relative; display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; flex: none;
+    border-radius: 0.625rem; border: 1px solid var(--tone-border); background: #fff; color: var(--tone-accent);
+    transition: background-color 120ms, border-color 120ms;
+  }
+  .icon-action:hover:not(:disabled) { background: var(--tone-bg); border-color: var(--tone-accent); }
+  .icon-action:disabled { opacity: 0.5; cursor: not-allowed; }
+  .icon-action.icon-action-text { display: inline-flex; width: auto; gap: 0.375rem; padding: 0 0.75rem; font-size: 0.8125rem; font-weight: 600; }
+  .icon-action[data-tip]::after {
+    content: attr(data-tip) / ""; position: absolute; right: 0; bottom: calc(100% + 6px); z-index: 40; padding: 0.3rem 0.55rem;
+    border-radius: 0.375rem; background: var(--color-navy-900); color: #fff; font-size: 0.75rem; font-weight: 600; line-height: 1.2;
+    white-space: nowrap; pointer-events: none; opacity: 0; transform: translateY(2px); transition: opacity 120ms, transform 120ms;
+  }
+  .icon-action[data-tip]:hover::after, .icon-action[data-tip]:focus-visible::after { opacity: 1; transform: translateY(0); }
+  /* Info icon with a wrapping tooltip for field help text. */
+  .help-tip { position: relative; display: inline-grid; place-items: center; color: var(--color-muted); cursor: help; border-radius: 9999px; }
+  .help-tip:hover, .help-tip:focus-visible { color: var(--color-brand-600); }
+  .help-tip[data-tip]::after {
+    content: attr(data-tip) / ""; position: absolute; left: -0.5rem; top: calc(100% + 6px); z-index: 40; width: max-content; max-width: 17rem;
+    padding: 0.45rem 0.6rem; border-radius: 0.5rem; background: var(--color-navy-900); color: #fff; font-size: 0.75rem; font-weight: 500;
+    line-height: 1.35; text-transform: none; letter-spacing: normal; white-space: normal; pointer-events: none; opacity: 0; transform: translateY(-2px);
+    transition: opacity 120ms, transform 120ms;
+  }
+  .help-tip[data-tip]:hover::after, .help-tip[data-tip]:focus-visible::after { opacity: 1; transform: translateY(0); }
+  .row-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.375rem; }
+  td .row-actions { flex-wrap: nowrap; }
+
+  /* Compact filter bar (R7.4): one wrapping row, small labels above fields. */
+  .filter-bar { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.75rem; }
+  .filter-bar label { font-size: 0.75rem; font-weight: 600; color: var(--color-muted); }
+  .filter-bar select, .filter-bar input:not([type="checkbox"]) { margin-top: 0.25rem; font-size: 0.875rem; font-weight: 400; color: var(--color-ink); }
+  .filter-bar .filter-field { width: 100%; }
+  .filter-bar input[type="date"] { padding-inline: 0.625rem 0.5rem; }
+  @media (min-width: 640px) { .filter-bar .filter-field { width: 9.5rem; } .filter-bar .filter-field-wide { width: 13rem; } .filter-bar .filter-field-narrow { width: 8.5rem; } }
+  /* The search help line stays available to screen readers but is not shown inside compact bars. */
+  .filter-bar label + p.text-xs { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  /* Native checkbox restyled as a switch (role="switch" and checked state unchanged). */
+  .switch-input { appearance: none; position: relative; width: 2.5rem; height: 1.5rem; flex: none; border-radius: 9999px; background: #c9d3e6; cursor: pointer; transition: background-color 150ms; }
+  .switch-input::before { content: ""; position: absolute; top: 0.1875rem; left: 0.1875rem; width: 1.125rem; height: 1.125rem; border-radius: 9999px; background: #fff; box-shadow: 0 1px 2px rgb(20 24 62 / 0.25); transition: transform 150ms; }
+  .switch-input:checked { background: var(--color-brand-600); }
+  .switch-input:checked::before { transform: translateX(1rem); }
 
   .table-head th {
     background: #f6f8fd; color: var(--color-muted); font-size: 0.6875rem; font-weight: 600;

@@ -255,6 +255,37 @@ Dates sent to the API are always `YYYY-MM-DD`.
   sit below the table as a footer. Column sorting and in-header filters are **not** part of the revamp. Sorting
   is a separate future enhancement limited to API-supported sorts (application lists:
   `created_at`, `from_date`, `to_date`, `number_of_days`, `status`), and needs its own spec update.
+- **Card header standard:** every titled card starts with a light brand band flush with the card's top
+  corners, a meaningful icon in a slightly darker tile, then the title (`CardHeader`). Optional actions
+  (e.g. a link, month navigation or a filter) sit at the right end of the band.
+- **Metric tiles:** each figure type has its own tone and icon (`StatTile`): Allocated blue, Carried
+  Forward violet, Used grey, Pending amber, Available green, Active teal, On leave today sky, Rejected red.
+  Numbers are centered. Labels and values are unchanged dt/dd pairs.
+- **Leave type colors:** each leave type has a stable tone wherever it appears (dot, card accent, tag).
+  Loss of Pay (code `LOP` or name "Loss of Pay") is always red by product decision, and red is used for no
+  other type. Other types get a tone derived from their name (never a hardcoded list), so new
+  admin-defined types are colored automatically. Two future types may share a tone; unique admin-chosen
+  colors would need an API/DB change.
+- **Numbers in tables:** numeric columns (days, year, balances, utilization) and their headers are centered.
+- **Row actions:** table actions are icon buttons with a hover/focus tooltip (`IconAction`), colored by
+  intent (view/edit blue, approve/activate green, reject/cancel red, deactivate/adjust amber). The full
+  action name stays as visually hidden text, so accessible names are unchanged. Phone card views show
+  icon + label. Employees keeps a compact "⋯ Actions for CODE" menu with icon items.
+- **Filters:** list screens use one compact filter card (`filter-bar`): small labels above fields, a
+  single wrapping row, Clear filters at the end. Status tabs are a segmented control. Long field help
+  (for example the employee search) is an ⓘ tooltip; the text stays visually hidden and linked with
+  `aria-describedby`.
+- **Add/Edit forms (Apply Leave pattern):** a form card with a header band, a decorative step guide
+  (`StepGuide`, `aria-hidden`), sectioned fields with label icons and a footer band for actions, plus a
+  decorative live preview panel (Add Employee, Add Leave Type, Add Holiday, Allocate Leave). Dialogs size
+  to their content (`h-fit`).
+- **My Profile:** identity hero (initials avatar, name, Employee ID, status) above two cards titled
+  "Contact" (Email, Phone) and "Employment" (Department, Designation, Joining Date, Reporting Manager).
+  Each value appears once, and field labels are unchanged.
+- **Calendars:** month grids show a tinted weekday row (weekends violet), full grid lines, filler days,
+  centered day numbers with today in a filled circle, and holiday and leave chips. In the Team Calendar
+  desktop grid, day and chip controls are 36 px (≥ WCAG 2.2 AA 24 px) to keep weeks compact; this is a
+  deliberate exception to the 44 px touch-target guidance for that grid only.
 
 ---
 
@@ -334,6 +365,9 @@ Top bar (all screens): hamburger (< `lg`), app name, **notification bell** with 
   active item has a translucent white fill, white text and a white left marker.
 - The Pending Approvals count is a lime pill with navy text. It keeps the same accessible name and source.
 - Top bar: white, 64px, bottom border. The user menu trigger shows an initials avatar with name and employee code; its menu content is unchanged.
+- Desktop sidebar can be collapsed to a 76 px icon-only rail (toggle beside the logo; per-browser
+  preference in `localStorage`). Collapsed links keep their accessible names and show tooltips; the
+  pending count becomes a small badge. "All Applications" (not yet built) shows a SOON tag.
 - The `/` redirect screen shows the logo tile, an indeterminate progress bar and the existing "Opening your workspace…" status text. The redirect behavior is unchanged.
 
 ---

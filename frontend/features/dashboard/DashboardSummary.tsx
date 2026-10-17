@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ChartColumn, Bell, CalendarDays, CalendarPlus, CalendarRange, CheckCheck, FileText, Flag, List, Scale, Tags, User, Users, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { StatTile } from "@/components/common/StatTile";
 // Presentation only: a decorative icon per quick-action destination (UI_SPEC.md §9.2).
 const actionIcons: [string, LucideIcon][] = [
   ["/leave/apply", CalendarPlus], ["/leave/balance", Wallet], ["/leave/history", List], ["/profile", User], ["/notifications", Bell],
@@ -9,8 +10,8 @@ const actionIcons: [string, LucideIcon][] = [
 ];
 function actionIcon(href: string): LucideIcon { return actionIcons.find(([prefix]) => href.startsWith(prefix))?.[1] ?? List; }
 export function DashboardCounts({ items }: { items: { label: string; value: number }[] }) {
-  return <dl className={`grid grid-cols-2 overflow-hidden rounded-[14px] border border-line bg-white sm:grid-cols-3 ${items.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>{items.map(item =>
-    <div key={item.label} className="-ml-px -mt-px border-l border-t border-line px-4 py-3.5"><dt className="text-xs text-muted">{item.label}</dt><dd className="mt-1 font-display text-2xl font-bold tabular-nums text-ink">{item.value}</dd></div>)}</dl>;
+  return <dl className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${items.length === 4 ? "lg:grid-cols-4" : "lg:grid-cols-5"}`}>{items.map(item =>
+    <StatTile key={item.label} label={item.label}>{item.value}</StatTile>)}</dl>;
 }
 export function DashboardActions({ items, primaryHref }: { items: { label: string; href: string }[]; primaryHref?: string }) {
   return <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-[repeat(auto-fill,minmax(11rem,1fr))]">{items.map(item => {
