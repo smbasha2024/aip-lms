@@ -21,6 +21,7 @@ and operational checks in [Release readiness](docs/RELEASE_READINESS.md).
 | [Database runbook](database/README.md) | Migrations and development seeds |
 | [Release readiness](docs/RELEASE_READINESS.md) | Deployment, recovery and sign-off |
 | [Local Docker staging](docs/LOCAL_STAGING.md) | Isolated local HTTPS deployment and validation commands |
+| [Free Render demo](docs/RENDER_DEMO.md) | Disposable prospect demo setup, DNS and CI-gated deployment |
 | [Agent instructions](AGENTS.md) | Repository coding rules |
 
 Historical implementation and validation evidence remains in `docs/PHASE_*_REPORT.md`.
