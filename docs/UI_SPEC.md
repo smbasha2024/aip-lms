@@ -510,10 +510,10 @@ Each screen lists: **Route / Roles**, **APIs**, **Layout**, **Behaviour**, **Sta
 
 **APIs:** `POST /auth/login`, then `GET /auth/me` only when restoring a session.
 
-**Layout:** split screen at `≥ lg`. The left panel uses the hero gradient with the wordmark
+**Layout:** split screen at `≥ md` (768 px). The left panel uses the hero gradient with the wordmark
 lockup, the headline "Plan time off with confidence.", one supporting sentence and three
 decorative feature bullets describing existing capabilities (no links or actions). The right
-panel is white with the form (max width 380–400 px) and heading "Sign in". Below `lg`, the brand
+panel is white with the form (max width 380–400 px) and heading "Sign in". Below `md`, the brand
 panel collapses into a short gradient header above the form. A static help line ("Trouble
 signing in? Contact your HR administrator.") may appear under the button. It is not a link; password reset remains out of scope.
 

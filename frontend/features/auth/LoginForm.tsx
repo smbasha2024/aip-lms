@@ -40,16 +40,16 @@ export function LoginForm() {
   if (auth.loading || auth.user) return <p role="status" className="grid min-h-screen place-items-center bg-canvas p-8 text-center text-muted">Checking your session…</p>;
   if (auth.error) return <main className="grid min-h-screen place-items-center bg-canvas p-8"><div className="card w-full max-w-sm space-y-4 p-6 text-center"><p role="alert" className="text-ink">Unable to restore your session.</p>
     <div className="flex flex-wrap justify-center gap-3"><button onClick={() => void auth.retry()} className="btn btn-primary">Retry</button><button onClick={() => void auth.signOut()} className="btn btn-secondary">Sign out on this device</button></div></div></main>;
-  return <main className="grid min-h-screen grid-rows-[auto_1fr] bg-white lg:grid-cols-[1.05fr_1fr] lg:grid-rows-1">
-    <aside aria-label="About AIProxys Leave Management" className="hero-gradient hero-rings flex flex-col justify-between gap-6 px-6 py-6 lg:px-13 lg:py-12">
+  return <main className="grid min-h-screen grid-rows-[auto_1fr] bg-white md:grid-cols-[1fr_1fr] md:grid-rows-1 lg:grid-cols-[1.05fr_1fr]">
+    <aside aria-label="About AIProxys Leave Management" className="hero-gradient hero-rings flex flex-col justify-between gap-6 px-6 py-6 md:px-10 md:py-10 lg:px-13 lg:py-12">
       <div><BrandLockup subtitleClassName="text-white/85" />
-        <div className="hidden lg:block"><h2 className="mt-10 max-w-[14ch] font-display text-4xl font-bold leading-tight text-white">Plan time off with confidence.</h2>
+        <div className="hidden md:block"><h2 className="mt-10 max-w-[14ch] font-display text-3xl lg:text-4xl font-bold leading-tight text-white">Plan time off with confidence.</h2>
           <p className="mt-4 max-w-[42ch] text-white/85">Apply for leave, track approvals and see your balance for the year in one place.</p>
           <ul className="mt-7 space-y-3 text-sm">{["Live leave balances by type", "Manager approvals with notifications", "Holiday-aware day calculation"].map(text =>
             <li key={text} className="flex items-center gap-2.5"><span className="grid h-6.5 w-6.5 place-items-center rounded-lg bg-white/15"><Check aria-hidden size={15} className="text-lime-brand" /></span>{text}</li>)}</ul></div></div>
-      <p className="hidden text-xs text-white/70 lg:block">© {new Date().getFullYear()} AIProxys · Smart AI Agents</p>
+      <p className="hidden text-xs text-white/70 md:block">© {new Date().getFullYear()} AIProxys · Smart AI Agents</p>
     </aside>
-    <div className="flex justify-center px-4 pb-10 pt-8 sm:px-8 lg:items-center lg:p-12">
+    <div className="flex justify-center px-4 pb-10 pt-8 sm:px-8 md:items-center md:p-10 lg:p-12">
     <section className="w-full max-w-[400px]" aria-labelledby="sign-in-title">
       <h1 id="sign-in-title" className="font-display text-[1.75rem] font-bold text-ink">Sign in</h1><p className="mb-6 mt-1.5 text-muted">Access your employee workspace.</p>
       {(error || auth.notice || expired) && <p role="alert" className="mb-5 rounded-[10px] border border-[#f1b7bb] bg-bad-bg p-3 text-sm text-bad-fg">{error || auth.notice || "Your session has expired. Please sign in again."}</p>}
