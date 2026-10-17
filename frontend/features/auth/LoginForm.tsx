@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LockKeyhole } from "lucide-react";
+import { Check, Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import { BrandLockup, BrandLogo } from "@/components/common/BrandLogo";
 import { useAuth } from "@/hooks/use-auth";
 import { safeReturnTo } from "@/lib/permissions";
 import { ApiError } from "@/lib/api-client";
@@ -36,30 +37,43 @@ export function LoginForm() {
     }
   }
   const expired = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("reason") === "expired";
-  if (auth.loading || auth.user) return <p role="status" className="p-8 text-center">Checking your session…</p>;
-  if (auth.error) return <main className="p-8"><p role="alert">Unable to restore your session.</p>
-    <button onClick={() => void auth.retry()}>Retry</button><button onClick={() => void auth.signOut()}>Sign out on this device</button></main>;
-  return <main className="grid min-h-screen place-items-center bg-slate-50 px-4 py-10">
-    <section className="w-full max-w-[400px] rounded-lg border border-slate-200 bg-white p-6 shadow-sm" aria-labelledby="sign-in-title">
-      <div className="mb-5 flex items-center gap-3"><span className="rounded-lg bg-blue-50 p-3 text-blue-700"><LockKeyhole aria-hidden size={24} /></span>
-        <p className="font-semibold text-slate-900">Employee Leave Management</p></div>
-      <h1 id="sign-in-title" className="text-2xl font-semibold">Sign in</h1><p className="mb-6 mt-2 text-sm text-slate-600">Access your employee workspace.</p>
-      {(error || auth.notice || expired) && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">{error || auth.notice || "Your session has expired. Please sign in again."}</p>}
+  if (auth.loading || auth.user) return <p role="status" className="grid min-h-screen place-items-center bg-canvas p-8 text-center text-muted">Checking your session…</p>;
+  if (auth.error) return <main className="grid min-h-screen place-items-center bg-canvas p-8"><div className="card w-full max-w-sm space-y-4 p-6 text-center"><p role="alert" className="text-ink">Unable to restore your session.</p>
+    <div className="flex flex-wrap justify-center gap-3"><button onClick={() => void auth.retry()} className="btn btn-primary">Retry</button><button onClick={() => void auth.signOut()} className="btn btn-secondary">Sign out on this device</button></div></div></main>;
+  return <main className="grid min-h-screen grid-rows-[auto_1fr] bg-canvas md:grid-cols-[1fr_1fr] md:grid-rows-1 lg:grid-cols-[1.05fr_1fr]">
+    <aside aria-label="About AIProxys Leave Management" className="hero-gradient hero-rings flex flex-col justify-between gap-6 px-6 py-6 md:px-10 md:py-10 lg:px-13 lg:py-12">
+      <div><BrandLockup subtitleClassName="text-white/85" />
+        <div className="hidden md:block"><h2 className="mt-10 max-w-[14ch] font-display text-3xl lg:text-4xl font-bold leading-tight text-white">Plan time off with confidence.</h2>
+          <p className="mt-4 max-w-[42ch] text-white/85">Apply for leave, track approvals and see your balance for the year in one place.</p>
+          <ul className="mt-7 space-y-3 text-sm">{["Live leave balances by type", "Manager approvals with notifications", "Holiday-aware day calculation"].map(text =>
+            <li key={text} className="flex items-center gap-2.5"><span className="grid h-6.5 w-6.5 place-items-center rounded-lg bg-white/15"><Check aria-hidden size={15} className="text-lime-brand" /></span>{text}</li>)}</ul></div></div>
+      <p className="hidden text-xs text-white/70 md:block">© {new Date().getFullYear()} AIProxys · Smart AI Agents</p>
+    </aside>
+    <div className="flex items-start justify-center px-4 py-8 sm:items-center sm:px-8 md:p-10 lg:p-12">
+    <section className="card w-full max-w-[440px] p-6 shadow-xl shadow-navy-900/5 sm:p-8" aria-labelledby="sign-in-title">
+      <div className="mb-6 flex flex-col items-center border-b border-line pb-6 text-center">
+        <span className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl border border-line bg-white shadow-sm"><BrandLogo size={54} /></span>
+        <p className="mt-3 font-display text-2xl font-bold text-brand-700">AIProxys</p></div>
+      <h1 id="sign-in-title" className="text-center font-display text-[1.75rem] font-bold text-ink">Sign in</h1><p className="mb-6 mt-1.5 text-center text-muted">Access your employee workspace.</p>
+      {(error || auth.notice || expired) && <p role="alert" className="mb-5 rounded-[10px] border border-[#f1b7bb] bg-bad-bg p-3 text-sm text-bad-fg">{error || auth.notice || "Your session has expired. Please sign in again."}</p>}
       <form onSubmit={form.handleSubmit(submit)} noValidate className="space-y-5">
-        <div><label htmlFor="username" className="mb-1 block text-sm font-medium">Email or Employee ID *</label>
+        <div><label htmlFor="username" className="field-label">Email or Employee ID *</label><div className="relative">
+          <Mail aria-hidden size={17} className="pointer-events-none absolute left-3.5 top-3.5 text-muted" />
           <input {...form.register("username")} id="username" autoComplete="username" autoFocus aria-required="true"
             aria-invalid={!!form.formState.errors.username} aria-describedby={form.formState.errors.username ? "username-error" : undefined}
-            data-testid="login-username" maxLength={255} className="w-full rounded-md border border-slate-300 px-3 py-2" />
-          {form.formState.errors.username && <p id="username-error" className="mt-1 text-sm text-red-700">{form.formState.errors.username.message}</p>}</div>
-        <div><label htmlFor="password" className="mb-1 block text-sm font-medium">Password *</label><div className="relative">
+            data-testid="login-username" maxLength={255} className="field-input w-full pl-10" /></div>
+          {form.formState.errors.username && <p id="username-error" className="field-error">{form.formState.errors.username.message}</p>}</div>
+        <div><label htmlFor="password" className="field-label">Password *</label><div className="relative">
+          <LockKeyhole aria-hidden size={17} className="pointer-events-none absolute left-3.5 top-3.5 text-muted" />
           <input {...form.register("password")} id="password" type={visible ? "text" : "password"} autoComplete="current-password" aria-required="true"
             aria-invalid={!!form.formState.errors.password} aria-describedby={form.formState.errors.password ? "password-error" : undefined}
-            data-testid="login-password" maxLength={128} className="w-full rounded-md border border-slate-300 px-3 py-2 pr-12" />
+            data-testid="login-password" maxLength={128} className="field-input w-full pl-10 pr-12" />
           <button type="button" aria-label={visible ? "Hide password" : "Show password"} aria-pressed={visible} onClick={() => setVisible(!visible)}
-            className="absolute right-1 top-1 rounded p-2 text-slate-600">{visible ? <EyeOff aria-hidden size={18} /> : <Eye aria-hidden size={18} />}</button></div>
-          {form.formState.errors.password && <p id="password-error" className="mt-1 text-sm text-red-700">{form.formState.errors.password.message}</p>}</div>
+            className="absolute right-1 top-1 rounded-lg p-2 text-muted hover:bg-brand-50 hover:text-brand-700">{visible ? <EyeOff aria-hidden size={18} /> : <Eye aria-hidden size={18} />}</button></div>
+          {form.formState.errors.password && <p id="password-error" className="field-error">{form.formState.errors.password.message}</p>}</div>
         <button data-testid="login-submit" type="submit" disabled={form.formState.isSubmitting || auth.loginPending} aria-busy={form.formState.isSubmitting}
-          className="w-full rounded-md bg-blue-600 px-4 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-60">{form.formState.isSubmitting ? "Signing in…" : "Sign in"}</button>
+          className="btn btn-primary w-full">{form.formState.isSubmitting ? "Signing in…" : "Sign in"}</button>
       </form>
-    </section></main>;
+      <p className="mt-6 text-center text-sm text-muted">Trouble signing in? Contact your HR administrator.</p>
+    </section></div></main>;
 }

@@ -20,15 +20,15 @@ export function NotificationBell() {
   }, [open]);
   const items = [...(latest.data?.items ?? [])].sort((a, b) => Number(a.is_read) - Number(b.is_read));
   return <div ref={root} className="relative">
-    <button ref={button} type="button" onClick={() => setOpen(value => !value)} aria-label="Notifications" aria-expanded={open} aria-controls={id} aria-describedby={count !== undefined && count > 0 ? `${id}-count` : undefined} title={count === undefined ? unread.isError ? "Unread count unavailable" : "Loading unread count" : `${count} unread notifications`} className="relative rounded p-2 text-slate-700">
-      <Bell aria-hidden size={22}/>{count !== undefined && count > 0 && <span id={`${id}-count`} aria-label={`${count} unread notifications`} className="absolute -right-1 -top-1 rounded-full bg-red-700 px-1.5 text-xs text-white">{count > 9 ? "9+" : count}</span>}
+    <button ref={button} type="button" onClick={() => setOpen(value => !value)} aria-label="Notifications" aria-expanded={open} aria-controls={id} aria-describedby={count !== undefined && count > 0 ? `${id}-count` : undefined} title={count === undefined ? unread.isError ? "Unread count unavailable" : "Loading unread count" : `${count} unread notifications`} className="relative grid h-10 w-10 place-items-center rounded-[10px] border border-line text-muted hover:bg-brand-50 hover:text-brand-700">
+      <Bell aria-hidden size={19}/>{count !== undefined && count > 0 && <span id={`${id}-count`} aria-label={`${count} unread notifications`} className="absolute -right-1.5 -top-1.5 rounded-full border-2 border-white bg-red-700 px-1.5 text-[10px] font-bold leading-4 text-white">{count > 9 ? "9+" : count}</span>}
     </button>
-    {open && <section id={id} aria-label="Latest notifications" className="fixed left-4 right-4 top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-lg border bg-white p-3 shadow-xl sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96">
-      <div className="mb-3 flex items-center justify-between"><h2 className="font-semibold">Notifications</h2><button onClick={() => { setOpen(false); button.current?.focus(); }} aria-label="Close notifications" className="rounded p-2"><X aria-hidden size={18}/></button></div>
+    {open && <section id={id} aria-label="Latest notifications" className="fixed left-4 right-4 top-20 max-h-[calc(100dvh-6rem)] overflow-y-auto rounded-2xl border border-line bg-white p-3 shadow-xl shadow-navy-900/10 sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-3 sm:w-96">
+      <div className="mb-3 flex items-center justify-between"><h2 className="section-title">Notifications</h2><button onClick={() => { setOpen(false); button.current?.focus(); }} aria-label="Close notifications" className="rounded-lg p-2 text-muted hover:bg-brand-50"><X aria-hidden size={18}/></button></div>
       {unread.isError && <QueryError error={unread.error} retry={() => void unread.refetch()}/>}
       {latest.isPending ? <QueryLoading/> : latest.isError ? <QueryError error={latest.error} retry={() => void latest.refetch()}/>
         : items.length ? <NotificationList items={items} timezone={user?.organization_timezone ?? "UTC"} compact onNavigate={() => setOpen(false)}/> : <p className="p-4">{"You're all caught up."}</p>}
-      <Link href="/notifications" onClick={() => setOpen(false)} className="mt-3 block rounded border px-3 py-2 text-center text-blue-700">View all</Link>
+      <Link href="/notifications" onClick={() => setOpen(false)} className="btn btn-secondary mt-3 w-full">View all</Link>
     </section>}
   </div>;
 }
