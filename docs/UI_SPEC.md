@@ -40,6 +40,11 @@ phone are supported. Allocations belong to employee/type/year balances. Regional
 calendars, half-day, automatic approval, exports, Settings and department CRUD are
 later-release work. The administrator audit viewer is approved for Phase 18. No navigation to unsupported controls.
 
+Updated 17 October 2026 (LMS UI Revamp Project). §4.1–§4.3, §4.6, §5.4, §9.1 (layout) and §9.2 (layout) now define the AIProxys brand look and feel. The visual
+reference is `docs/UI_REVAMP_PLAN.html`. The revamp is presentation-only. Routes, guards, API
+usage, labels, validation, accessible names, `aria-*` attributes and `data-testid` values
+are unchanged by it.
+
 ---
 
 # 3. Technology and Conventions
@@ -154,34 +159,45 @@ frontend/
 
 ## 4.1 Principles
 
-Clean, calm, data-first HR tooling. Information density is moderate; status must always be obvious; destructive actions are always confirmed.
+Clean, calm, data-first HR tooling in the AIProxys corporate identity (colors from
+aiproxybots.com). Information density is moderate; status must always be obvious; destructive actions are always confirmed.
+Brand color is used for structure (sidebar, primary actions, hero bands). Data surfaces stay
+white on a cool light background.
 
-## 4.2 Tokens (configure through the selected Tailwind version)
+## 4.2 Tokens (configure through Tailwind v4 `@theme` in `app/globals.css`)
 
 | Token | Value / Tailwind |
 |---|---|
-| Font | Inter via `next/font`, fallback `system-ui, sans-serif` |
-| Base size | 16px body, 14px dense table text, 12px captions |
-| Primary | `blue-600` (hover `blue-700`, focus ring `blue-500`) |
-| Neutrals | `slate-50` page bg, `white` surfaces, `slate-200` borders, `slate-700` body text, `slate-900` headings |
-| Danger | `red-600` / bg `red-50` |
-| Success | `green-600` / bg `green-50` |
-| Warning | `amber-600` / bg `amber-50` |
-| Radius | `rounded-lg` cards/modals, `rounded-md` inputs/buttons |
-| Spacing | 4px scale; page padding `p-4 md:p-6`; card padding `p-4 md:p-6` |
-| Shadow | `shadow-sm` cards; `shadow-lg` modals/menus |
-| Focus | Always visible: `focus-visible:ring-2 ring-blue-500 ring-offset-2` |
+| Fonts | Body: Inter via `next/font`. Display (page titles, section titles, stat figures, wordmark): Ubuntu 500/700 via `next/font`. Fallback `system-ui, sans-serif` |
+| Base size | 16px body, 14px dense table text, 12px captions; inputs ≥ 16px on touch layouts |
+| Brand / primary | `brand-600` #1363C6 (buttons, links, active states); hover `brand-700` #0F4FA0; tint `brand-50` #EAF2FC |
+| Sky accent | `sky-brand` #15ACE1: fills, markers and gradients only, never body text on white (contrast < 4.5:1) |
+| Navy | `navy-900` #14183E: toasts, headline ink. `navy-800` #1A2A6C: gradient start |
+| Lime accent | `lime-brand` #8CC63F, from the logo: small highlights on blue/navy only (e.g. sidebar count pill with navy text) |
+| Sidebar | Vertical gradient `#0F4FA0 → #1363C6 → #1C86D6` (one token, `--sidebar-bg`) |
+| Hero gradient | `linear-gradient(120deg, #1A2A6C, #1363C6 62%, #15ACE1)`: login brand panel and dashboard welcome band only |
+| Neutrals | Page bg `#F4F7FE`; `white` surfaces; borders `#DCE3F0`; body text `#1B2340`; muted text `#5B6582` |
+| Danger | text `#A4262C` / bg `#FDE7E9`; solid destructive button `#B42318` |
+| Success | text `#146C3A` / bg `#E3F6EA` |
+| Warning | text `#7A4F00` / bg `#FFF4DB` |
+| Radius | cards/panels 14px (`rounded-2xl` equivalent), inputs/buttons 10px, badges full |
+| Spacing | 4px scale; page padding `p-4 md:p-6 lg:px-7`; card padding `p-4 md:p-5` |
+| Shadow | cards: border only (no shadow) except dialogs/menus (`shadow-lg`, navy-tinted) |
+| Controls | Buttons and inputs 44px tall; primary, secondary (white with brand border), ghost, danger variants |
+| Focus | Always visible: 2px ring in `brand-600` with offset (3px) |
 
 Dark mode is out of scope for v1. All text/background pairs must meet WCAG AA contrast (4.5:1).
 
 ## 4.3 Status badges (never colour-only — always include the text label)
 
+Badges are pill-shaped with a leading status dot (`currentColor`) and the text label.
+
 | Value | Label | Style |
 |---|---|---|
-| `PENDING` | Pending | `bg-amber-100 text-amber-900` |
-| `APPROVED` | Approved | `bg-green-100 text-green-900` |
-| `REJECTED` | Rejected | `bg-red-100 text-red-900` |
-| `CANCELLED` | Cancelled | `bg-slate-100 text-slate-700` |
+| `PENDING` | Pending | warning bg `#FFF4DB`, text `#7A4F00` |
+| `APPROVED` | Approved | success bg `#E3F6EA`, text `#146C3A` |
+| `REJECTED` | Rejected | danger bg `#FDE7E9`, text `#A4262C` |
+| `CANCELLED` | Cancelled | neutral bg `#EEF1F6`, text `#4A5470` |
 | Employee `ACTIVE` | Active | green |
 | Employee `INACTIVE` | Inactive | slate |
 | Employee `RESIGNED` / `TERMINATED` | Resigned / Terminated | slate / red |
@@ -220,6 +236,19 @@ Dates sent to the API are always `YYYY-MM-DD`.
 | `AsyncEmployeeSelect` | Combobox backed by `GET /employees?search=&page_size=20`, debounced 300 ms, shows `Name (E001)`, accessible listbox semantics |
 | `RoleGate` | `<RoleGate allow={["MANAGER","ADMINISTRATOR"]}>` hides children (UI convenience only) |
 | `Toast` | Success auto-dismiss 4 s; errors persist until dismissed; announced with `aria-live` |
+
+## 4.6 Brand assets and shared visual states
+
+- **Logo:** the AIProxys logo (`frontend/public/brand/aiproxys-logo.png`, source aiproxybots.com).
+  The current file has a white background, so it is always shown inside a white rounded tile.
+  Its alt text is empty where the wordmark is next to it.
+- **Wordmark lockup:** logo tile + "AIProxys" (Ubuntu 700) over "Leave Management" (12–13px).
+  Used in the sidebar, mobile top bar, login brand panel and workspace loader. Document
+  titles (`… · Employee Leave Management`) are unchanged.
+- **Icons:** `lucide-react` only, decorative (`aria-hidden`), 17–18px.
+- **Loading:** skeleton blocks may supplement loading text. The existing `role="status"` text stays available to screen readers.
+- **Empty states:** dashed-border panel with an icon tile, a bold title and the existing message text.
+- **Toasts:** navy surface, white text, lime check icon; existing `role`/live-region semantics unchanged.
 
 ---
 
@@ -286,6 +315,20 @@ Sidebar (≥ `lg`, fixed 240 px) / top-bar hamburger drawer (< `lg`).
 | Admin | Audit Log | `/admin/audit` | ADMINISTRATOR |
 
 Top bar (all screens): hamburger (< `lg`), app name, **notification bell** with unread badge (§13), **user menu** (name, employee code, role; items: My Profile, Logout). The active nav item has `aria-current="page"`.
+
+## 5.4 Navigation visual treatment
+
+- Sidebar and mobile drawer use the `--sidebar-bg` brand gradient (§4.2) with the wordmark
+  lockup (§4.6) at the top. The drawer keeps its existing dialog, focus-trap and close behavior.
+- Group headings from the §5.3 table (Leave, Team, Admin) are shown as small uppercase
+  labels. Items marked "—" have no heading. Navigation items not listed in §5.3 (Notifications,
+  My Profile) sit with Dashboard in the ungrouped top block. Order, labels, routes and role
+  filtering are unchanged.
+- Each item shows a decorative lucide icon. Inactive text is near-white (`#E6EFFB`). The
+  active item has a translucent white fill, white text and a white left marker.
+- The Pending Approvals count is a lime pill with navy text. It keeps the same accessible name and source.
+- Top bar: white, 64px, bottom border. The user menu trigger shows an initials avatar with name and employee code; its menu content is unchanged.
+- The `/` redirect screen shows the logo tile, an indeterminate progress bar and the existing "Opening your workspace…" status text. The redirect behavior is unchanged.
 
 ---
 
@@ -467,7 +510,12 @@ Each screen lists: **Route / Roles**, **APIs**, **Layout**, **Behaviour**, **Sta
 
 **APIs:** `POST /auth/login`, then `GET /auth/me` only when restoring a session.
 
-**Layout:** centered card on `slate-50`, max width 400 px. App name/logo at top, heading "Sign in".
+**Layout:** split screen at `≥ lg`. The left panel uses the hero gradient with the wordmark
+lockup, the headline "Plan time off with confidence.", one supporting sentence and three
+decorative feature bullets describing existing capabilities (no links or actions). The right
+panel is white with the form (max width 380–400 px) and heading "Sign in". Below `lg`, the brand
+panel collapses into a short gradient header above the form. A static help line ("Trouble
+signing in? Contact your HR administrator.") may appear under the button. It is not a link; password reset remains out of scope.
 
 | Field | Control | Rules |
 |---|---|---|
@@ -513,6 +561,14 @@ include Approvals, My Team, Team Calendar and Reports. Administrator quick links
 Employee Management, Leave Types, Leave Balances, Leave Applications (the implemented
 organization application report), Holiday Management and Reports.
 Loading/empty/error states remain accessible; API-backed values are authoritative.
+
+**Layout (visual):** hero-gradient welcome band (greeting, employee code, department, business
+date and timezone, with the year selector on the right). Quick actions appear as icon tiles,
+with Apply Leave as the filled primary tile. Leave totals sit in one segmented stat strip with
+Available in brand blue. Balance cards show "available" large, a stacked bar whose segment widths
+are proportional to the API's used, pending and available values (no derived figures are displayed), and the four detail figures. Recent
+applications and upcoming holidays sit in two panels, with a calendar date chip per holiday.
+Manager and administrator summaries use the same stat-strip style.
 
 ---
 
