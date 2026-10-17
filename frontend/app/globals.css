@@ -91,10 +91,24 @@ dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
 
   .page-title { font-family: var(--font-display); font-size: 1.625rem; font-weight: 700; line-height: 1.2; color: var(--color-ink); }
   .section-title { font-family: var(--font-display); font-size: 1.0625rem; font-weight: 700; color: var(--color-ink); }
+  .hero-gradient { background: var(--hero-gradient); color: #fff; }
   .hero-band { background: var(--hero-gradient); color: #fff; border-radius: 1rem; }
+  .hero-rings { position: relative; overflow: hidden; isolation: isolate; }
+  .hero-rings::after {
+    content: ""; position: absolute; z-index: -1; width: 32rem; height: 32rem; right: -11rem; bottom: -13rem; border-radius: 9999px;
+    border: 2px solid rgb(255 255 255 / 0.14); box-shadow: 0 0 0 3.75rem rgb(255 255 255 / 0.04), 0 0 0 8rem rgb(255 255 255 / 0.03);
+    pointer-events: none;
+  }
+  .progress-indeterminate { position: relative; overflow: hidden; height: 0.25rem; border-radius: 9999px; background: #dce5f5; }
+  .progress-indeterminate::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: 9999px; background: var(--hero-gradient); }
+  @media (prefers-reduced-motion: no-preference) {
+    .progress-indeterminate::after { animation: progress-slide 1.4s ease-in-out infinite; }
+  }
 
   .table-head th {
     background: #f6f8fd; color: var(--color-muted); font-size: 0.6875rem; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase; text-align: left;
   }
 }
+
+@keyframes progress-slide { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
