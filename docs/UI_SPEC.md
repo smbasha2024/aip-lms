@@ -249,6 +249,12 @@ Dates sent to the API are always `YYYY-MM-DD`.
 - **Loading:** skeleton blocks may supplement loading text. The existing `role="status"` text stays available to screen readers.
 - **Empty states:** dashed-border panel with an icon tile, a bold title and the existing message text.
 - **Toasts:** navy surface, white text, lime check icon; existing `role`/live-region semantics unchanged.
+- **Data tables:** the existing table `<caption>` is shown as the card title (same text and
+  accessible name) with a brand marker. Header row: tinted brand background with small uppercase labels.
+  Rows: alternating tint and hover highlight. Status cells use the §4.3 pills. "Scroll horizontally" hints
+  sit below the table as a footer. Column sorting and in-header filters are **not** part of the revamp. Sorting
+  is a separate future enhancement limited to API-supported sorts (application lists:
+  `created_at`, `from_date`, `to_date`, `number_of_days`, `status`), and needs its own spec update.
 
 ---
 

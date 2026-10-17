@@ -108,6 +108,27 @@ dialog[open] { display: flex; flex-direction: column; overflow-y: auto; }
     .progress-indeterminate::after { animation: progress-slide 1.4s ease-in-out infinite; }
   }
 
+  /* Data tables (R7.1): visible caption as card title, tinted brand header, zebra rows and hover. */
+  .data-table { border-collapse: separate; border-spacing: 0; font-variant-numeric: tabular-nums; }
+  .data-table > caption.table-title {
+    caption-side: top; text-align: left; padding: 1rem 1rem 0.875rem; color: var(--color-ink);
+    font-family: var(--font-display); font-size: 1rem; font-weight: 700; border-bottom: 1px solid var(--color-line);
+  }
+  .data-table > caption.table-title::before {
+    content: ""; display: inline-block; width: 0.25rem; height: 1rem; margin-right: 0.625rem; border-radius: 9999px;
+    background: var(--color-brand-600); vertical-align: -0.15em;
+  }
+  .data-table thead th {
+    background: #eef4fc; color: var(--color-brand-800); font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; border-bottom: 1px solid var(--color-brand-100); vertical-align: bottom;
+  }
+  .data-table tbody > tr > * { border-top: 1px solid #edf1f8; vertical-align: middle; transition: background-color 120ms; }
+  .data-table tbody > tr:first-child > * { border-top: 0; }
+  .data-table tbody > tr:nth-child(even) > * { background: #fafcff; }
+  .data-table tbody > tr:hover > * { background: #f1f6fd; }
+  .data-table tbody > tr > :first-child { font-weight: 600; color: var(--color-ink); }
+  .table-hint { padding: 0.625rem 1rem; border-top: 1px solid var(--color-line); background: #fafcff; font-size: 0.75rem; color: var(--color-muted); }
+
   .table-head th {
     background: #f6f8fd; color: var(--color-muted); font-size: 0.6875rem; font-weight: 600;
     letter-spacing: 0.08em; text-transform: uppercase; text-align: left;
